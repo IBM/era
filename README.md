@@ -52,7 +52,7 @@ cd ~
 mkdir -p catkin_ws/src
 cd catkin_ws/src
 catkin_init_workspace
-git clone git@github.ibm.com:ERA/era.git
+git clone https://github.com/IBM/era.git
 cd ~/catkin_ws
 wstool init src src/era/era.rosinstall
 catkin_make
@@ -63,7 +63,7 @@ source devel/setup.bash
 
 ```
 cd catkin_ws/src
-git clone git@github.ibm.com:ERA/era.git
+git clone https://github.com/IBM/era.git
 cd ~/catkin_ws
 wstool merge -t src src/era/era.rosinstall
 catkin_make
