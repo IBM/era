@@ -112,17 +112,11 @@ sudo ldconfig
 
 Generate the GNURadio Python flowgraph:
 
-Finally, the GNURadio-based implementation of the IEEE 802.11p transceiver has to be generated using the GNURadio Companion (GRC), a graphical tool for creating signal flowgraphs and generating flowgraph source code.
-
-Launch GRC and open the `wifi_transceiver.grc` flowgraph using the following command:
+Finally, the GNURadio-based implementation of the IEEE 802.11p transceiver has to be generated using the GNURadio Companion compiler (`grcc`):
 
 ```
-gnuradio-companion ~/catkin_ws/src/dsrc/gr-ieee802-11/examples/wifi_transceiver.grc
+grcc -d ~/catkin_ws/src/dsrc/gr-ieee802-11/examples/ ~/catkin_ws/src/dsrc/gr-ieee802-11/examples/wifi_transceiver.grc
 ```
-
-Generate the Python flowgraph (`wifi_transceiver.py`) clicking the *Generate the flow graph* button in the GRC interface. A successful result is shown at the bottom of this figure:
-
-![](/grc_screenshot.png?raw=true "GNURadio Companion (GRC)")
 
 
 ## Running ERA
