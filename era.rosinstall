@@ -1,9 +1,9 @@
 - git:
     local-name: era_gazebo
-    uri: git@github.ibm.com:ERA/era_gazebo.git
+    uri: https://github.com/IBM/era_gazebo.git
     version: master
 
 - git:
     local-name: dsrc
-    uri: git@github.ibm.com:ERA/dsrc.git
+    uri: https://github.com/IBM/dsrc.git
     version: master
