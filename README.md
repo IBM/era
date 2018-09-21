@@ -197,6 +197,3 @@ Also, be sure to set the plugin's update rate to 0 in order to allow the parent 
   ...
 ```
 
-
-
-
