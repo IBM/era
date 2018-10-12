@@ -117,7 +117,7 @@ Finally, the GNURadio-based implementation of the IEEE 802.11p transceiver has t
 
 ```
 cd ~/catkin_ws/src/dsrc/gr-ieee802-11/examples
-grcc ./wifi_transceiver.grc
+grcc ./wifi_transceiver.grc -d .
 ```
 
 
