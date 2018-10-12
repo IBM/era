@@ -115,7 +115,8 @@ Generate the GNURadio Python flowgraph:
 Finally, the GNURadio-based implementation of the IEEE 802.11p transceiver has to be generated using the GNURadio Companion compiler (`grcc`):
 
 ```
-grcc -d ~/catkin_ws/src/dsrc/gr-ieee802-11/examples/ ~/catkin_ws/src/dsrc/gr-ieee802-11/examples/wifi_transceiver.grc
+cd ~/catkin_ws/src/dsrc/gr-ieee802-11/examples
+grcc ./wifi_transceiver.grc
 ```
 
 
