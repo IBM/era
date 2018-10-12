@@ -25,6 +25,7 @@ Required ROS packages:
  - kinetic-robot-state-publisher
  - kinetic-robot-pose-publisher
  - kinetic-joint-state-publisher
+ - kinetic-costmap-2d
 
 Some subset of these additional ROS packages is required to teleoperate the robots and perform sensing:
  - kinetic-kobuki-controller-tutorial
