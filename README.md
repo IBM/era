@@ -142,7 +142,7 @@ To launch the workload **without the Gazebo and RViz GUIs**:
 roslaunch era_gazebo era_playback.launch bag_name:=/*your_home_folder*/catkin_ws/src/era_gazebo/bagfiles/cmd_vel_r0.bag gui:=false
 ```
 
-Although `roslaunch` will also start <a href="http://wiki.ros.org/roscore" target="_blank">roscore</a> (ROS's main engine required for _any_ ROS execution), a cleaner approach consists in having it running as an OS _daemon_ or service. Specifically for Ubuntu 15.04 and later, this can be done by creating a new <a href="https://wiki.ubuntu.com/SystemdForUpstartUsers" target="_blank">systemd</a> service called `roscore.service` in `/lib/systemd/system` (see code snippet below) and copying the roscore_service.sh script provided as part of <a href="https://github.com/IBM/era_gazebo" target="_blank">era_gazebo</a> to `/usr/local/bin`:
+Although `roslaunch` will also start <a href="http://wiki.ros.org/roscore" target="_blank">roscore</a> (ROS's main engine required for _any_ ROS execution), a cleaner approach consists in having it running as an OS _daemon_ or service. Specifically for Ubuntu 15.04 and later, this can be done by creating a new <a href="https://wiki.ubuntu.com/SystemdForUpstartUsers" target="_blank">systemd</a> service called `roscore.service` in `/lib/systemd/system` (see code snippet below) and copying the `roscore_service.sh` script provided as part of <a href="https://github.com/IBM/era_gazebo" target="_blank">era_gazebo</a> to `/usr/local/bin`:
 
 ```
 [Unit]
