@@ -14,6 +14,7 @@ ERA requires:
  - ROS Kinetic and Gazebo 7
  - GNU Radio 3.7.3+
  - <a href="https://github.com/bastibl/gr-ieee802-11" target="_blank">gr-ieee802-11</a>
+ - LZ4 1.7.0+
 
 **Note that gr-ieee802-11 is included as a package in this project (i.e. no need to clone it separately).**
  
