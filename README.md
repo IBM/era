@@ -39,6 +39,11 @@ Some subset of these additional ROS packages is required to teleoperate the robo
  - kinetic-kobuki-node
 
 
+## A Note about GNU Radio and Its Built-In Profiling Support
+
+GNU Radio implements _performance counters_ that can be used to capture/monitor information about a block inside a running flowgraph [1][2]. To enable them, GNU Radio has to be compiled from sources with specific `cmake` flags. Please, refer to the <a href="https://github.com/IBM/era/wiki#era-profiling" target="_blank">ERA Profiling</a> section in the ERA Wiki for detailed information.
+
+
 ## Installing ERA
 
 If not done yet, source the ROS environment setup file:
@@ -72,9 +77,9 @@ catkin_make
 source devel/setup.bash
 ```
 
-### Installation of GNURadio Components
+### Installation of GNU Radio Components
 
-ERA includes components implemented in GNURadio (gr-ros_interface, gr-foo and gr-ieee802-11) that have to be built and installed separately as explained next. The <a href="https://github.com/bastibl/gr-ieee802-11" target="_blank">gr-ieee802-11 project</a> is the GNURadio-based implementation of an IEEE 802.11p transceiver while the <a href="https://github.com/bastibl/gr-foo" target="_blank">gr-foo project</a> includes a collection of custom blocks that are used by gr-ieee802-11. The gr-ros_interface project implements the interface to connect together the ROS and GNURadio "worlds".
+ERA includes components implemented in GNU Radio (gr-ros_interface, gr-foo and gr-ieee802-11) that have to be built and installed separately as explained next. The <a href="https://github.com/bastibl/gr-ieee802-11" target="_blank">gr-ieee802-11 project</a> is the GNU Radio-based implementation of an IEEE 802.11p transceiver while the <a href="https://github.com/bastibl/gr-foo" target="_blank">gr-foo project</a> includes a collection of custom blocks that are used by gr-ieee802-11. The gr-ros_interface project implements the interface to connect together the ROS and GNU Radio "worlds".
 
 Build and install gr-ros_interface:
 
@@ -112,9 +117,9 @@ sudo make install
 sudo ldconfig
 ```
 
-Generate the GNURadio Python flowgraph:
+Generate the GNU Radio Python flowgraph:
 
-Finally, the GNURadio-based implementation of the IEEE 802.11p transceiver has to be generated using the GNURadio Companion compiler (`grcc`):
+Finally, the GNU Radio-based implementation of the IEEE 802.11p transceiver has to be generated using the GNU Radio Companion compiler (`grcc`):
 
 ```
 cd ~/catkin_ws/src/dsrc/gr-ieee802-11/examples
@@ -124,14 +129,14 @@ grcc ./wifi_transceiver.grc -d .
 
 ## Running ERA
 
-To launch ERA (including Gazebo, ROS and GNURadio):
+To launch ERA (including Gazebo, ROS and GNU Radio):
 
 ```
 roslaunch era_gazebo era.launch
 ```
 Note: RViz will not run in a headless environment, so if you want to run in a visual environment, ensure that you launch the ROS workload from a desktop environment.
 
-The launch command above starts Gazebo, ROS and GNURadio, instantiates the robot(s), and remains waiting for user-provided commands to move the robots. In order to have a reproducible scenario, we recorded a random robot trajectory to a <a href="http://wiki.ros.org/Bags" target="_blank">bag file</a> that can be played back to recreate the robot's trip in the simulated world. To launch ERA and play back the bag file:
+The launch command above starts Gazebo, ROS and GNU Radio, instantiates the robot(s), and remains waiting for user-provided commands to move the robots. In order to have a reproducible scenario, we recorded a random robot trajectory to a <a href="http://wiki.ros.org/Bags" target="_blank">bag file</a> that can be played back to recreate the robot's trip in the simulated world. To launch ERA and play back the bag file:
 
 ```
 roslaunch era_gazebo era_playback.launch bag_name:=/*your_home_folder*/catkin_ws/src/era_gazebo/bagfiles/cmd_vel_r0.bag
@@ -141,6 +146,12 @@ To launch the workload **without the Gazebo and RViz GUIs**:
 
 ```
 roslaunch era_gazebo era_playback.launch bag_name:=/*your_home_folder*/catkin_ws/src/era_gazebo/bagfiles/cmd_vel_r0.bag gui:=false
+```
+
+To launch the workload **enabling Linux perf profiling**:
+
+```
+roslaunch era_gazebo era_playback.launch bag_name:=/*your_home_folder*/catkin_ws/src/era_gazebo/bagfiles/cmd_vel_r0.bag gui:=false prof:=true
 ```
 
 Although `roslaunch` will also start <a href="http://wiki.ros.org/roscore" target="_blank">roscore</a> (ROS's main engine required for _any_ ROS execution), a cleaner approach consists in having it running as an OS _daemon_ or service. Specifically for Ubuntu 15.04 and later, this can be done by creating a new <a href="https://wiki.ubuntu.com/SystemdForUpstartUsers" target="_blank">systemd</a> service called `roscore.service` in `/lib/systemd/system` (see code snippet below) and copying the `roscore_service.sh` script provided as part of <a href="https://github.com/IBM/era_gazebo" target="_blank">era_gazebo</a> to `/usr/local/bin`:
@@ -211,3 +222,8 @@ Also, be sure to set the plugin's update rate to 0 in order to allow the parent 
 ```
 
 
+## References
+
+[1] <a href="https://wiki.gnuradio.org/index.php/PerformanceCounters" target="_blank">https://wiki.gnuradio.org/index.php/PerformanceCounters</a>
+
+[2] T. Rondeau, T. O'Shea, and N. Goergen. "Inspecting GNU Radio Applications with Controlport and Performance Counters." In Proceedings of the second workshop on Software radio implementation forum (SRIF '13). 2013.
