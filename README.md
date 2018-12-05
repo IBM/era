@@ -39,11 +39,6 @@ Some subset of these additional ROS packages is required to teleoperate the robo
  - kinetic-kobuki-node
 
 
-## A Note about GNU Radio and Its Built-In Profiling Support
-
-GNU Radio implements _performance counters_ that can be used to capture/monitor information about a block inside a running flowgraph [1][2]. To enable them, GNU Radio has to be compiled from sources with specific `cmake` flags. Please, refer to the <a href="https://github.com/IBM/era/wiki#era-profiling" target="_blank">ERA Profiling</a> section in the ERA Wiki for detailed information.
-
-
 ## Installing ERA
 
 If not done yet, source the ROS environment setup file:
@@ -170,6 +165,28 @@ Restart=on-abort
 WantedBy=multi-user.target
 ```
 
+## Profiling ERA
+
+We provide support for ERA profiling through two complementary approaches: GNU Radio's _performance counters_ [1][2], and Linux _perf_ [3].
+
+### GNU Radio's Performance Counters
+
+GNU Radio implements _performance counters_ that can be used to capture/monitor information about a block inside a running flowgraph [1][2]. To enable them, GNU Radio has to be compiled from sources with specific `cmake` flags. Please, refer to the <a href="https://github.com/IBM/era/wiki#era-profiling" target="_blank">ERA Profiling</a> section in the ERA Wiki for details to enable performance.
+
+At runtime, performance counters can be collected using the `gr-perf-to-csv` script in <a href="https://github.com/IBM/dsrc/tree/master/gr-foo/utils" target="_blank">dsrc/gr-foo/utils</a>. For example, once ERA is steadily running, execute the following command in a different terminal:
+
+```
+cd ~/catkin_ws/src/dsrc/gr-foo/utils/
+./gr-perf-to-csv 127.0.0.1 <port>
+```
+
+where `<port>` is the Apache Thrift port through which the running flowgraph publishes its counters. This port number is shown during the initialization of ERA, with a message similar to this one:
+```
+gr::log :INFO: controlport - Apache Thrift: -h host_name -p port_number
+```
+
+### Linux perf
+
 
 ## Moving and Controlling the TurtleBots
 
@@ -227,3 +244,5 @@ Also, be sure to set the plugin's update rate to 0 in order to allow the parent 
 [1] <a href="https://wiki.gnuradio.org/index.php/PerformanceCounters" target="_blank">https://wiki.gnuradio.org/index.php/PerformanceCounters</a>
 
 [2] T. Rondeau, T. O'Shea, and N. Goergen. "Inspecting GNU Radio Applications with Controlport and Performance Counters." In Proceedings of the second workshop on Software radio implementation forum (SRIF '13). 2013.
+
+[3] <a href="https://perf.wiki.kernel.org/index.php/Main_Page" target="_blank">https://perf.wiki.kernel.org/index.php/Main_Page</a>
