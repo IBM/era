@@ -188,14 +188,14 @@ gr::log :INFO: controlport - Apache Thrift: -h host_name -p port_number
 
 ### Linux perf
 
-GNU Radio's performance counters provide coverage only for GNU Radio flowgraphs. In order to collect end-to-end ERA profiling data, we also support Linux perf. Once ERA is steadily running, execute the following commands in a different terminal:
+GNU Radio's performance counters provide coverage only for GNU Radio flowgraphs. In order to collect end-to-end ERA profiling data, we also support Linux perf [3]. Once ERA is steadily running, execute the following commands in a different terminal:
 
 ```
 cd ~/catkin_ws/src/era_gazebo/utils/
 ./profile_era.py
 ```
 
-The `profile_era.py` script invokes Linux perf as root. It can also be invoked without root privileges, but in this case the profiling data could lack of some kernel symbols information. Also, note that the execution of `profile_era.py` has to be manually stopped by the user (Ctrl-C).
+The `profile_era.py` script (<a href="https://github.com/IBM/era_gazebo/tree/master/utils" target="_blank">era_gazebo/utils</a>) invokes Linux perf as root. It can also be invoked without root privileges, but in this case the profiling data could lack of some kernel symbols information. Also, note that the execution of `profile_era.py` has to be manually stopped by the user (Ctrl-C).
 
 Linux perf generates a binary file (`output.perf`) that can be analyzed with the following command:
 
