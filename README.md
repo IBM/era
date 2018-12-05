@@ -173,7 +173,7 @@ We provide support for ERA profiling through two complementary approaches: GNU R
 
 GNU Radio implements _performance counters_ that can be used to capture/monitor information about a block inside a running flowgraph [1][2]. To enable them, GNU Radio has to be compiled from sources with specific `cmake` flags. Please, refer to the <a href="https://github.com/IBM/era/wiki#enabling-gnu-radios-performance-counters" target="_blank">ERA Wiki</a> for detailed information.
 
-At runtime, performance counters can be collected using the `gr-perf-to-csv` script in <a href="https://github.com/IBM/dsrc/tree/master/gr-foo/utils" target="_blank">dsrc/gr-foo/utils</a>. For example, once ERA is steadily running, execute the following command in a different terminal:
+At runtime, performance counters can be collected using the `gr-perf-to-csv` script in <a href="https://github.com/IBM/dsrc/tree/master/gr-foo/utils" target="_blank">dsrc/gr-foo/utils</a>. For example, once ERA is steadily running, execute the following commands in a different terminal:
 
 ```
 cd ~/catkin_ws/src/dsrc/gr-foo/utils/
@@ -185,7 +185,23 @@ where `<port>` is the Apache Thrift port through which the running flowgraph pub
 gr::log :INFO: controlport - Apache Thrift: -h host_name -p port_number
 ```
 
+
 ### Linux perf
+
+GNU Radio's performance counters provide coverage only for GNU Radio flowgraphs. In order to collect end-to-end ERA profiling data, we also support Linux perf. Once ERA is steadily running, execute the following commands in a different terminal:
+
+```
+cd ~/catkin_ws/src/era_gazebo/utils/
+./profile_era.py
+```
+
+The `profile_era.py` script invokes Linux perf as root. It can also be invoked without root privileges, but in this case the profiling data could lack of some kernel symbols information. Also, note that the execution of `profile_era.py` has to be manually stopped by the user (Ctrl-C).
+
+Linux perf generates a binary file (`output.perf`) that can be analyzed with the following command:
+
+```
+sudo perf report -g -i output.perf
+```
 
 
 ## Moving and Controlling the TurtleBots
@@ -197,25 +213,6 @@ roslaunch era_gazebo keyboard_teleop.launch namespace:=<robot_id>
 ```
 
 Replace `<robot_id>` with the ID of the robot to be controlled, like `r0` and `r1`.
-
-
-## Automatically Profiling the ERA
-
-To generate a sample workload using rosbag:
-
-```
-roslaunch era_gazebo era_auto.launch workload_path:=/path/to/bags workload_size:=[small|large] workload_type:=[rotator|wanderer] profiles_path:=/path/to/profiles project_path:=<default=.>
-```
-
-The duration of the recorded trace (bag) is determined by specifying `small` or `large` for the `workload_size` parameter. The behavior of the workload is determined by specifying `rotator` or `wanderer` for the `workload_type`. The `profiles_path` during this stage just sets up the correct directories for profiling. The `project_path` should point to the base directory of the ERA application.
-
-To playback and profile a generated workload using rosbag and callgrind:
-
-```
-roslaunch era_gazebo era_auto_callgrind.launch workload_path:=/path/to/bags workload_size:=[small|large] workload_type:=[rotator|wanderer] profiles_path:=/path/to/profiles project_path:=<default=.>
-```
-
-The workload trace (bag) used to profile is determined by the `workload_size` and `workload_type` parameters. The output of the profiling (one per profiled node) is output to the `profiles_path`.
 
 
 ## Adjusting the Camera Frame Rate
