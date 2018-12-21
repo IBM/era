@@ -10,33 +10,41 @@ ERA requires:
  - Python 2.7
  - GNU gcc/g++ 5.4
  - cmake 3.5.0+
- - python-wstool (`sudo apt get install python-wstool`)
+ - python-wstool (`sudo apt-get install python-wstool`)
  - ROS Kinetic and Gazebo 7
  - GNU Radio 3.7.3+
  - <a href="https://github.com/bastibl/gr-ieee802-11" target="_blank">gr-ieee802-11</a>
+ - Swig 3.0
  - LZ4 1.7.0+
 
 **Note that gr-ieee802-11 is included as a package in this project (i.e. no need to clone it separately).**
  
 
-Required ROS packages:
- - kinetic-desktop-full
- - kinetic-turtlebot
- - kinetic-kobuki
- - kinetic-robot-state-publisher
- - kinetic-robot-pose-publisher
- - kinetic-joint-state-publisher
- - kinetic-costmap-2d
+Follow <a href="http://wiki.ros.org/kinetic/Installation/Ubuntu" target="_blank">these</a> instructions in ROS' official website to install ROS Kinetic and Gazebo 7 on Ubuntu 16.04. We recommend installing _desktop-full install_ (`ros-kinetic-desktop-full`).
+
+These additional ROS packages are also required:
+ - ros-kinetic-turtlebot
+ - ros-kinetic-kobuki
+ - ros-kinetic-robot-state-publisher
+ - ros-kinetic-robot-pose-publisher
+ - ros-kinetic-joint-state-publisher
+ - ros-kinetic-costmap-2d
 
 Some subset of these additional ROS packages is required to teleoperate the robots and perform sensing:
- - kinetic-kobuki-controller-tutorial
- - kinetic-kobuki-core
- - kinetic-kobuki-description
- - kinetic-kobuki-desktop
- - kinetic-kobuki-gazebo
- - kinetic-kobuki-gazebo-plugins
- - kinetic-kobuki-keyop
- - kinetic-kobuki-node
+ - ros-kinetic-kobuki-controller-tutorial
+ - ros-kinetic-kobuki-core
+ - ros-kinetic-kobuki-description
+ - ros-kinetic-kobuki-desktop
+ - ros-kinetic-kobuki-gazebo
+ - ros-kinetic-kobuki-gazebo-plugins
+ - ros-kinetic-kobuki-keyop
+ - ros-kinetic-kobuki-node
+
+The following command should install all these required dependencies:
+
+```
+sudo apt-get install ros-kinetic-turtlebot ros-kinetic-kobuki ros-kinetic-robot-state-publisher ros-kinetic-robot-pose-publisher ros-kinetic-joint-state-publisher ros-kinetic-costmap-2d ros-kinetic-kobuki-controller-tutorial ros-kinetic-kobuki-core ros-kinetic-kobuki-description ros-kinetic-kobuki-desktop ros-kinetic-kobuki-gazebo ros-kinetic-kobuki-gazebo-plugins ros-kinetic-kobuki-keyop ros-kinetic-kobuki-node
+```
 
 
 ## Installing ERA
@@ -195,7 +203,7 @@ cd ~/catkin_ws/src/era_gazebo/utils/
 ./profile_era.py
 ```
 
-The `profile_era.py` script (<a href="https://github.com/IBM/era_gazebo/tree/master/utils" target="_blank">era_gazebo/utils</a>) invokes Linux perf as root. It can also be invoked without root privileges, but in this case the profiling data could lack of some kernel symbols information. Also, note that the execution of `profile_era.py` has to be manually stopped by the user (Ctrl-C).
+The `profile_era.py` script (<a href="https://github.com/IBM/era_gazebo/tree/master/utils" target="_blank">era_gazebo/utils</a>) invokes Linux perf as root. It can also be invoked without root privileges, but in this case the profiling data could lack of some kernel-related information. Also, note that the execution of `profile_era.py` has to be manually stopped by the user (Ctrl-C).
 
 Linux perf generates a binary file (`output.perf`) that can be analyzed with the following command:
 
