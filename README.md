@@ -179,7 +179,18 @@ We provide support for ERA profiling through two complementary approaches: GNU R
 
 ### GNU Radio's Performance Counters
 
-GNU Radio implements _performance counters_ that can be used to capture/monitor information about a block inside a running flowgraph [1][2]. To enable them, GNU Radio has to be compiled from sources with specific `cmake` flags. Please, refer to the <a href="https://github.com/IBM/era/wiki#enabling-gnu-radios-performance-counters" target="_blank">ERA Wiki</a> for detailed information.
+GNU Radio implements _performance counters_ that can be used to capture/monitor information about a block inside a running flowgraph [1][2]. To enable them, GNU Radio has to be compiled from sources with specific `cmake` flags. Please, refer to the <a href="https://github.com/IBM/era/wiki#enabling-gnu-radios-performance-counters" target="_blank">ERA Wiki</a> for detailed information. In addition, performance counters has to be enabled in `${prefix}/etc/gnuradio/conf.d/gnuradio-runtime.conf`, where `${prefix}` is GNU Radio's installation directory (e.g. `/opt/gnuradio/`):
+
+```
+[PerfCounters]
+on = True
+export = True
+clock = thread
+
+[ControlPort]
+on = True
+edges_list = True
+```
 
 At runtime, performance counters can be collected using the `gr-perf-to-csv` script in <a href="https://github.com/IBM/dsrc/tree/master/gr-foo/utils" target="_blank">dsrc/gr-foo/utils</a>. For example, once ERA is steadily running, execute the following commands in a different terminal:
 
