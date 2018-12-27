@@ -151,6 +151,8 @@ To launch the workload **without the Gazebo and RViz GUIs**:
 roslaunch era_gazebo era_playback.launch bag_name:=/*your_home_folder*/catkin_ws/src/era_gazebo/bagfiles/cmd_vel_r0.bag gui:=false
 ```
 
+(it may be necessary to prepend `DISPLAY=:0` to the command above in some cases)
+
 To launch the workload **enabling Linux perf profiling**:
 
 ```
