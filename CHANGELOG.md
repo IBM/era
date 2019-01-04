@@ -4,6 +4,7 @@
 ### Added
 - Start using this Changelog file to keep track of changes between ERA versions.
 - Map fusion module to compare and fuse local and remote 2D occupancy maps.
+- Profiling support for ROS nodes and GNU Radio blocks using Linux perf.
 
 ### Changed
 - The `gui:=false` option at launch time now disables RViz's GUI too (in addition to Gazebo's GUI).
