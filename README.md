@@ -259,14 +259,14 @@ Also, be sure to set the plugin's update rate to 0 in order to allow the parent 
 
 ## Contributors
 
-Augusto Vega (IBM)
-Akin Sisbot (IBM)
+Augusto Vega (IBM)  
+Akin Sisbot (IBM)  
 
 
 ## Current Maintainers
 
-ajvega@us.ibm.com
-easisbot@us.ibm.com
+ajvega@us.ibm.com  
+easisbot@us.ibm.com  
 
 
 ## FAQs
