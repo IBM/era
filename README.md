@@ -6,12 +6,12 @@ This is the package to get if you want to install ERA. The rosinstall script wil
 ## Requirements
 
 ERA requires:
- - Ubuntu 16.04
+ - Ubuntu 16.04 (Check out wiki for 18.04 installation)
  - Python 2.7
  - GNU gcc/g++ 5.4
  - cmake 3.5.0+
  - python-wstool (`sudo apt-get install python-wstool`)
- - ROS Kinetic and Gazebo 7
+ - ROS Kinetic and Gazebo 7 (Check out wiki for ROS Melodic and Gazebo 9 installation)
  - GNU Radio 3.7.3+
  - <a href="https://github.com/bastibl/gr-ieee802-11" target="_blank">gr-ieee802-11</a>
  - Swig 3.0
