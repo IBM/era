@@ -5,7 +5,8 @@ find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
 add_subdirectory(object_detection)
-#include_directories(object_detection/include)
+add_subdirectory(costmap)
+
 
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
 
@@ -32,6 +33,6 @@ set(MINI_ERA_SOURCE_FILES
     src/mini_era.cpp)
 
 add_executable(mini_era ${MINI_ERA_SOURCE_FILES})
-target_link_libraries(mini_era ${OpenCV_LIBS} object_detection)
+target_link_libraries(mini_era ${OpenCV_LIBS} object_detection costmap)
 
 add_dependencies(mini_era model)

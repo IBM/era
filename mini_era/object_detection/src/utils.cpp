@@ -67,8 +67,10 @@ Status readLabelsMapFile(const string &fileName, map<int, string> &labelsMap) {
 
     // Read file into a string
     ifstream t(fileName);
-    if (t.bad())
+    if (t.bad()) {
+        cout << "Failed to load labels map at '" << fileName << endl;
         return tensorflow::errors::NotFound("Failed to load labels map at '", fileName, "'");
+    }
     stringstream buffer;
     buffer << t.rdbuf();
     string fileString = buffer.str();
@@ -78,8 +80,8 @@ Status readLabelsMapFile(const string &fileName, map<int, string> &labelsMap) {
     smatch matcherId;
     smatch matcherName;
     const regex reEntry("item \\{([\\S\\s]*?)\\}");
-    const regex reId("[0-9]+");
-    const regex reName("\'.+\'");
+    const regex reId("id: [0-9]+");
+    const regex reName("display_name: .*\\n");
     string entry;
 
     auto stringBegin = sregex_iterator(fileString.begin(), fileString.end(), reEntry);
@@ -90,14 +92,20 @@ Status readLabelsMapFile(const string &fileName, map<int, string> &labelsMap) {
     for (sregex_iterator i = stringBegin; i != stringEnd; i++) {
         matcherEntry = *i;
         entry = matcherEntry.str();
+
         regex_search(entry, matcherId, reId);
-        if (!matcherId.empty())
-            id = stoi(matcherId[0].str());
+        if (!matcherId.empty()) {
+            id = stoi(matcherId[0].str().substr(4,-1));
+        }
         else
             continue;
+
         regex_search(entry, matcherName, reName);
-        if (!matcherName.empty())
-            name = matcherName[0].str().substr(1, matcherName[0].str().length() - 2);
+        if (!matcherName.empty()) {
+            int quoteStart = matcherName[0].str().find_first_of("\"");
+            int quoteEnd = matcherName[0].str().find_last_of("\"");
+            name = matcherName[0].str().substr(quoteStart+1, quoteEnd-quoteStart);
+        }
         else
             continue;
         labelsMap.insert(pair<int, string>(id, name));
@@ -140,6 +148,8 @@ Status readTensorFromMat(const Mat &mat, Tensor &outTensor) {
  *  Boolean flag _scaled_ shows if the passed coordinates are in relative units (true by default in tensorflow detection)
  */
 void drawBoundingBoxOnImage(Mat &image, double yMin, double xMin, double yMax, double xMax, double score, string label, bool scaled=true) {
+    
+
     cv::Point tl, br;
     if (scaled) {
         tl = cv::Point((int) (xMin * image.cols), (int) (yMin * image.rows));

@@ -44,7 +44,7 @@ int main(int charc, char** charv)
   	cout <<"empty frame" << endl;
   }
    	
-  object_detection detector(frame.cols, frame.rows,PATH_TO_GRAPH, PATH_TO_LABELS);
+  object_detection detector(frame.cols, frame.rows, PATH_TO_GRAPH, PATH_TO_LABELS);
 
   while(true) {
     
@@ -56,10 +56,6 @@ int main(int charc, char** charv)
     }
 
     detector.detect(frame);
-
-    int height = frame.rows;
-    int width = frame.cols;
-
  
     imshow( "Frame", frame );
  
