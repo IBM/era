@@ -33,11 +33,10 @@
 #undef GENERATE_CHECK_VALUES
 #define DO_RUN_TIME_CHECKING
 
+#undef GENERATE_OUTPUT_VALUE
+#define DO_OUTPUT_VALUE_CHECKING
 
-// This routine is currently not being called in this benchmark.
-//  The version of viterbi we test uses d_ntraceback == 5 (from BPSK_1_2 encoding)
-//  which effectively makes depuncture into output == input
-// The call is in the decode() routine.
+
 uint8_t* depuncture(uint8_t *in) {
 
   int count;
@@ -313,11 +312,7 @@ uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
 
   reset();
 
-  // The normal routine call is commented out here because we are testing
-  //  a version with d_ntraceback = 5 (from BPSK_1_2 encoding)
-  //  in which case depunture() is a strict pass-through (output == input).
-  //uint8_t *depunctured = depuncture(in);
-  uint8_t *depunctured = in;
+  uint8_t *depunctured = depuncture(in);
 	
   int in_count = 0;
   int out_count = 0;
@@ -408,7 +403,6 @@ uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
 	unsigned char c;
 	viterbi_get_output_generic(d_metric0_generic, d_path0_generic, d_ntraceback, &c);
 	//std::cout << "OUTPUT: " << (unsigned int)c << std::endl; 
-
 	if (out_count >= d_ntraceback) {
 	  for (int i= 0; i < 8; i++) {
 	    d_decoded[(out_count - d_ntraceback) * 8 + i] = (c >> (7 - i)) & 0x1;
@@ -422,6 +416,15 @@ uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
     in_count++;
   }
   //printf("};\n");
+#ifdef GENERATE_OUTPUT_VALUE
+  printf("EXPECTED_OUTPUT[%d] = {\n  ", n_decoded);
+  for (int di = 0; di < n_decoded; di++) {
+    if (di > 0) { printf(",");
+    printf("%u", d_decoded[di]);
+    if ((di % 80) == 79) { printf("\n  "); }
+  }
+  printf("\n};\n");
+#endif
   return d_decoded;
 }
 
