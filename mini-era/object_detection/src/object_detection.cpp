@@ -27,7 +27,12 @@ object_detection::object_detection(int image_width, int image_height, string fro
 
   labelsMap = std::map<int,std::string>();
   tensorflow::Status readLabelsMapStatus = readLabelsMapFile(labels_path, labelsMap);
-
+   if (!readLabelsMapStatus.ok()) {
+        LOG(ERROR) << "readLabelsMapFile(): ERROR" << loadGraphStatus;
+        
+    } else
+        LOG(INFO) << "readLabelsMapFile(): labels map loaded with " << labelsMap.size() << " label(s)" << endl;
+  
   shape = tensorflow::TensorShape();
   shape.AddDim(1);
   shape.AddDim((tensorflow::int64)image_height);
@@ -61,7 +66,7 @@ int object_detection::detect(cv::Mat& frame)
   tensorflow::TTypes<float>::Flat numDetections = outputs[3].flat<float>();
   tensorflow::TTypes<float, 3>::Tensor boxes = outputs[0].flat_outer_dims<float,3>();
 
-  vector<size_t> goodIdxs = filterBoxes(scores, boxes, 0.5, 0.5);
+  vector<size_t> goodIdxs = filterBoxes(scores, boxes, 0.5, 0.8);
   for (size_t i = 0; i < goodIdxs.size(); i++)
     cout << "score:" << scores(goodIdxs.at(i)) << ",class:" << labelsMap[classes(goodIdxs.at(i))]
   << " (" << classes(goodIdxs.at(i)) << "), box:" << "," << boxes(0, goodIdxs.at(i), 0) << ","
@@ -69,7 +74,7 @@ int object_detection::detect(cv::Mat& frame)
   << boxes(0, goodIdxs.at(i), 3) << endl;
 
       // Draw bboxes and captions
-  cvtColor(frame, frame, COLOR_BGR2RGB);
+  //cvtColor(frame, frame, COLOR_BGR2RGB);
   drawBoundingBoxesOnImage(frame, scores, classes, boxes, labelsMap, goodIdxs);
 
 }

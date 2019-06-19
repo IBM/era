@@ -19,6 +19,7 @@
 #include <iostream>
 #include "opencv2/opencv.hpp"
 #include "object_detection.hpp"
+#include "costmap.hpp"
 
 using namespace std;
 using namespace cv;
@@ -30,6 +31,23 @@ string PATH_TO_LABELS = "/home/nuc/local/ext/tensorflow/models/research/object_d
 
 int main(int charc, char** charv)
 {
+  costmap map(0.01);
+  map.test("/home/nuc/r0_3.pcd", 0, -1, -3, 1.57, 0, 0);
+  map.test("/home/nuc/r1_3.pcd", 0, 2, -1, 0 , -1.57, 1.57); 
+
+  map.write_octomap("merge.bt");
+
+  //map.update();
+
+  //cout << "created a costmap" <<endl;
+
+  //map.write_octomap("r1_3.bt");
+
+
+  return 1;
+
+
+
   VideoCapture cap(charv[1]); 
 
   if(!cap.isOpened()) { 
@@ -42,13 +60,13 @@ int main(int charc, char** charv)
   cap >> frame;
   if (frame.empty()) {
   	cout <<"empty frame" << endl;
+    return 1;
   }
-   	
-  object_detection detector(frame.cols, frame.rows,PATH_TO_GRAPH, PATH_TO_LABELS);
+
+  object_detection detector(frame.cols, frame.rows, PATH_TO_GRAPH, PATH_TO_LABELS);
 
   while(true) {
     
-  
     cap >> frame;
     if (frame.empty()) {
    		cout <<"empty frame" << endl;
@@ -56,10 +74,6 @@ int main(int charc, char** charv)
     }
 
     detector.detect(frame);
-
-    int height = frame.rows;
-    int width = frame.cols;
-
  
     imshow( "Frame", frame );
  
