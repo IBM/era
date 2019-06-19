@@ -11,11 +11,6 @@ T_OBJ = $(T_SRC:%.c=%.o)
 
 libviterbi.a: $(L_OBJ)
 	$(AR) $@ $(L_OBJ)
-	#$(AR) libviterbi.a $(L_OBJ)
-	#$(CC) viterbi_decoder_generic.c -c -o viter.o
-	#$(CC) viterbi_standalone.c -c -o stand.o
-	#ar rcs $@ stand.o viter.o
-	#rm *.o
 
 test: $(T_OBJ) libviterbi.a
 	$(CC) $(T_OBJ) -L . -lviterbi -o $@
