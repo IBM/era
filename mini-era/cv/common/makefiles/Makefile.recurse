@@ -1,0 +1,33 @@
+# This file is included in the makefiles of the non-leaf nodes
+# Thus the various targets in this file have to trickle down 
+# into the subdirectories
+# List the subdirectories and call the target for each one of them
+
+################################################################
+# RECURSE
+################################################################
+# Listing the subdirectories
+SUBDIRS = $(patsubst %/Makefile,%,$(wildcard */Makefile))
+
+RECURSE-DEPENDS = $(patsubst %,%.traverse,$(SUBDIRS))
+
+all: recurse
+
+debug: recurse
+
+clean: recurse
+
+compile: recurse
+
+c-run: recurse
+
+matlab-run: recurse
+
+mcc-run: recurse
+
+recurse: $(RECURSE-DEPENDS)
+
+# MAKECMDGOALS contains the gmake target specified on the command line
+# it is defined automatically by gmake
+%.traverse:
+	$(MAKE) -C $* $(MAKECMDGOALS)

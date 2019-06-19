@@ -1,0 +1,4 @@
+SRC_PATH=..
+MAT_MAIN=testSVM
+MAT_LIST=$(SRC_PATH)/testSVM.m $(SRC_PATH)/getAlphaFromTrainSet.m $(SRC_PATH)/usps_read_partial.m $(SRC_PATH)/usps_read_partial_opt0.m $(SRC_PATH)/examineExample.m $(SRC_PATH)/cal_learned_func.m $(SRC_PATH)/polynomial.m $(SRC_PATH)/takeStep.m 
+
