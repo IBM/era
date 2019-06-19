@@ -13,4 +13,4 @@ $(TARGET): $(TARGET).c
 	$(CC) $(CFLAGS) $(INCLUDES) -o $(TARGET).exe $(TARGET).c $(LFLAGS) $(LIBS)
 
 clean:
-	$(RM) $(TARGET)
+	$(RM) $(TARGET).exe
