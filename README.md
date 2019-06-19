@@ -175,6 +175,13 @@ Restart=on-abort
 WantedBy=multi-user.target
 ```
 
+Finally, start `roscore.service`:
+
+```
+sudo systemctl start roscore.service
+```
+
+
 ## Profiling ERA
 
 We provide support for ERA profiling through two complementary approaches: GNU Radio's _performance counters_ [1][2], and Linux _perf_ [3].
