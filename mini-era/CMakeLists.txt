@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 2.8.11)
-project (mini_era)
+project (mini-era)
 
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
