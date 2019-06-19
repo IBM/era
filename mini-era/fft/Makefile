@@ -10,7 +10,7 @@ TARGET = main
 all: $(TARGET)
 
 $(TARGET): $(TARGET).c
-	$(CC) $(CFLAGS) $(INCLUDES) -o $(TARGET) $(TARGET).c $(LFLAGS) $(LIBS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $(TARGET).exe $(TARGET).c $(LFLAGS) $(LIBS)
 
 clean:
 	$(RM) $(TARGET)
