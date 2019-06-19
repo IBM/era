@@ -5,7 +5,7 @@ find_package(OCTOMAP REQUIRED)
 include_directories(${OCTOMAP_INCLUDE_DIRS})
 
 
-find_package(PCL 1.3 REQUIRED COMPONENTS common io)
+find_package(PCL 1.3 REQUIRED )
 include_directories(${PCL_INCLUDE_DIRS})
 #link_directories(${PCL_LIBRARY_DIRS})
 #add_definitions(${PCL_DEFINITIONS})
@@ -17,7 +17,7 @@ include_directories(include)
 add_library(costmap SHARED src/costmap.cpp)
 
 target_include_directories(costmap PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> ${OCTOMAP_INCLUDE_DIRS}
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> ${OCTOMAP_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS}
     $<INSTALL_INTERFACE:include>
     PRIVATE src)
 
