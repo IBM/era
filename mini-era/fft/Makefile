@@ -1,6 +1,6 @@
 CC = gcc
 
-CFLAGS = -pedantic -Wall -O0
+CFLAGS = -pedantic -Wall -O0 -g
 INCLUDES = -I`pwd`/fftw-3.3.8/include 
 LFLAGS = -L`pwd`/fftw-3.3.8/lib
 LIBS = -lfftw3 -lfftw3f -lm
