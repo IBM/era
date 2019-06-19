@@ -34,7 +34,10 @@
 #define DO_RUN_TIME_CHECKING
 
 
-
+// This routine is currently not being called in this benchmark.
+//  The version of viterbi we test uses d_ntraceback == 5 (from BPSK_1_2 encoding)
+//  which effectively makes depuncture into output == input
+// The call is in the decode() routine.
 uint8_t* depuncture(uint8_t *in) {
 
   int count;
