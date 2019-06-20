@@ -1,6 +1,10 @@
+#INPUT_SIZE = SMALL
+#INPUT_SIZE = MEDIUM
+INPUT_SIZE = LARGE
+
 CC = gcc
 
-CFLAGS = -pedantic -Wall -O0 -g
+CFLAGS = -pedantic -Wall -O0 -g -DINPUT_SIZE=INPUT_SIZE_$(INPUT_SIZE)
 INCLUDES =  
 LFLAGS = 
 LIBS = -lm

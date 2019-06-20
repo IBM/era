@@ -1,27 +1,13 @@
-# Mini-ERA FFT Kernel
+# Mini-ERA FFT Kernels
 
-## Requirements
+These two FFT kernels (1D and 2D) are part of the benchmark suite for the DARPA PERFECT Program. Refer to https://hpc.pnl.gov/PERFECT/ for additional information.
 
-The provided FFTW library source code **has to be compiled first**:
+Run `make` within each subfolder (`fft-1d` and `fft-2d`) to compile the code. The FFT size can be controller with the `INPUT_SIZE` definition within each `Makefile`.
 
-``` 
-cd fftw-3.3.8/
-./configure --prefix=`pwd` --disable-fortran --enable-float CFLAGS=-g
-make -j8
-make install
-```
+The `main.exe` binary executes the program.
 
-## Installing FFT
 
-```
-make
-```
+## Contact
 
-Upon successful completion, the file `main.exe` is generated. This is a simple example that computes a complex 1D FFT of size 64, 1000 times:
-
-```
-./main.exe 64 1000
-Computing 1000 FFTs of size 64...
-Time elpased is 0.003048543 seconds
-```
+Augusto Vega (ajvega@us.ibm.com)
 
