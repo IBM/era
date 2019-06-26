@@ -32,8 +32,11 @@ string PATH_TO_LABELS = "/home/nuc/local/ext/tensorflow/models/research/object_d
 int main(int charc, char** charv)
 {
   costmap map(0.01);
-  map.test("/home/nuc/r0_3.pcd", 0, -1, -3, 1.57, 0, 0);
-  map.test("/home/nuc/r1_3.pcd", 0, 2, -1, 0 , -1.57, 1.57); 
+  map.test("/home/nuc/r0_3.pcd",  0, 0, 0, 0, 0, 0);
+  map.test("/home/nuc/r1_3.pcd",  3, 0, 2,  0, -1.57, 0); 
+
+  //map.add_cloud("/home/nuc/r0_3.pcd", -1, 1, 0, 0, 0, 0);
+  //map.add_cloud("/home/nuc/r1_3.pcd", 1, -2, 0, 0, 0, 1.57); 
 
   map.write_octomap("merge.bt");
 
