@@ -29,10 +29,11 @@ public:
 
 	costmap(double resolution);
 	int update();
-	int read_cloud(std::string path);
+	int read_cloud(std::string path, double x, double y, double z, double yaw, double pitch, double roll);
 	int write_octomap(std::string path);
-	int insert_cloud(pcl::PointCloud<pcl::PointXYZ> cloud, octomap::pose6d origin);
+	int insert_cloud(pcl::PointCloud<pcl::PointXYZ> cloud,  double x, double y, double z, double yaw, double pitch, double roll);
 	int test(std::string cloud_path, double x, double y, double z, double yaw, double pitch, double roll);
+	int add_cloud(std::string path, double x, double y, double z, double yaw, double pitch, double roll);
 };
 
 
