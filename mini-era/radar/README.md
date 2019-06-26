@@ -4,11 +4,11 @@
 
 ### Python Files
 * `./generate_fmcw_waveform.py -d 100` generates a datafile `temp.dat` for an object at distance 100 meters
-* `./calculate_dist_from_fmcw.py temp.dat -m` calculates the distance to the closest object
+* `./calculate_dist_from_fmcw.py temp.dat -m` calculates the distance to the strongest object
 
 ### C implementation
 * `make`
-* `./calculate_dist_from_fmcw.exe` reads `temp.dat` and calculates distance to the closest object
+* `./calculate_dist_from_fmcw.exe` reads `temp.dat` and calculates distance to the strongest object
 
 ## Multiple object FMCW
 
