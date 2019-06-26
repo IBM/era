@@ -50,7 +50,7 @@ int main (int argc, char * argv[])
 {
   float * a;
   a = malloc (2 * N * sizeof(float));
-  read_input_file (a, N, "temp.txt");
+  read_input_file (a, N, "temp.dat");
   float dist = calculate_peak_dist_from_fmcw(a);
   printf("Distance of object from FMCW data = %.2f m\n", dist);
   free (a);
