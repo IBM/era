@@ -40,7 +40,8 @@ float calculate_peak_dist_from_fmcw(float* data)
     }
   }
   float distance = ((float)(max_index*((float)fs)/((float)(N))))*0.5*c/((float)(alpha));
-  if (max_psd > 1e-10)
+  //printf("Max distance is %.3f\nMax PSD is %4E\nMax index is %d\n", distance, max_psd, max_index);
+  if (max_psd > 1e-10*pow(8192,2))
     return distance;
   else
     return INFINITY;
@@ -48,9 +49,17 @@ float calculate_peak_dist_from_fmcw(float* data)
 
 int main (int argc, char * argv[])
 {
+  if (argc == 2) {
+    printf("FMCW file used: %s\n", argv[1]);
+  }
+  else {
+    printf("Usage: %s file.dat\n", argv[0]);
+    return 1;
+  }
+  
   float * a;
   a = malloc (2 * N * sizeof(float));
-  read_input_file (a, N, "temp.dat");
+  read_input_file (a, N, argv[1]);
   float dist = calculate_peak_dist_from_fmcw(a);
   printf("Distance of object from FMCW data = %.2f m\n", dist);
   free (a);

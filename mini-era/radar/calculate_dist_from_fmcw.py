@@ -24,7 +24,8 @@ def calculate_distance_from_fmcw(data, fs, alpha, threshold=-100):
     
     max_index = np.abs(fft_data).argmax()
     max_psd = np.abs(fft_data[max_index])**2/100
-    print('Maximum index:', max_index)
+    #print('Maximum index:', max_index)
+    #print('Maximum psd:', max_psd)
     if 10*np.log10(max_psd) > threshold:
         return (max_index*float(fs/N))*0.5*c/alpha
     else:
