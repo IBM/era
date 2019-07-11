@@ -36,6 +36,7 @@
 #undef GENERATE_OUTPUT_VALUE
 #define DO_OUTPUT_VALUE_CHECKING
 
+#undef GENERATE_TEST_DATA
 
 uint8_t* depuncture(uint8_t *in) {
 
@@ -102,7 +103,8 @@ uint8_t* depuncture(uint8_t *in) {
 //    mm1     : INPUT/OUTPUT : Array [ 64 bytes ]
 //    pp0     : INPUT/OUTPUT : Array [ 64 bytes ] 
 //    pp1     : INPUT/OUTPUT : Array [ 64 bytes ]
-
+// d_branchtab27_generic[1].c[] : INPUT : Array [2].c[32] {GLOBAL}
+//
 
 void viterbi_butterfly2_generic(unsigned char *symbols,
 				unsigned char *mm0, unsigned char *mm1, unsigned char *pp0,
@@ -326,7 +328,71 @@ uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
     //printf("n_decoded = %d vs %d = d_frame->n_data_bits\n", n_decoded, d_frame->n_data_bits);
     if ((in_count % 4) == 0) { //0 or 3
       //printf(" Viterbi_Butterfly Call,%d,n_decoded,%d,n_data_bits,%d,in_count,%d,%d\n", viterbi_butterfly_calls, n_decoded, d_frame->n_data_bits, in_count, (in_count & 0xfffffffc));
+#ifdef GENERATE_TEST_DATA
+      {
+        uint8_t* t_symbols = &depunctured[in_count & 0xfffffffc];
+        uint8_t* t_mm0 = d_metric0_generic;
+        uint8_t* t_mm1 = d_metric1_generic;
+        uint8_t* t_pp0 = d_path0_generic;
+        uint8_t* t_pp1 = d_path1_generic;
+        printf("\nINPUTS: mm0[64] : m1[64] : pp0[64] : pp1[64] : d_brtab [2][32] : symbols[64]\n");
+        for (int ti = 0; ti < 64; ti ++) {
+          printf("%u,", t_mm0[ti]);
+        }
+        for (int ti = 0; ti < 64; ti ++) {
+          printf("%u,", t_mm1[ti]);
+        }
+        for (int ti = 0; ti < 64; ti ++) {
+          printf("%u,", t_pp0[ti]);
+        }
+        for (int ti = 0; ti < 64; ti ++) {
+          printf("%u,", t_pp1[ti]);
+        }
+        for (int ti = 0; ti < 2; ti ++) {
+          for (int tj = 0; tj < 32; tj++) {
+            printf("%u,", d_branchtab27_generic[ti].c[tj]);
+          }
+        }
+        for (int ti = 0; ti < 64; ti ++) {
+          printf("%u,", t_symbols[ti]);
+        }
+	printf("\n");
+      }
+#endif
       viterbi_butterfly2_generic(&depunctured[in_count & 0xfffffffc], d_metric0_generic, d_metric1_generic,d_path0_generic, d_path1_generic);
+#ifdef GENERATE_TEST_DATA
+      {
+        uint8_t* t_symbols = &depunctured[in_count & 0xfffffffc];
+        uint8_t* t_mm0 = d_metric0_generic;
+        uint8_t* t_mm1 = d_metric1_generic;
+        uint8_t* t_pp0 = d_path0_generic;
+        uint8_t* t_pp1 = d_path1_generic;
+        printf("OUTPUTS: mm0[64] : m1[64] : pp0[64] : pp1[64] // : d_brtab [2][32] : symbols[64]\n");
+        for (int ti = 0; ti < 64; ti ++) {
+          printf("%u,", t_mm0[ti]);
+        }
+        for (int ti = 0; ti < 64; ti ++) {
+          printf("%u,", t_mm1[ti]);
+        }
+        for (int ti = 0; ti < 64; ti ++) {
+          printf("%u,", t_pp0[ti]);
+        }
+        for (int ti = 0; ti < 64; ti ++) {
+          printf("%u,", t_pp1[ti]);
+        }
+	/** INVARIANT -- DO NOT CHANGE
+        for (int ti = 0; ti < 2; ti ++) {
+          for (int tj = 0; tj < 32; tj++) {
+            printf("%u,", d_branchtab27_generic[ti].c[tj]);
+          }
+        }
+        for (int ti = 0; ti < 64; ti ++) {
+          printf("%u,", t_symbols[ti]);
+        }
+	**/
+	printf("\n\n");
+      }
+#endif
 #ifdef GENERATE_CHECK_VALUES
       /** Create the comparison data (per-iteration) **/
       printf("  /*[%4d][0]*/ { {", viterbi_butterfly_calls); // Metric0,");
