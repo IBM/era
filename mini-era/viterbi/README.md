@@ -22,17 +22,17 @@ git clone git@github.ibm.com:wellman-us/my-mini-era.git
 To build the library:
 ```
 cd Viterbi
-make
+make lib
 ```
 to make the test program:
 ``` 
 cd Viterbi
-make test
+make vtest
 ```
 
 To run the test program:
 ```
-./test
+./vtest
 ```
 
 To build another application using this viterbi, 
@@ -42,3 +42,8 @@ To build another application using this viterbi,
 
 
 For reference, the parameter installation, checking verification data, etc. are in viterbi_standalone.c
+
+## Use Cases (Examples) Implementation
+
+Maintainer: J-D Wellman : wellman@us.ibm.com
+
