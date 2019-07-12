@@ -8,7 +8,7 @@ This code is relatively simple C, and requires only
     GCC supporting c99
     make
 # Installation and Usage
-Clone viterbi_test code from here:
+Clone Viterbi either as part of the full Mini-ERA or from my local space:
 
     git clone git@github.ibm.com:varunmannamibm/viterbi_test.git
 
