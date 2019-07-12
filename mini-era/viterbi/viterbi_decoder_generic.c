@@ -106,10 +106,24 @@ uint8_t* depuncture(uint8_t *in) {
 // d_branchtab27_generic[1].c[] : INPUT : Array [2].c[32] {GLOBAL}
 //
 
+#ifdef USE_ESP_INTERFACE
+void viterbi_butterfly2_generic(unsigned char *inMemory)
+#else
 void viterbi_butterfly2_generic(unsigned char *symbols,
 				unsigned char *mm0, unsigned char *mm1, unsigned char *pp0,
 				unsigned char *pp1)
+#endif
 {
+#ifdef USE_ESP_INTERFACE
+  unsigned char *mm0       = &(inMemory[  0]);
+  unsigned char *mm1       = &(inMemory[ 64]);
+  unsigned char *pp0       = &(inMemory[128]);
+  unsigned char *pp1       = &(inMemory[192]);
+  unsigned char *d_brtab27[2] = {&(inMemory[256]), &(inMemory[288])};
+  unsigned char *symbols   = &(inMemory[320]);
+#else
+  unsigned char *d_brtab27[2] = {&(d_branchtab27_generic[0].c[0]), &(d_branchtab27_generic[1].c[0])};
+#endif
   // These are used to "virtually" rename the uses below (for symmetry; reduces code size)
   //  Really these are functionally "offset pointers" into the above arrays....
   unsigned char *metric0, *metric1;
@@ -143,19 +157,22 @@ void viterbi_butterfly2_generic(unsigned char *symbols,
     for (int i = 0; i < 2; i++) {
       if (symbols[first_symbol] == 2) {
 	for (int j = 0; j < 16; j++) {
-	  metsvm[j] = d_branchtab27_generic[1].c[(i*16) + j] ^ sym1v[j];
+          //metsvm[j] = d_branchtab27_generic[1].c[(i*16) + j] ^ sym1v[j];
+	  metsvm[j] = d_brtab27[1][(i*16) + j] ^ sym1v[j];
 	  metsv[j] = 1 - metsvm[j];
 	}
       }
       else if (symbols[second_symbol] == 2) {
 	for (int j = 0; j < 16; j++) {
-	  metsvm[j] = d_branchtab27_generic[0].c[(i*16) + j] ^ sym0v[j];
+          //metsvm[j] = d_branchtab27_generic[0].c[(i*16) + j] ^ sym0v[j];
+	  metsvm[j] = d_brtab27[0][(i*16) + j] ^ sym0v[j];
 	  metsv[j] = 1 - metsvm[j];
 	}
       }
       else {
 	for (int j = 0; j < 16; j++) {
-	  metsvm[j] = (d_branchtab27_generic[0].c[(i*16) + j] ^ sym0v[j]) + (d_branchtab27_generic[1].c[(i*16) + j] ^ sym1v[j]);
+          //metsvm[j] = (d_branchtab27_generic[0].c[(i*16) + j] ^ sym0v[j]) + (d_branchtab27_generic[1].c[(i*16) + j] ^ sym1v[j]);
+	  metsvm[j] = (d_brtab27[0][(i*16) + j] ^ sym0v[j]) + (d_brtab27[1][(i*16) + j] ^ sym1v[j]);
 	  metsv[j] = 2 - metsvm[j];
 	}
       }
@@ -359,7 +376,69 @@ uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
 	printf("\n");
       }
 #endif
+#ifdef USE_ESP_INTERFACE
+      {
+        // Copy inputs into the inMemory for esp-interface version
+        uint8_t inMemory[6*64];
+        int imi = 0;
+        uint8_t* t_symbols = &depunctured[in_count & 0xfffffffc];
+        uint8_t* t_mm0 = d_metric0_generic;
+        uint8_t* t_mm1 = d_metric1_generic;
+        uint8_t* t_pp0 = d_path0_generic;
+        uint8_t* t_pp1 = d_path1_generic;
+	// Set up the inMemory from the componenets
+        for (int ti = 0; ti < 64; ti ++) {
+          inMemory[imi++] = t_mm0[ti];
+        }
+        for (int ti = 0; ti < 64; ti ++) {
+          inMemory[imi++] = t_mm1[ti];
+        }
+        for (int ti = 0; ti < 64; ti ++) {
+          inMemory[imi++] = t_pp0[ti];
+        }
+        for (int ti = 0; ti < 64; ti ++) {
+          inMemory[imi++] = t_pp1[ti];
+        }
+        for (int ti = 0; ti < 2; ti ++) {
+          for (int tj = 0; tj < 32; tj++) {
+          inMemory[imi++] = d_branchtab27_generic[ti].c[tj];
+          }
+        }
+        for (int ti = 0; ti < 64; ti ++) {
+          inMemory[imi++] = t_symbols[ti];
+        }
+
+	// Call the viterbi_butterfly2_generic function using ESP interface
+	viterbi_butterfly2_generic(inMemory);
+
+	// Copy the outputs back into the composite locations
+	imi = 0;
+        for (int ti = 0; ti < 64; ti ++) {
+          t_mm0[ti] = inMemory[imi++];
+        }
+        for (int ti = 0; ti < 64; ti ++) {
+          t_mm1[ti] = inMemory[imi++];
+        }
+        for (int ti = 0; ti < 64; ti ++) {
+          t_pp0[ti] = inMemory[imi++];
+        }
+        for (int ti = 0; ti < 64; ti ++) {
+          t_pp1[ti] = inMemory[imi++];
+        }
+	/** These are inputs only:
+	    for (int ti = 0; ti < 2; ti ++) {
+	    for (int tj = 0; tj < 32; tj++) {
+            d_branchtab27_generic[ti].c[tj] = inMemory[imi++];
+	    }
+	    }
+	    for (int ti = 0; ti < 64; ti ++) {
+	    t_symbols[ti] = inMemory[imi++];
+	    }
+	**/
+      }
+#else
       viterbi_butterfly2_generic(&depunctured[in_count & 0xfffffffc], d_metric0_generic, d_metric1_generic,d_path0_generic, d_path1_generic);
+#endif
 #ifdef GENERATE_TEST_DATA
       {
         uint8_t* t_symbols = &depunctured[in_count & 0xfffffffc];

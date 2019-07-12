@@ -39,9 +39,13 @@ unsigned char d_path1_generic[64] __attribute__ ((aligned(16)));
 void reset();
 void viterbi_chunks_init_generic();
 
+#ifdef USE_ESP_INTERFACE
+void viterbi_butterfly2_generic(unsigned char *inMemory);
+#else
 void viterbi_butterfly2_generic(unsigned char *symbols,
 		unsigned char m0[], unsigned char m1[], unsigned char p0[],
 		unsigned char p1[]);
+#endif
 
 unsigned char viterbi_get_output_generic(unsigned char *mm0,
 		unsigned char *pp0, int ntraceback, unsigned char *outbuf);
