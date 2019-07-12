@@ -1,0 +1,123 @@
+/cygdrive/C/Users/VenkataMannam/Documents/GitHub/era/mini-era/viterbi
+$ ls
+base.h    README.md  viterbi_decoder_generic.c  viterbi_test_config
+Makefile  test.c     viterbi_decoder_generic.h
+obj       utils      viterbi_standalone.c
+obj_esp   utils.h    viterbi_standalone.h
+
+AzureAD+VenkataMannam@LAPTOP-IBJOOR7C /cygdrive/C/Users/VenkataMannam/Documents/GitHub/era/mini-era/viterbi
+$ cd viterbi_test_config/
+
+AzureAD+VenkataMannam@LAPTOP-IBJOOR7C /cygdrive/C/Users/VenkataMannam/Documents/GitHub/era/mini-era/viterbi/viterbi_test_config
+$ ls
+base.h                  README.md                  viterbi_standalone.c
+configurations          utils.h                    viterbi_standalone.h
+descrambler_function.c  viterbi_decoder_generic.c  viterbi_test.c
+Makefile                viterbi_decoder_generic.h
+
+AzureAD+VenkataMannam@LAPTOP-IBJOOR7C /cygdrive/C/Users/VenkataMannam/Documents/GitHub/era/mini-era/viterbi/viterbi_test_config
+$ make
+gcc -std=c99 viterbi_standalone.c  -c
+gcc -std=c99 viterbi_decoder_generic.c  -c
+gcc -std=c99 descrambler_function.c  -c
+ar rcs libviterbi.a viterbi_standalone.o viterbi_decoder_generic.o descrambler_function.o
+
+AzureAD+VenkataMannam@LAPTOP-IBJOOR7C /cygdrive/C/Users/VenkataMannam/Documents/GitHub/era/mini-era/viterbi/viterbi_test_config
+$ make viterbi_test.c
+make: Nothing to be done for 'viterbi_test.c'.
+
+AzureAD+VenkataMannam@LAPTOP-IBJOOR7C /cygdrive/C/Users/VenkataMannam/Documents/GitHub/era/mini-era/viterbi/viterbi_test_config
+$ make viterbi_test
+gcc -std=c99 viterbi_test.c  -c
+viterbi_test.c: In function 'main':
+viterbi_test.c:85:17: warning: implicit declaration of function 'isdigit' [-Wimplicit-function-declaration]
+             if (isdigit(*ptr)) {
+                 ^~~~~~~
+gcc -std=c99 viterbi_test.o -L . -lviterbi -o viterbi_test
+
+AzureAD+VenkataMannam@LAPTOP-IBJOOR7C /cygdrive/C/Users/VenkataMannam/Documents/GitHub/era/mini-era/viterbi/viterbi_test_config
+$ ls
+base.h                  README.md                  viterbi_standalone.h
+configurations          utils.h                    viterbi_standalone.o
+descrambler_function.c  viterbi_decoder_generic.c  viterbi_test.c
+descrambler_function.o  viterbi_decoder_generic.h  viterbi_test.exe
+libviterbi.a            viterbi_decoder_generic.o  viterbi_test.o
+Makefile                viterbi_standalone.c
+
+AzureAD+VenkataMannam@LAPTOP-IBJOOR7C /cygdrive/C/Users/VenkataMannam/Documents/GitHub/era/mini-era/viterbi/viterbi_test_config
+$ pwd
+/cygdrive/C/Users/VenkataMannam/Documents/GitHub/era/mini-era/viterbi/viterbi_test_config
+
+
+AzureAD+VenkataMannam@LAPTOP-IBJOOR7C /cygdrive/C/Users/VenkataMannam/Documents/GitHub/era/mini-era/viterbi/viterbi_test_config
+$ ./viterbi_test C:\\Users\\VenkataMannam\\Documents\\GitHub\\era\\mini-era\\viterbi\\viterbi_test_config\\configurations\\enc0.txt
+file path is C:\Users\VenkataMannam\Documents\GitHub\era\mini-era\viterbi\viterbi_test_config\configurations\enc0.txt>>>>>> Get OFDM parameters from file (0:n_bpsc , 1:n_cbps, 2:n_dbps, 3:encoding ). >>>>>>
+>>>>>> OFDM param [0] is 1 >>>>>>
+>>>>>> OFDM param [1] is 48 >>>>>>
+>>>>>> OFDM param [2] is 24 >>>>>>
+>>>>>> OFDM param [3] is 0 >>>>>>
+>>>>>> Get frame parameters from file(0:pdsu_size, 1:n_sym, 2:n_pad, 3:n_encoded_bits, 4:n_data_bits ). >>>>>>
+>>>>>> Frame param [0] is 34 >>>>>>
+>>>>>> Frame param [1] is 13 >>>>>>
+>>>>>> Frame param [2] is 18 >>>>>>
+>>>>>> Frame param [3] is 624 >>>>>>
+>>>>>> Frame param [4] is 312 >>>>>>
+>>>>>> Get de-interleaved bits from file. >>>>>>
+>>>>>> Get Viterbi-decoder output bits from file. >>>>>>
+>>>>>> Get Descrambler output bytes from file. >>>>>>
+>>>>>> Decoded bits are here >>>>>>
+>>>>>> Miscompare: result[304] = 1 vs 0 = EXPECTED_VALUE[304] >>>>>>
+>>>>>> Miscompare: result[307] = 1 vs 0 = EXPECTED_VALUE[307] >>>>>>
+>>>>>> Miscompare: result[308] = 0 vs 1 = EXPECTED_VALUE[308] >>>>>>
+>>>>>> Miscompare: result[309] = 1 vs 0 = EXPECTED_VALUE[309] >>>>>>
+>>>>>> Miscompare: result[311] = 1 vs 0 = EXPECTED_VALUE[311] >>>>>>
+>>>>>> Mismatch in the decoder algorithm, please check the inputs and algorithm one last time. >>>>>>
+>>>>>> Final descram output is here: >>>>>>
+!!!!!! Great Job, descrambler algorithm works fine for the given configuration. !!!!!!
+
+AzureAD+VenkataMannam@LAPTOP-IBJOOR7C /cygdrive/C/Users/VenkataMannam/Documents/GitHub/era/mini-era/viterbi/viterbi_test_config
+$ ./viterbi_test C:\\Users\\VenkataMannam\\Documents\\GitHub\\era\\mini-era\\viterbi\\viterbi_test_config\\configurations\\enc1.txt
+file path is C:\Users\VenkataMannam\Documents\GitHub\era\mini-era\viterbi\viterbi_test_config\configurations\enc1.txt>>>>>> Get OFDM parameters from file (0:n_bpsc , 1:n_cbps, 2:n_dbps, 3:encoding ). >>>>>>
+>>>>>> OFDM param [0] is 1 >>>>>>
+>>>>>> OFDM param [1] is 48 >>>>>>
+>>>>>> OFDM param [2] is 36 >>>>>>
+>>>>>> OFDM param [3] is 1 >>>>>>
+>>>>>> Get frame parameters from file(0:pdsu_size, 1:n_sym, 2:n_pad, 3:n_encoded_bits, 4:n_data_bits ). >>>>>>
+>>>>>> Frame param [0] is 34 >>>>>>
+>>>>>> Frame param [1] is 9 >>>>>>
+>>>>>> Frame param [2] is 30 >>>>>>
+>>>>>> Frame param [3] is 432 >>>>>>
+>>>>>> Frame param [4] is 324 >>>>>>
+>>>>>> Get de-interleaved bits from file. >>>>>>
+>>>>>> Get Viterbi-decoder output bits from file. >>>>>>
+>>>>>> Get Descrambler output bytes from file. >>>>>>
+>>>>>> Decoded bits are here >>>>>>
+!!!!!! Great Job, Viterbi decoder algorithm works fine for the given configuration. !!!!!!
+>>>>>> Final descram output is here: >>>>>>
+!!!!!! Great Job, descrambler algorithm works fine for the given configuration. !!!!!!
+
+AzureAD+VenkataMannam@LAPTOP-IBJOOR7C /cygdrive/C/Users/VenkataMannam/Documents/GitHub/era/mini-era/viterbi/viterbi_test_config
+$ ./viterbi_test C:\\Users\\VenkataMannam\\Documents\\GitHub\\era\\mini-era\\viterbi\\viterbi_test_config\\configurations\\enc2.txt
+
+AzureAD+VenkataMannam@LAPTOP-IBJOOR7C /cygdrive/C/Users/VenkataMannam/Documents/GitHub/era/mini-era/viterbi/viterbi_test_config
+$ ./viterbi_test C:\\Users\\VenkataMannam\\Documents\\GitHub\\era\\mini-era\\viterbi\\viterbi_test_config\\configurations\\enc6.txt
+file path is C:\Users\VenkataMannam\Documents\GitHub\era\mini-era\viterbi\viterbi_test_config\configurations\enc6.txt>>>>>> Get OFDM parameters from file (0:n_bpsc , 1:n_cbps, 2:n_dbps, 3:encoding ). >>>>>>
+>>>>>> OFDM param [0] is 6 >>>>>>
+>>>>>> OFDM param [1] is 288 >>>>>>
+>>>>>> OFDM param [2] is 192 >>>>>>
+>>>>>> OFDM param [3] is 6 >>>>>>
+>>>>>> Get frame parameters from file(0:pdsu_size, 1:n_sym, 2:n_pad, 3:n_encoded_bits, 4:n_data_bits ). >>>>>>
+>>>>>> Frame param [0] is 34 >>>>>>
+>>>>>> Frame param [1] is 2 >>>>>>
+>>>>>> Frame param [2] is 90 >>>>>>
+>>>>>> Frame param [3] is 576 >>>>>>
+>>>>>> Frame param [4] is 384 >>>>>>
+>>>>>> Get de-interleaved bits from file. >>>>>>
+>>>>>> Get Viterbi-decoder output bits from file. >>>>>>
+>>>>>> Get Descrambler output bytes from file. >>>>>>
+>>>>>> Decoded bits are here >>>>>>
+!!!!!! Great Job, Viterbi decoder algorithm works fine for the given configuration. !!!!!!
+>>>>>> Final descram output is here: >>>>>>
+!!!!!! Great Job, descrambler algorithm works fine for the given configuration. !!!!!!
+
+AzureAD+VenkataMannam@LAPTOP-IBJOOR7C /cygdrive/C/Users/VenkataMannam/Documents/GitHub/era/mini-era/viterbi/viterbi_test_config
