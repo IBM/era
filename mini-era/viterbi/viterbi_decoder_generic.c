@@ -30,10 +30,9 @@
 #include "viterbi_decoder_generic.h"
 #include "viterbi_standalone.h"
 
-#undef GENERATE_CHECK_VALUES
-#define DO_RUN_TIME_CHECKING
-
-#undef GENERATE_OUTPUT_VALUE
+#undef  GENERATE_CHECK_VALUES
+//#define  DO_RUN_TIME_CHECKING  // Now set in the Make process.
+#undef  GENERATE_OUTPUT_VALUE
 #define DO_OUTPUT_VALUE_CHECKING
 
 #undef GENERATE_TEST_DATA
@@ -352,8 +351,7 @@ uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
         uint8_t* t_mm1 = d_metric1_generic;
         uint8_t* t_pp0 = d_path0_generic;
         uint8_t* t_pp1 = d_path1_generic;
-        printf("\nINPUTS: mm0[64] : m1[64] : pp0[64] : pp1[64] : d_brtab [2][32] : symbols[4]\n");
-        for (int ti = 0; ti < 64; ti ++) {
+        printf("\nINPUTS: mm0[64] : m1[64] : pp0[64] : pp1[64] : d_brtab [2][32] : symbols[4]\n");        for (int ti = 0; ti < 64; ti ++) {
           printf("%u,", t_mm0[ti]);
         }
         for (int ti = 0; ti < 64; ti ++) {
@@ -401,7 +399,7 @@ uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
         }
         for (int ti = 0; ti < 2; ti ++) {
           for (int tj = 0; tj < 32; tj++) {
-          inMemory[imi++] = d_branchtab27_generic[ti].c[tj];
+	    inMemory[imi++] = d_branchtab27_generic[ti].c[tj];
           }
         }
         for (int ti = 0; ti < 4; ti ++) {
@@ -460,14 +458,14 @@ uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
           printf("%u,", t_pp1[ti]);
         }
 	/** INVARIANT -- DO NOT CHANGE
-        for (int ti = 0; ti < 2; ti ++) {
-          for (int tj = 0; tj < 32; tj++) {
+	    for (int ti = 0; ti < 2; ti ++) {
+	    for (int tj = 0; tj < 32; tj++) {
             printf("%u,", d_branchtab27_generic[ti].c[tj]);
-          }
-        }
-        for (int ti = 0; ti < 4; ti ++) {
-          printf("%u,", t_symbols[ti]);
-        }
+	    }
+	    }
+	    for (int ti = 0; ti < 4; ti ++) {
+	    printf("%u,", t_symbols[ti]);
+	    }
 	**/
 	printf("\n\n");
       }
@@ -565,8 +563,9 @@ uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
   printf("EXPECTED_OUTPUT[%d] = {\n  ", n_decoded);
   for (int di = 0; di < n_decoded; di++) {
     if (di > 0) { printf(",");
-    printf("%u", d_decoded[di]);
-    if ((di % 80) == 79) { printf("\n  "); }
+      printf("%u", d_decoded[di]);
+      if ((di % 80) == 79) { printf("\n  "); }
+    }
   }
   printf("\n};\n");
 #endif
