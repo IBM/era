@@ -29,11 +29,13 @@ To build the libraries and test programs:
 cd mini-era/viterbi
 make all
 ```
+
 This will build several library versions:
  - libviterbi.a : the general viterbi library 
  - libviterbiCk.a : the general viterbi library with run-time results checking for one built-in example
  - libviterbi_esp.a : the general viterbi library using a modified viterbi_butterfly2 function call interface
  - libviterbiCk.a : the general viterbi library using a modified viterbi_butterfly2 function call interface with run-time results checking for one built-in example
+
 And several test programs:
  - vtest : Test run using built-in test data and run-time checking (i.e. libviterbiCk.a)
  - vtest_esp : Test run using built-in test data and run-time checking (i.e. libviterbiCk.a) with a modified viterbi_butterfly2 function call interface 
