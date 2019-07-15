@@ -10,7 +10,7 @@ L_OBJ_ESP = $(L_SRC:%.c=obj_esp/%.o)
 LCK_OBJ = $(L_SRC:%.c=obj_ck/%.o)
 LCK_OBJ_ESP = $(L_SRC:%.c=obj_ck_esp/%.o)
 
-T_SRC = test.c
+T_SRC = vtest.c
 T_OBJ = $(T_SRC:%.c=obj/%.o)
 T_OBJ_ESP = $(T_SRC:%.c=obj_esp/%.o)
 
