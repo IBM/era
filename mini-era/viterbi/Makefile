@@ -14,6 +14,9 @@ T_OBJ_ESP = $(T_SRC:%.c=obj_esp/%.o)
 all:	vtest vtest_esp
 	echo "Done..."
 
+lib:	libviterbi.a
+	
+
 libviterbi.a: $(L_OBJ)
 	$(AR) $@ $(L_OBJ)
 

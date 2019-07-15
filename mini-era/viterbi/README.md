@@ -43,7 +43,8 @@ To build another application using this viterbi,
 
 For reference, the parameter installation, checking verification data, etc. are in viterbi_standalone.c
 
-## Use Cases (Examples) Implementation
+## Contacts, etc.
 
-Maintainer: J-D Wellman : wellman@us.ibm.com
+Maintainers: 
+ - J-D Wellman : wellman@us.ibm.com
 
