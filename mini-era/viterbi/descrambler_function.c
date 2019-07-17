@@ -15,8 +15,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include<stdlib.h>
-#include<math.h>
+#include <math.h>
+#include <ctype.h>
 
 #include "base.h"
 #include "utils.h"
@@ -65,7 +65,7 @@ void descrambler(uint8_t* in, int psdusize, uint8_t* ref) //definition
       state = ((state << 1) & 0x7e) | feedback;
     }
 
-  printf(">>>>>> Final descram output is here: >>>>>> \n");
+  printf(">>>>>> Final descram output analysis: >>>>>> \n");
   int  des_error_count = 0;
   for (int i = 0; i < output_length ; i++)
     {
@@ -83,4 +83,19 @@ void descrambler(uint8_t* in, int psdusize, uint8_t* ref) //definition
     {
       printf("!!!!!! Great Job, descrambler algorithm works fine for the given configuration. !!!!!! \n");
     }
+  printf(">>>>>> Final descram output is here: >>>>>> \n");
+  for (int i = 0; i < output_length ; i++)  {
+    printf("%02x ", out[i]);
+  }
+  printf("\n");
+  for (int i = 0; i < output_length ; i++)  {
+    if (isprint(out[i])) {
+      printf(" %c ", out[i]);
+    } else if (isblank(out[i])) {
+      printf("   ");
+    } else {
+      printf("-- ");
+    }
+  }
+  printf("\n\n");
 }
