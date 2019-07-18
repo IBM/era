@@ -100,48 +100,49 @@ unsigned char viterbi_get_output_generic(unsigned char *mm0,
 }
 
 
-/* This is the main "decode" function; it prepares data and repeatedly
- * calls the viterbi butterfly2 routine to do steps of decoding.
+
+/* This is the main "do_decoding" function; takes the necessary inputs
+ * from the decode call (above) and does the decoding, outputing the decoded result.
  */
 // INPUTS/OUTPUTS:  
-//    ofdm   : INPUT        : Struct (see utils.h) [enum, char, int, int, int]
-//    frame  : INPUT/OUTPUT : Struct (see utils.h) [int, int, int, int]
-//    in     : INPUT/OUTPUT : Array [ MAX_ENCODED_BITS == 24780 ]
+//    in_cbps               : INPUT  : int 
+//    in_ntraceback         : INPUT  : int
+//    in_depuncture_pattern : INPUT  : uint8_t[]
+//    in_d_k                : INPUT  : int
+//    in_n_sym              : INPUT  : int
+//    in_n_data_bits        : INPUT  : int
+//    in_data               : INPUT  : Array [ MAX_ENCODED_BITS == 24780 ]
+//    <return_val>          : OUTPUT : uint8_t Array [ ?? ] : The decoded data stream
 
-uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
-
-  d_ofdm = ofdm;
-  d_frame = frame;
-
-  reset();
-
+uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture_pattern, int in_d_k, int in_n_sym, int in_n_data_bits, uint8_t* in_data) {
   uint8_t *depunctured;
   // CALL uint8_t *depunctured = depuncture(in);
   /* uint8_t* depuncture(uint8_t *in)  */
   {
-
     int count;
-    int n_cbps = d_ofdm->n_cbps;
+    int n_cbps = in_cbps; // d_ofdm->n_cbps; */
     //uint8_t *depunctured;
     //printf("Depunture call...\n");
-    if (d_ntraceback == 5) {
-      count = d_frame->n_sym * n_cbps;
-      depunctured = in;
+    if (in_ntraceback == 5) {
+      //count = d_frame->n_sym * n_cbps;
+      count = in_n_sym * n_cbps;
+      depunctured = in_data;
     } else {
       depunctured = d_depunctured;
       count = 0;
-      for(int i = 0; i < d_frame->n_sym; i++) {
+      //for(int i = 0; i < d_frame->n_sym; i++) {
+      for(int i = 0; i < in_n_sym; i++) {
 	for(int k = 0; k < n_cbps; k++) {
-	  while (d_depuncture_pattern[count % (2 * d_k)] == 0) {
+	  while (in_depuncture_pattern[count % (2 * in_d_k)] == 0) {
 	    depunctured[count] = 2;
 	    count++;
 	  }
 
 	  // Insert received bits
-	  depunctured[count] = in[i * n_cbps + k];
+	  depunctured[count] = in_data[i * n_cbps + k];
 	  count++;
 
-	  while (d_depuncture_pattern[count % (2 * d_k)] == 0) {
+	  while (in_depuncture_pattern[count % (2 * in_d_k)] == 0) {
 	    depunctured[count] = 2;
 	    count++;
 	  }
@@ -158,12 +159,13 @@ uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
   int n_decoded = 0;
 
   int viterbi_butterfly_calls = 0;
-  while(n_decoded < d_frame->n_data_bits) {
-    //printf("n_decoded = %d vs %d = d_frame->n_data_bits\n", n_decoded, d_frame->n_data_bits);
+  //while(n_decoded < d_frame->n_data_bits) {
+  while(n_decoded < in_n_data_bits) {
+    //printf("n_decoded = %d vs %d = in_n_data_bits\n", n_decoded, in_n_data_bits);
     if ((in_count % 4) == 0) { //0 or 3
-      //printf(" Viterbi_Butterfly Call,%d,n_decoded,%d,n_data_bits,%d,in_count,%d,%d\n", viterbi_butterfly_calls, n_decoded, d_frame->n_data_bits, in_count, (in_count & 0xfffffffc));
+      //printf(" Viterbi_Butterfly Call,%d,n_decoded,%d,n_data_bits,%d,in_count,%d,%d\n", viterbi_butterfly_calls, n_decoded, in_n_data_bits, in_count, (in_count & 0xfffffffc));
 
-      //CALL viterbi_butterfly2_generic(&depunctured[in_count & 0xfffffffc], d_metric0_generic, d_metric1_generic,d_path0_generic, d_path1_generic);
+      //CALL viterbi_butterfly2_generic(&depunctured[in_count & 0xfffffffc], d_metric0_generic, d_metric1_generic, d_path0_generic, d_path1_generic);
       /* The basic Viterbi decoder operation, called a "butterfly"
        * operation because of the way it looks on a trellis diagram. Each
        * butterfly involves an Add-Compare-Select (ACS) operation on the two nodes
@@ -199,9 +201,8 @@ uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
       //
 
       /* void viterbi_butterfly2_generic(unsigned char *symbols, */
-      /* 				unsigned char *mm0, unsigned char *mm1, unsigned char *pp0, */
-      /* 				unsigned char *pp1) */
-      
+      /* 				 unsigned char *mm0, unsigned char *mm1, */
+      /* 				 unsigned char *pp0, unsigned char *pp1) */
       {
 	unsigned char *mm0       = d_metric0_generic;
 	unsigned char *mm1       = d_metric1_generic;
@@ -333,55 +334,16 @@ uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
 	  }
 	}
       } // END of call to viterbi_butterfly2_generic
-
-#ifdef DO_RUN_TIME_CHECKING
-      // Check that the outputs match the expectation
-      int miscompare = false;
-      // Metric0;
-      for(int i=0; i<64 && !miscompare ;++i){
-	miscompare = DECODER_VERIF_DATA[viterbi_butterfly_calls][0][i] != d_metric0_generic[i];
-	if (miscompare) {
-	  printf("Miscompare: DECODER_VERIF_DATA[%u][%u][%u] = %u vs %u = d_metric0_generic[%u]\n", viterbi_butterfly_calls, 0, i, DECODER_VERIF_DATA[viterbi_butterfly_calls][0][i], d_metric0_generic[i], i);
-	}
-      }
-      //Metric1
-      for(int i=0; i<64 && !miscompare ;++i){
-	miscompare = DECODER_VERIF_DATA[viterbi_butterfly_calls][1][i] != d_metric1_generic[i];
-	if (miscompare) {
-	  printf("Miscompare: DECODER_VERIF_DATA[%u][%u][%u] = %u vs %u = d_metric1_generic[%u]\n", viterbi_butterfly_calls, 1, i, DECODER_VERIF_DATA[viterbi_butterfly_calls][1][i], d_metric1_generic[i], i);
-	}
-      }
-      //Path0
-      for(int i=0; i<64 && !miscompare ;++i){
-	miscompare = DECODER_VERIF_DATA[viterbi_butterfly_calls][2][i] != d_path0_generic[i];
-	if (miscompare) {
-	  printf("Miscompare: DECODER_VERIF_DATA[%u][%u][%u] = %u vs %u = d_path0_generic[%u]\n", viterbi_butterfly_calls, 2, i, DECODER_VERIF_DATA[viterbi_butterfly_calls][2][i], d_path0_generic[i], i);
-	}
-      }
-      //Path1
-      for(int i=0; i<64 && !miscompare ;++i){
-	miscompare = DECODER_VERIF_DATA[viterbi_butterfly_calls][3][i] != d_path1_generic[i];
-	if (miscompare) {
-	  printf("Miscompare: DECODER_VERIF_DATA[%u][%u][%u] = %u vs %u = d_path1_generic[%u]\n", viterbi_butterfly_calls, 3, i, DECODER_VERIF_DATA[viterbi_butterfly_calls][3][i], d_path1_generic[i], i);
-	}
-      }
-
-      if (miscompare) {
-	printf("ERROR: Mismatch versus verification data found!\n");
-	exit(-1);
-      }
-#endif
-
       viterbi_butterfly_calls++; // Do not increment until after the comparison code.
 
       if ((in_count > 0) && (in_count % 16) == 8) { // 8 or 11
 	unsigned char c;
-	viterbi_get_output_generic(d_metric0_generic, d_path0_generic, d_ntraceback, &c);
+	viterbi_get_output_generic(d_metric0_generic, d_path0_generic, in_ntraceback, &c);
 	//std::cout << "OUTPUT: " << (unsigned int)c << std::endl; 
-	if (out_count >= d_ntraceback) {
+	if (out_count >= in_ntraceback) {
 	  for (int i= 0; i < 8; i++) {
-	    d_decoded[(out_count - d_ntraceback) * 8 + i] = (c >> (7 - i)) & 0x1;
-	    //printf("d_decoded[ %u ] written\n", (out_count - d_ntraceback) * 8 + i);
+	    d_decoded[(out_count - in_ntraceback) * 8 + i] = (c >> (7 - i)) & 0x1;
+	    //printf("d_decoded[ %u ] written\n", (out_count - in_ntraceback) * 8 + i);
 	    n_decoded++;
 	  }
 	}
@@ -444,3 +406,27 @@ void viterbi_chunks_init_generic() {
     }
   }
 }
+
+
+
+
+/* This is the main "decode" function; it prepares data and repeatedly
+ * calls the viterbi butterfly2 routine to do steps of decoding.
+ */
+// INPUTS/OUTPUTS:  
+//    ofdm   : INPUT  : Struct (see utils.h) [enum, char, int, int, int]
+//    frame  : INPUT  : Struct (see utils.h) [int, int, int, int]
+//    in     : INPUT  : uint8_t Array [ MAX_ENCODED_BITS == 24780 ]
+//  <return> : OUTPUT : uint8_t Array [ ?? ] : The decoded data stream
+
+uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
+
+  d_ofdm = ofdm;
+  d_frame = frame;
+
+  reset();
+
+  return do_decoding(ofdm->n_cbps, d_ntraceback, d_depuncture_pattern, d_k, frame->n_sym, frame->n_data_bits, in);
+}
+
+

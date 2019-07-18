@@ -139,15 +139,15 @@ int main(int argc, char* argv[])
   fclose(fptr);
 
   ofdm_param ofdm = {   encoding,   //  encoding   : 0 = BPSK_1_2
-			13,   //  rate_field : rate field ofSIGNAL header //Taken constant
-			n_bpsc,   //  n_bpsc     : coded bits per subcarrier
-			n_cbps,   //  n_cbps     : coded bits per OFDM symbol
-			n_dbps }; //  n_dbps     : data bits per OFDM symbol
+			13,         //  rate_field : rate field of SIGNAL header //Taken constant
+			n_bpsc,     //  n_bpsc     : coded bits per subcarrier
+			n_cbps,     //  n_cbps     : coded bits per OFDM symbol
+			n_dbps };   //  n_dbps     : data bits per OFDM symbol
 
-  frame_param frame = {  pdsu_size,    // psdu_size      : PSDU size in bytes
-			 n_sym,    // n_sym          : number of OFDM symbols
-			 n_pad,    // n_pad          : number of padding bits in DATA field
-			 n_encoded_bits,    // n_encoded_bits : number of encoded bits
+  frame_param frame = {  pdsu_size,      // psdu_size      : PSDU size in bytes
+			 n_sym,          // n_sym          : number of OFDM symbols
+			 n_pad,          // n_pad          : number of padding bits in DATA field
+			 n_encoded_bits, // n_encoded_bits : number of encoded bits
 			 n_data_bits };  // n_data_bits: number of data bits, including service and padding
 
   //read input data (de-interleaved data before Viterbi-decoder) from file
