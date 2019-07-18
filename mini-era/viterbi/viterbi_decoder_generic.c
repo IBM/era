@@ -38,7 +38,6 @@
 #undef GENERATE_TEST_DATA
 
 uint8_t* depuncture(uint8_t *in) {
-
   int count;
   int n_cbps = d_ofdm->n_cbps;
   uint8_t *depunctured;

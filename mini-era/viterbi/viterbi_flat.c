@@ -27,76 +27,50 @@
  * Major modifications by adding SSE2 code by Bogdan Diaconescu
  */
 #include <stdio.h>
-#include "viterbi_decoder_generic.h"
+#include "viterbi_flat.h"
 #include "viterbi_standalone.h"
 
+// GLOBAL VARIABLES
+t_branchtab27 d_branchtab27_generic[2];
+unsigned char d_metric0_generic[64] __attribute__ ((aligned(16)));
+unsigned char d_metric1_generic[64] __attribute__ ((aligned(16)));
+unsigned char d_path0_generic[64] __attribute__ ((aligned(16)));
+unsigned char d_path1_generic[64] __attribute__ ((aligned(16)));
 
+// This routine "depunctures" the input data stream according to the 
+//  relevant encoding parameters, etc. and returns the depunctured data.
 
-//  Find current best path
-// 
-// INPUTS/OUTPUTS:  
-//    RET_VAL     : (ignored)
-//    mm0         : INPUT/OUTPUT  : Array [ 64 ]
-//    pp0         : INPUT/OUTPUT  : Array [ 64 ] 
-//    pp1         : INPUT/OUTPUT  : Array [ 64 ]
-//    ntraceback  : INPUT         : int (I think effectively const for given run type; here 5 I think)
-//    outbuf      : OUTPUT        : 1 byte
-//    d_store_pos : GLOBAL IN/OUT : int (position in circular traceback buffer?)
-//    d_mmresult  : GLOBAL OUTPUT : Array [ 64 bytes ] 
-//    d_ppresult  : GLOBAL OUTPUT : Array [ntraceback][ 64 bytes ]
+uint8_t* depuncture(uint8_t *in) {
+  int count;
+  int n_cbps = d_ofdm->n_cbps;
+  uint8_t *depunctured;
+  //printf("Depunture call...\n");
+  if (d_ntraceback == 5) {
+    count = d_frame->n_sym * n_cbps;
+    depunctured = in;
+  } else {
+    depunctured = d_depunctured;
+    count = 0;
+    for(int i = 0; i < d_frame->n_sym; i++) {
+      for(int k = 0; k < n_cbps; k++) {
+	while (d_depuncture_pattern[count % (2 * d_k)] == 0) {
+	  depunctured[count] = 2;
+	  count++;
+	}
 
-unsigned char viterbi_get_output_generic(unsigned char *mm0,
-					 unsigned char *pp0, int ntraceback, unsigned char *outbuf) {
-  int i;
-  int bestmetric, minmetric;
-  int beststate = 0;
-  int pos = 0;
-  int j;
+	// Insert received bits
+	depunctured[count] = in[i * n_cbps + k];
+	count++;
 
-  // circular buffer with the last ntraceback paths
-  d_store_pos = (d_store_pos + 1) % ntraceback;
-
-  for (i = 0; i < 4; i++) {
-    for (j = 0; j < 16; j++) {
-      d_mmresult[(i*16) + j] = mm0[(i*16) + j];
-      d_ppresult[d_store_pos][(i*16) + j] = pp0[(i*16) + j];
+	while (d_depuncture_pattern[count % (2 * d_k)] == 0) {
+	  depunctured[count] = 2;
+	  count++;
+	}
+      }
     }
   }
-
-  // Find out the best final state
-  bestmetric = d_mmresult[beststate];
-  minmetric = d_mmresult[beststate];
-
-  for (i = 1; i < 64; i++) {
-    if (d_mmresult[i] > bestmetric) {
-      bestmetric = d_mmresult[i];
-      beststate = i;
-    }
-    if (d_mmresult[i] < minmetric) {
-      minmetric = d_mmresult[i];
-    }
-  }
-
-  // Trace back
-  for (i = 0, pos = d_store_pos; i < (ntraceback - 1); i++) {
-    // Obtain the state from the output bits
-    // by clocking in the output bits in reverse order.
-    // The state has only 6 bits
-    beststate = d_ppresult[pos][beststate] >> 2;
-    pos = (pos - 1 + ntraceback) % ntraceback;
-  }
-
-  // Store output byte
-  *outbuf = d_ppresult[pos][beststate];
-
-  for (i = 0; i < 4; i++) {
-    for (j = 0; j < 16; j++) {
-      pp0[(i*16) + j] = 0;
-      mm0[(i*16) + j] = mm0[(i*16) + j] - minmetric;
-    }
-  }
-
-  return bestmetric;
+  //printf("  depuncture count = %u\n", count);
+  return depunctured;
 }
 
 
@@ -104,56 +78,26 @@ unsigned char viterbi_get_output_generic(unsigned char *mm0,
 /* This is the main "do_decoding" function; takes the necessary inputs
  * from the decode call (above) and does the decoding, outputing the decoded result.
  */
-// INPUTS/OUTPUTS:  
+// INPUTS/OUTPUTS:          :  I/O   : Size
 //    in_cbps               : INPUT  : int 
 //    in_ntraceback         : INPUT  : int
 //    in_depuncture_pattern : INPUT  : uint8_t[]
-//    in_d_k                : INPUT  : int
-//    in_n_sym              : INPUT  : int
 //    in_n_data_bits        : INPUT  : int
-//    in_data               : INPUT  : Array [ MAX_ENCODED_BITS == 24780 ]
+//    d_branchtab27_generic : INPUT  : uint8_t[2][32]
+//    depd_data             : INPUT  : Array [ MAX_ENCODED_BITS == 24780 ] (depunctured data)
 //    <return_val>          : OUTPUT : uint8_t Array [ ?? ] : The decoded data stream
 
-uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture_pattern, int in_d_k, int in_n_sym, int in_n_data_bits, uint8_t* in_data) {
-  uint8_t *depunctured;
-  // CALL uint8_t *depunctured = depuncture(in);
-  /* uint8_t* depuncture(uint8_t *in)  */
-  {
-    int count;
-    int n_cbps = in_cbps; // d_ofdm->n_cbps; */
-    //uint8_t *depunctured;
-    //printf("Depunture call...\n");
-    if (in_ntraceback == 5) {
-      //count = d_frame->n_sym * n_cbps;
-      count = in_n_sym * n_cbps;
-      depunctured = in_data;
-    } else {
-      depunctured = d_depunctured;
-      count = 0;
-      //for(int i = 0; i < d_frame->n_sym; i++) {
-      for(int i = 0; i < in_n_sym; i++) {
-	for(int k = 0; k < n_cbps; k++) {
-	  while (in_depuncture_pattern[count % (2 * in_d_k)] == 0) {
-	    depunctured[count] = 2;
-	    count++;
-	  }
+/* THESE ARE JUST USED LOCALLY IN THIS FUNCTIONA NOW */
+/*  BUT they must reset to zero on each invocation   */
+//    d_metric0_generic     : INPUT  : uint8_t[64]
+//    d_metric1_generic     : INPUT  : uint8_t[64]
+//    d_path0_generic       : INPUT  : uint8_t[64]
+//    d_path1_generic       : INPUT  : uint8_t[64]
+//    d_store_pos           : INPUT  : int (position in circular traceback buffer?)
+//    d_mmresult            : OUTPUT : uint8_t[64] 
+//    d_ppresult            : OUTPUT : uint8_t[ntraceback_MAX][ 64 bytes ]
 
-	  // Insert received bits
-	  depunctured[count] = in_data[i * n_cbps + k];
-	  count++;
-
-	  while (in_depuncture_pattern[count % (2 * in_d_k)] == 0) {
-	    depunctured[count] = 2;
-	    count++;
-	  }
-	}
-      }
-    }
-    //printf("  depuncture count = %u\n", count);
-    //return depunctured;
-  } /* end of depuncture call */
-
-
+uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture_pattern, int in_n_data_bits, uint8_t* depd_data) {
   int in_count = 0;
   int out_count = 0;
   int n_decoded = 0;
@@ -209,7 +153,7 @@ uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture
 	unsigned char *pp0       = d_path0_generic;
 	unsigned char *pp1       = d_path1_generic;
 	unsigned char *d_brtab27[2] = {&(d_branchtab27_generic[0].c[0]), &(d_branchtab27_generic[1].c[0])};
-	unsigned char *symbols   = &depunctured[in_count & 0xfffffffc];
+	unsigned char *symbols   = &depd_data[in_count & 0xfffffffc];
 
 	// These are used to "virtually" rename the uses below (for symmetry; reduces code size)
 	//  Really these are functionally "offset pointers" into the above arrays....
@@ -343,11 +287,14 @@ uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture
 	// INPUTS/OUTPUTS:  
 	//    RET_VAL     : (ignored)
 	//    mm0         : INPUT/OUTPUT  : Array [ 64 ]
+	//    mm1         : INPUT/OUTPUT  : Array [ 64 ]
 	//    pp0         : INPUT/OUTPUT  : Array [ 64 ] 
 	//    pp1         : INPUT/OUTPUT  : Array [ 64 ]
 	//    ntraceback  : INPUT         : int (I think effectively const for given run type; here 5 I think)
 	//    outbuf      : OUTPUT        : 1 byte
 	//    d_store_pos : GLOBAL IN/OUT : int (position in circular traceback buffer?)
+
+
 	//    d_mmresult  : GLOBAL OUTPUT : Array [ 64 bytes ] 
 	//    d_ppresult  : GLOBAL OUTPUT : Array [ntraceback][ 64 bytes ]
 
@@ -460,9 +407,11 @@ void reset() {
 void viterbi_chunks_init_generic() {
   int i, j;
 
-  for (i = 0; i < 4; i++) {
+  for (i = 0; i < 64; i++) {
     d_metric0_generic[i] = 0;
     d_path0_generic[i] = 0;
+    d_metric1_generic[i] = 0;
+    d_path1_generic[i] = 0;
   }
 
   int polys[2] = { 0x6d, 0x4f };
@@ -471,6 +420,7 @@ void viterbi_chunks_init_generic() {
     d_branchtab27_generic[1].c[i] = (polys[1] < 0) ^ PARTAB[(2*i) & abs(polys[1])] ? 1 : 0;
   }
 
+  d_store_pos = 0;
   for (i = 0; i < 64; i++) {
     d_mmresult[i] = 0;
     for (j = 0; j < TRACEBACK_MAX; j++) {
@@ -498,7 +448,9 @@ uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
 
   reset();
 
-  return do_decoding(ofdm->n_cbps, d_ntraceback, d_depuncture_pattern, d_k, frame->n_sym, frame->n_data_bits, in);
+  uint8_t *depunctured = depuncture(in);
+  
+  return do_decoding(ofdm->n_cbps, d_ntraceback, d_depuncture_pattern, frame->n_data_bits, depunctured);
 }
 
 

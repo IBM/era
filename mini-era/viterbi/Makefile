@@ -115,8 +115,8 @@ obj_ck/viterbi_decoder_generic.o: viterbi_standalone.h
 obj_ck/vtest.o: viterbi_standalone.h utils.h /usr/include/stdint.h
 obj_ck/viterbi_test.o: viterbi_standalone.h utils.h /usr/include/stdint.h
 
-obj_f/viterbi_standalone.o: viterbi_decoder_generic.h base.h utils.h 
-obj_f/viterbi_flat.o: viterbi_decoder_generic.h base.h utils.h
+obj_f/viterbi_standalone.o: viterbi_flat.h base.h utils.h 
+obj_f/viterbi_flat.o: viterbi_flat.h base.h utils.h
 obj_f/viterbi_flat.o: viterbi_standalone.h
 obj_f/viterbi_ftest.o: viterbi_standalone.h utils.h /usr/include/stdint.h
 
@@ -132,8 +132,8 @@ obj_ck_esp/viterbi_decoder_generic.o: viterbi_standalone.h
 obj_ck_esp/vtest.o: viterbi_standalone.h utils.h /usr/include/stdint.h
 obj_ck_esp/viterbi_test.o: viterbi_standalone.h utils.h /usr/include/stdint.h
 
-obj_f_esp/viterbi_standalone.o: viterbi_decoder_generic.h base.h utils.h
-obj_f_esp/viterbi_flat.o: viterbi_decoder_generic.h base.h utils.h
+obj_f_esp/viterbi_standalone.o: viterbi_flat.h base.h utils.h
+obj_f_esp/viterbi_flat.o: viterbi_flat.h base.h utils.h
 obj_f_esp/viterbi_flat.o: viterbi_standalone.h
 obj_f_esp/viterbi_ftest.o: viterbi_standalone.h utils.h /usr/include/stdint.h
 
