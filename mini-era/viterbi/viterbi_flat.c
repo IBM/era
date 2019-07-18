@@ -338,7 +338,79 @@ uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture
 
       if ((in_count > 0) && (in_count % 16) == 8) { // 8 or 11
 	unsigned char c;
-	viterbi_get_output_generic(d_metric0_generic, d_path0_generic, in_ntraceback, &c);
+	//  Find current best path
+	// 
+	// INPUTS/OUTPUTS:  
+	//    RET_VAL     : (ignored)
+	//    mm0         : INPUT/OUTPUT  : Array [ 64 ]
+	//    pp0         : INPUT/OUTPUT  : Array [ 64 ] 
+	//    pp1         : INPUT/OUTPUT  : Array [ 64 ]
+	//    ntraceback  : INPUT         : int (I think effectively const for given run type; here 5 I think)
+	//    outbuf      : OUTPUT        : 1 byte
+	//    d_store_pos : GLOBAL IN/OUT : int (position in circular traceback buffer?)
+	//    d_mmresult  : GLOBAL OUTPUT : Array [ 64 bytes ] 
+	//    d_ppresult  : GLOBAL OUTPUT : Array [ntraceback][ 64 bytes ]
+
+	// CALL : viterbi_get_output_generic(d_metric0_generic, d_path0_generic, in_ntraceback, &c);
+	// unsigned char viterbi_get_output_generic(unsigned char *mm0, unsigned char *pp0, int ntraceback, unsigned char *outbuf) 
+	{
+	  unsigned char *mm0       = d_metric0_generic;
+	  unsigned char *pp0       = d_path0_generic;
+	  int ntraceback = in_ntraceback;
+	  unsigned char *outbuf = &c;
+
+	  int i;
+	  int bestmetric, minmetric;
+	  int beststate = 0;
+	  int pos = 0;
+	  int j;
+
+	  // circular buffer with the last ntraceback paths
+	  d_store_pos = (d_store_pos + 1) % ntraceback;
+
+	  for (i = 0; i < 4; i++) {
+	    for (j = 0; j < 16; j++) {
+	      d_mmresult[(i*16) + j] = mm0[(i*16) + j];
+	      d_ppresult[d_store_pos][(i*16) + j] = pp0[(i*16) + j];
+	    }
+	  }
+
+	  // Find out the best final state
+	  bestmetric = d_mmresult[beststate];
+	  minmetric = d_mmresult[beststate];
+
+	  for (i = 1; i < 64; i++) {
+	    if (d_mmresult[i] > bestmetric) {
+	      bestmetric = d_mmresult[i];
+	      beststate = i;
+	    }
+	    if (d_mmresult[i] < minmetric) {
+	      minmetric = d_mmresult[i];
+	    }
+	  }
+
+	  // Trace back
+	  for (i = 0, pos = d_store_pos; i < (ntraceback - 1); i++) {
+	    // Obtain the state from the output bits
+	    // by clocking in the output bits in reverse order.
+	    // The state has only 6 bits
+	    beststate = d_ppresult[pos][beststate] >> 2;
+	    pos = (pos - 1 + ntraceback) % ntraceback;
+	  }
+
+	  // Store output byte
+	  *outbuf = d_ppresult[pos][beststate];
+
+	  for (i = 0; i < 4; i++) {
+	    for (j = 0; j < 16; j++) {
+	      pp0[(i*16) + j] = 0;
+	      mm0[(i*16) + j] = mm0[(i*16) + j] - minmetric;
+	    }
+	  }
+
+	  //return bestmetric;
+	}
+
 	//std::cout << "OUTPUT: " << (unsigned int)c << std::endl; 
 	if (out_count >= in_ntraceback) {
 	  for (int i= 0; i < 8; i++) {
