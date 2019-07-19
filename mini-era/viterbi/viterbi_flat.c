@@ -87,7 +87,7 @@ uint8_t* depuncture(uint8_t *in) {
 //    depd_data             : INPUT  : Array [ MAX_ENCODED_BITS == 24780 ] (depunctured data)
 //    <return_val>          : OUTPUT : uint8_t Array [ ?? ] : The decoded data stream
 
-/* THESE ARE JUST USED LOCALLY IN THIS FUNCTIONA NOW */
+/* THESE ARE JUST USED LOCALLY IN THIS FUNCTION NOW  */
 /*  BUT they must reset to zero on each invocation   */
 //    d_metric0_generic     : INPUT  : uint8_t[64]
 //    d_metric1_generic     : INPUT  : uint8_t[64]
@@ -102,6 +102,28 @@ uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture
   int out_count = 0;
   int n_decoded = 0;
 
+  uint8_t l_metric0_generic[64];
+  uint8_t l_metric1_generic[64];
+  uint8_t l_path0_generic[64];
+  uint8_t l_path1_generic[64];
+  uint8_t l_mmresult[64];
+  uint8_t l_ppresult[TRACEBACK_MAX][64];
+  int     l_store_pos = 0;
+
+  // This is the "reset" portion:
+  //  Do this before the real operation so local memories are "cleared to zero"
+  d_store_pos = 0;
+  for (int i = 0; i < 64; i++) {
+    l_metric0_generic[i] = 0;
+    l_path0_generic[i] = 0;
+    l_metric1_generic[i] = 0;
+    l_path1_generic[i] = 0;
+    l_mmresult[i] = 0;
+    for (int j = 0; j < TRACEBACK_MAX; j++) {
+      l_ppresult[j][i] = 0;
+    }
+  }
+
   int viterbi_butterfly_calls = 0;
   //while(n_decoded < d_frame->n_data_bits) {
   while(n_decoded < in_n_data_bits) {
@@ -109,7 +131,7 @@ uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture
     if ((in_count % 4) == 0) { //0 or 3
       //printf(" Viterbi_Butterfly Call,%d,n_decoded,%d,n_data_bits,%d,in_count,%d,%d\n", viterbi_butterfly_calls, n_decoded, in_n_data_bits, in_count, (in_count & 0xfffffffc));
 
-      //CALL viterbi_butterfly2_generic(&depunctured[in_count & 0xfffffffc], d_metric0_generic, d_metric1_generic, d_path0_generic, d_path1_generic);
+      //CALL viterbi_butterfly2_generic(&depunctured[in_count & 0xfffffffc], l_metric0_generic, l_metric1_generic, d_path0_generic, d_path1_generic);
       /* The basic Viterbi decoder operation, called a "butterfly"
        * operation because of the way it looks on a trellis diagram. Each
        * butterfly involves an Add-Compare-Select (ACS) operation on the two nodes
@@ -148,8 +170,8 @@ uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture
       /* 				 unsigned char *mm0, unsigned char *mm1, */
       /* 				 unsigned char *pp0, unsigned char *pp1) */
       {
-	unsigned char *mm0       = d_metric0_generic;
-	unsigned char *mm1       = d_metric1_generic;
+	unsigned char *mm0       = l_metric0_generic;
+	unsigned char *mm1       = l_metric1_generic;
 	unsigned char *pp0       = d_path0_generic;
 	unsigned char *pp1       = d_path1_generic;
 	unsigned char *d_brtab27[2] = {&(d_branchtab27_generic[0].c[0]), &(d_branchtab27_generic[1].c[0])};
@@ -292,16 +314,16 @@ uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture
 	//    pp1         : INPUT/OUTPUT  : Array [ 64 ]
 	//    ntraceback  : INPUT         : int (I think effectively const for given run type; here 5 I think)
 	//    outbuf      : OUTPUT        : 1 byte
-	//    d_store_pos : GLOBAL IN/OUT : int (position in circular traceback buffer?)
+	//    l_store_pos : GLOBAL IN/OUT : int (position in circular traceback buffer?)
 
 
-	//    d_mmresult  : GLOBAL OUTPUT : Array [ 64 bytes ] 
-	//    d_ppresult  : GLOBAL OUTPUT : Array [ntraceback][ 64 bytes ]
+	//    l_mmresult  : GLOBAL OUTPUT : Array [ 64 bytes ] 
+	//    l_ppresult  : GLOBAL OUTPUT : Array [ntraceback][ 64 bytes ]
 
-	// CALL : viterbi_get_output_generic(d_metric0_generic, d_path0_generic, in_ntraceback, &c);
+	// CALL : viterbi_get_output_generic(l_metric0_generic, d_path0_generic, in_ntraceback, &c);
 	// unsigned char viterbi_get_output_generic(unsigned char *mm0, unsigned char *pp0, int ntraceback, unsigned char *outbuf) 
 	{
-	  unsigned char *mm0       = d_metric0_generic;
+	  unsigned char *mm0       = l_metric0_generic;
 	  unsigned char *pp0       = d_path0_generic;
 	  int ntraceback = in_ntraceback;
 	  unsigned char *outbuf = &c;
@@ -313,40 +335,40 @@ uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture
 	  int j;
 
 	  // circular buffer with the last ntraceback paths
-	  d_store_pos = (d_store_pos + 1) % ntraceback;
+	  l_store_pos = (l_store_pos + 1) % ntraceback;
 
 	  for (i = 0; i < 4; i++) {
 	    for (j = 0; j < 16; j++) {
-	      d_mmresult[(i*16) + j] = mm0[(i*16) + j];
-	      d_ppresult[d_store_pos][(i*16) + j] = pp0[(i*16) + j];
+	      l_mmresult[(i*16) + j] = mm0[(i*16) + j];
+	      l_ppresult[l_store_pos][(i*16) + j] = pp0[(i*16) + j];
 	    }
 	  }
 
 	  // Find out the best final state
-	  bestmetric = d_mmresult[beststate];
-	  minmetric = d_mmresult[beststate];
+	  bestmetric = l_mmresult[beststate];
+	  minmetric = l_mmresult[beststate];
 
 	  for (i = 1; i < 64; i++) {
-	    if (d_mmresult[i] > bestmetric) {
-	      bestmetric = d_mmresult[i];
+	    if (l_mmresult[i] > bestmetric) {
+	      bestmetric = l_mmresult[i];
 	      beststate = i;
 	    }
-	    if (d_mmresult[i] < minmetric) {
-	      minmetric = d_mmresult[i];
+	    if (l_mmresult[i] < minmetric) {
+	      minmetric = l_mmresult[i];
 	    }
 	  }
 
 	  // Trace back
-	  for (i = 0, pos = d_store_pos; i < (ntraceback - 1); i++) {
+	  for (i = 0, pos = l_store_pos; i < (ntraceback - 1); i++) {
 	    // Obtain the state from the output bits
 	    // by clocking in the output bits in reverse order.
 	    // The state has only 6 bits
-	    beststate = d_ppresult[pos][beststate] >> 2;
+	    beststate = l_ppresult[pos][beststate] >> 2;
 	    pos = (pos - 1 + ntraceback) % ntraceback;
 	  }
 
 	  // Store output byte
-	  *outbuf = d_ppresult[pos][beststate];
+	  *outbuf = l_ppresult[pos][beststate];
 
 	  for (i = 0; i < 4; i++) {
 	    for (j = 0; j < 16; j++) {
@@ -375,6 +397,19 @@ uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture
   return d_decoded;
 }
 
+// Initialize starting metrics to prefer 0 state
+void viterbi_chunks_init_generic() {
+  int i, j;
+
+  int polys[2] = { 0x6d, 0x4f };
+  for(i=0; i < 32; i++) {
+    d_branchtab27_generic[0].c[i] = (polys[0] < 0) ^ PARTAB[(2*i) & abs(polys[0])] ? 1 : 0;
+    d_branchtab27_generic[1].c[i] = (polys[1] < 0) ^ PARTAB[(2*i) & abs(polys[1])] ? 1 : 0;
+  }
+
+}
+
+
 void reset() {
 
   viterbi_chunks_init_generic();
@@ -402,33 +437,6 @@ void reset() {
     break;
   }
 }
-
-// Initialize starting metrics to prefer 0 state
-void viterbi_chunks_init_generic() {
-  int i, j;
-
-  for (i = 0; i < 64; i++) {
-    d_metric0_generic[i] = 0;
-    d_path0_generic[i] = 0;
-    d_metric1_generic[i] = 0;
-    d_path1_generic[i] = 0;
-  }
-
-  int polys[2] = { 0x6d, 0x4f };
-  for(i=0; i < 32; i++) {
-    d_branchtab27_generic[0].c[i] = (polys[0] < 0) ^ PARTAB[(2*i) & abs(polys[0])] ? 1 : 0;
-    d_branchtab27_generic[1].c[i] = (polys[1] < 0) ^ PARTAB[(2*i) & abs(polys[1])] ? 1 : 0;
-  }
-
-  d_store_pos = 0;
-  for (i = 0; i < 64; i++) {
-    d_mmresult[i] = 0;
-    for (j = 0; j < TRACEBACK_MAX; j++) {
-      d_ppresult[j][i] = 0;
-    }
-  }
-}
-
 
 
 
