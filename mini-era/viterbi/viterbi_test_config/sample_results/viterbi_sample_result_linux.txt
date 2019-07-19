@@ -111,3 +111,92 @@ file path is /home/varun/catkin_ws/src/era/mini-era/viterbi/viterbi_test_config/
 >>>>>> Final descram output is here: >>>>>> 
 !!!!!! Great Job, descrambler algorithm works fine for the given configuration. !!!!!! 
 
+#new results: display: text message here. (19-07-2019)
+varun@varun-eraw530:~/Desktop/Varun_files_desk/Jul_files/1907/era/mini-era/viterbi/viterbi_test_config$ ./viterbi_test /home/varun/Desktop/Varun_files_desk/Jul_files/1907/era/mini-era/viterbi/viterbi_test_config/configurations/enc2_text.txt
+file path is /home/varun/Desktop/Varun_files_desk/Jul_files/1907/era/mini-era/viterbi/viterbi_test_config/configurations/enc2_text.txt
+>>>>>> Get OFDM parameters from file (0:n_bpsc , 1:n_cbps, 2:n_dbps, 3:encoding ). >>>>>> 
+>>>>>> OFDM param [0] is 2 >>>>>> 
+>>>>>> OFDM param [1] is 96 >>>>>> 
+>>>>>> OFDM param [2] is 48 >>>>>> 
+>>>>>> OFDM param [3] is 2 >>>>>> 
+
+>>>>>> Get frame parameters from file(0:pdsu_size, 1:n_sym, 2:n_pad, 3:n_encoded_bits, 4:n_data_bits ). >>>>>> 
+>>>>>> Frame param [0] is 76 >>>>>> 
+>>>>>> Frame param [1] is 14 >>>>>> 
+>>>>>> Frame param [2] is 42 >>>>>> 
+>>>>>> Frame param [3] is 1344 >>>>>> 
+>>>>>> Frame param [4] is 672 >>>>>> 
+
+>>>>>> Get Actual message from file. >>>>>> 
+This is mini-era from IBM/Columbia/Hardvard/UIUC
+
+>>>>>> Decoded bits are here >>>>>> 
+>>>>>> Miscompare: result[666] = 1 vs 0 = EXPECTED_VALUE[666] >>>>>>
+>>>>>> Miscompare: result[669] = 0 vs 1 = EXPECTED_VALUE[669] >>>>>>
+>>>>>> Mismatch in the decoder algorithm, please check the inputs and algorithm one last time. >>>>>> 
+
+>>>>>> Descrambler output is here: >>>>>> 
+!!!!!! Great Job, descrambler algorithm works fine for the given configuration. !!!!!! 
+
+>>>>>> Decoded text message is here: >>>>>> 
+This is mini-era from IBM/Columbia/Hardvard/UIUC
+!!!!!! Great Job, text message decoding algorithm works fine for the given configuration. !!!!!! 
+
+varun@varun-eraw530:~/Desktop/Varun_files_desk/Jul_files/1907/era/mini-era/viterbi/viterbi_test_config$ ./viterbi_test /home/varun/Desktop/Varun_files_desk/Jul_files/1907/era/mini-era/viterbi/viterbi_test_config/configurations/enc5_text.txt
+file path is /home/varun/Desktop/Varun_files_desk/Jul_files/1907/era/mini-era/viterbi/viterbi_test_config/configurations/enc5_text.txt
+>>>>>> Get OFDM parameters from file (0:n_bpsc , 1:n_cbps, 2:n_dbps, 3:encoding ). >>>>>> 
+>>>>>> OFDM param [0] is 4 >>>>>> 
+>>>>>> OFDM param [1] is 192 >>>>>> 
+>>>>>> OFDM param [2] is 144 >>>>>> 
+>>>>>> OFDM param [3] is 5 >>>>>> 
+
+>>>>>> Get frame parameters from file(0:pdsu_size, 1:n_sym, 2:n_pad, 3:n_encoded_bits, 4:n_data_bits ). >>>>>> 
+>>>>>> Frame param [0] is 76 >>>>>> 
+>>>>>> Frame param [1] is 5 >>>>>> 
+>>>>>> Frame param [2] is 90 >>>>>> 
+>>>>>> Frame param [3] is 960 >>>>>> 
+>>>>>> Frame param [4] is 720 >>>>>> 
+
+>>>>>> Get Actual message from file. >>>>>> 
+This is mini-era from IBM/Columbia/Hardvard/UIUC
+
+>>>>>> Decoded bits are here >>>>>> 
+!!!!!! Great Job, Viterbi decoder algorithm works fine for the given configuration. !!!!!! 
+
+>>>>>> Descrambler output is here: >>>>>> 
+!!!!!! Great Job, descrambler algorithm works fine for the given configuration. !!!!!! 
+
+>>>>>> Decoded text message is here: >>>>>> 
+This is mini-era from IBM/Columbia/Hardvard/UIUC
+!!!!!! Great Job, text message decoding algorithm works fine for the given configuration. !!!!!! 
+
+varun@varun-eraw530:~/Desktop/Varun_files_desk/Jul_files/1907/era/mini-era/viterbi/viterbi_test_config$ ./viterbi_test /home/varun/Desktop/Varun_files_desk/Jul_files/1907/era/mini-era/viterbi/viterbi_test_config/configurations/enc6_text.txt
+file path is /home/varun/Desktop/Varun_files_desk/Jul_files/1907/era/mini-era/viterbi/viterbi_test_config/configurations/enc6_text.txt
+>>>>>> Get OFDM parameters from file (0:n_bpsc , 1:n_cbps, 2:n_dbps, 3:encoding ). >>>>>> 
+>>>>>> OFDM param [0] is 6 >>>>>> 
+>>>>>> OFDM param [1] is 288 >>>>>> 
+>>>>>> OFDM param [2] is 192 >>>>>> 
+>>>>>> OFDM param [3] is 6 >>>>>> 
+
+>>>>>> Get frame parameters from file(0:pdsu_size, 1:n_sym, 2:n_pad, 3:n_encoded_bits, 4:n_data_bits ). >>>>>> 
+>>>>>> Frame param [0] is 76 >>>>>> 
+>>>>>> Frame param [1] is 4 >>>>>> 
+>>>>>> Frame param [2] is 138 >>>>>> 
+>>>>>> Frame param [3] is 1152 >>>>>> 
+>>>>>> Frame param [4] is 768 >>>>>> 
+
+>>>>>> Get Actual message from file. >>>>>> 
+This is mini-era from IBM/Columbia/Hardvard/UIUC
+
+>>>>>> Decoded bits are here >>>>>> 
+!!!!!! Great Job, Viterbi decoder algorithm works fine for the given configuration. !!!!!! 
+
+>>>>>> Descrambler output is here: >>>>>> 
+!!!!!! Great Job, descrambler algorithm works fine for the given configuration. !!!!!! 
+
+>>>>>> Decoded text message is here: >>>>>> 
+This is mini-era from IBM/Columbia/Hardvard/UIUC
+!!!!!! Great Job, text message decoding algorithm works fine for the given configuration. !!!!!! 
+
+varun@varun-eraw530:~/Desktop/Varun_files_desk/Jul_files/1907/era/mini-era/viterbi/viterbi_test_config$ 
+

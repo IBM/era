@@ -12,6 +12,8 @@
 	DEBUG - After Viterbi : 000100110001011101001011000001100110101001110011100110000101011100111111011010101001111000111101110010100011011000001101110001101110001011101010010010011111001100101011000110000100101111010101111110100101000110100110111000000000001111111011100011000001101000001010100101110000011110000000000000011100111101101000010101011111010010100011011100011111110000111011110010110010010000001000
 	DEBUG - After descramb: 9 0 8 0 0 0 66 66 66 66 66 66 35 35 35 35 35 35 255 255 255 255 255 255 0 0 120 120 120 120 120 120 98 83 214 153
 	DEBUG - CRC error     : 0
+	//added decoded msg in txt format (for example)
+	DEBUG - Actual message: This is mini-era from IBM/Columbia/Hardvard/UIUC
 *
 *
 	Steps:  De-interleaved -> depuncture -> Viterbi Decoder -> desrambler -> check the output at each stage
@@ -35,108 +37,116 @@
 #include "viterbi_decoder_generic.h"
 #include "base.h"
 
-extern void descrambler(uint8_t* in, int psdusize, uint8_t* ref);
+extern void descrambler(uint8_t* in, int psdusize, uint8_t* ref, uint8_t *msg);
 extern uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in);
 int main(int argc, char* argv[])
 {
 	int encoding, n_bpsc, n_cbps, n_dbps, pdsu_size, n_sym, n_pad, n_encoded_bits, n_data_bits;
 	// creating a FILE variable
-	  FILE *fptr;
-	  int count, error_count;
-	  // integer variables
-	  if (argc ==1)
-	  {
-		  printf(">>>>>> Missing File name here. >>>>>> \n");
-	  }
-	  if (argc >2)
-	  {
-		  printf(">>>>>> More number of arguments are provided than required one argument:(i.e., Filename in .txt format). >>>>>> \n");
-	  }
-	  printf("file path is %s", argv[1]);
+	FILE *fptr;
+	int count, error_count;
+	// integer variables
+	if (argc ==1)
+	{
+		printf(">>>>>> Missing File name here. >>>>>> \n");
+	}
+	if (argc >2)
+	{
+		printf(">>>>>> More number of arguments are provided than required one argument:(i.e., Filename in .txt format). >>>>>> \n");
+	}
+	printf("file path is %s", argv[1]);
 
-		fptr = fopen(argv[1], "r");
-		if(fptr==NULL)
-			 {
-				 printf(">>>>>> Input file does not exist or can not be opened. >>>>>>\n");
-			  }
-		fclose(fptr);
-
-	    //read params from file
-	    fptr = fopen(argv[1], "r");
-	    char str1[] = "DEBUG - OFDM params   : "; //len = 24
-	    char str2[] = "DEBUG - Frame params  : "; //len = 24
-	    char str3[] = "DEBUG - Before Viterbi: "; //len = 24
-	    char str4[] = "DEBUG - After Viterbi : "; //len = 24
-	    char str5[] = "DEBUG - After descramb: "; //len = 24
-	    printf(">>>>>> Get OFDM parameters from file (0:n_bpsc , 1:n_cbps, 2:n_dbps, 3:encoding ). >>>>>> \n");
-	    // ofdm params extraction
-	    int line_num =1;
-	    int len1 = 1000; //temp length for params
-	    char temp[len1];
-
-	    int ofdm_values[4];
-	    while(fgets(temp, len1, fptr) != NULL)
-	    {
-	    		if((strstr(temp, str1)) != NULL)
-	    		{
-	    			char *ptr = temp;
-	    			int k=0;
-	    			while (*ptr) {
-	    			    if (isdigit(*ptr)) {
-	    			        long val = strtol(ptr, &ptr, 10);
-	    			        ofdm_values[k] = val;
-	    			        printf(">>>>>> OFDM param [%d] is %d >>>>>> \n",k,ofdm_values[k]);
-	    			        k++;
-	    			    } else {
-	    			        ptr++;
-	    			    }
-	    			}
-	    			n_bpsc = ofdm_values[0];
-	    			n_cbps = ofdm_values[1];
-	    			n_dbps = ofdm_values[2];
-	    			encoding = ofdm_values[3];
-	    		}
-	    		line_num++;
-	    	}
-	    fclose(fptr);
-
-	    printf(">>>>>> Get frame parameters from file(0:pdsu_size, 1:n_sym, 2:n_pad, 3:n_encoded_bits, 4:n_data_bits ). >>>>>> \n");
-	    fptr = fopen(argv[1], "r");
-	   // frame param extraction
-		line_num = 1;
-		char temp2[len1];
-		int frame_values[5];
-		count = 0;
-		while(fgets(temp2, len1, fptr) != NULL)
-		{		//printf("%s", temp2);
-				if((strstr(temp2, str2)) != NULL)
-				{
-					char *ptr = temp2;
-					int k=0;
-					while (*ptr)
-					{
-						if (isdigit(*ptr))
-						{
-							long val = strtol(ptr, &ptr, 10);
-							frame_values[k] = val;
-							printf(">>>>>> Frame param [%d] is %d >>>>>> \n",k,frame_values[k]);
-							k++;
-						}
-						else
-						{
-							ptr++;
-						}
-						count++;
-					}
-					pdsu_size =  frame_values[0];
-					n_sym =  frame_values[1];
-					n_pad = frame_values[2];
-					n_encoded_bits = frame_values[3];
-					n_data_bits = frame_values[4];
-				}
-				line_num++;
+	fptr = fopen(argv[1], "r");
+	if(fptr==NULL)
+			{
+				printf(">>>>>> Input file does not exist or can not be opened. >>>>>>\n");
 			}
-		fclose(fptr);
+	fclose(fptr);
+
+	//read params from file
+	fptr = fopen(argv[1], "r");
+	char str1[] = "DEBUG - OFDM params   : "; //len = 24
+	char str2[] = "DEBUG - Frame params  : "; //len = 24
+	char str3[] = "DEBUG - Before Viterbi: "; //len = 24
+	char str4[] = "DEBUG - After Viterbi : "; //len = 24
+	char str5[] = "DEBUG - After descramb: "; //len = 24
+	char str6[] = "DEBUG - Actual message: "; //len = 24
+	printf("\n");
+	printf(">>>>>> Get OFDM parameters from file (0:n_bpsc , 1:n_cbps, 2:n_dbps, 3:encoding ). >>>>>> \n");
+	// ofdm params extraction
+	int line_num =1;
+	int len1 = 1000; //temp length for params
+	char temp[len1];
+
+	int ofdm_values[4];
+	while(fgets(temp, len1, fptr) != NULL)
+	{
+		if((strstr(temp, str1)) != NULL)
+		{
+			char *ptr = temp;
+			int k=0;
+			while (*ptr) 
+			{
+				if (isdigit(*ptr)) 
+				{
+					long val = strtol(ptr, &ptr, 10);
+					ofdm_values[k] = val;
+					printf(">>>>>> OFDM param [%d] is %d >>>>>> \n",k,ofdm_values[k]);
+					k++;
+				} 
+				else 
+				{
+					ptr++;
+				}
+			}
+			n_bpsc = ofdm_values[0];
+			n_cbps = ofdm_values[1];
+			n_dbps = ofdm_values[2];
+			encoding = ofdm_values[3];
+		}
+		line_num++;
+	}
+	printf("\n");
+	fclose(fptr);
+
+	printf(">>>>>> Get frame parameters from file(0:pdsu_size, 1:n_sym, 2:n_pad, 3:n_encoded_bits, 4:n_data_bits ). >>>>>> \n");
+	fptr = fopen(argv[1], "r");
+	// frame param extraction
+	line_num = 1;
+	char temp2[len1];
+	int frame_values[5];
+	count = 0;
+	while(fgets(temp2, len1, fptr) != NULL)
+	{		
+		if((strstr(temp2, str2)) != NULL)
+		{
+			char *ptr = temp2;
+			int k=0;
+			while (*ptr)
+			{
+				if (isdigit(*ptr))
+				{
+					long val = strtol(ptr, &ptr, 10);
+					frame_values[k] = val;
+					printf(">>>>>> Frame param [%d] is %d >>>>>> \n",k,frame_values[k]);
+					k++;
+				}
+				else
+				{
+					ptr++;
+				}
+				count++;
+			}
+			pdsu_size =  frame_values[0];
+			n_sym =  frame_values[1];
+			n_pad = frame_values[2];
+			n_encoded_bits = frame_values[3];
+			n_data_bits = frame_values[4];
+		}
+		line_num++;
+	}
+	printf("\n");
+	fclose(fptr);
 
 	ofdm_param ofdm = {   encoding,   //  encoding   : 0 = BPSK_1_2
 			     	 	 	 13,   //  rate_field : rate field ofSIGNAL header //Taken constant
@@ -152,108 +162,136 @@ int main(int argc, char* argv[])
 
 	//read input data (de-interleaved data before Viterbi-decoder) from file
 	// frame param extraction
-		int MAX_Encoded_bits = frame.n_encoded_bits;
-		int MAX_Decoded_bits = frame.n_data_bits;
-		int MAX_Descram_bytes = frame.psdu_size +2;
+	int MAX_Encoded_bits = frame.n_encoded_bits;
+	int MAX_Decoded_bits = frame.n_data_bits;
+	int MAX_Descram_bytes = frame.psdu_size +2;
+	int MAX_MSG_chars = frame.psdu_size -28;
 
-		uint8_t input[MAX_Encoded_bits]; //={0};
-		uint8_t reference[MAX_Decoded_bits]; // ={0}; 1000 is maximum used here
-		uint8_t descramble[MAX_Descram_bytes]; // ={0}; 1000 is maximum used here
-		printf(">>>>>> Get de-interleaved bits from file. >>>>>> \n");
-		fptr = fopen(argv[1], "r");
-			line_num = 1;
-			int len2 = frame.n_encoded_bits + strlen(str3)+10; //additional 10 values
-			char temp3[len2];
-			while(fgets(temp3, len2, fptr) != NULL)
-			{
-					if((strstr(temp3, str3)) != NULL)
-					{
-						char *ptr = temp3;
-						int k=0;
-						for (int i =0;i<frame.n_encoded_bits;i++)
-						{
-							input[i] = *(ptr+24+i) - '0'; //in file: 24: strlen(str3)
-						}
-					}
-					line_num++;
-				}
-			fclose(fptr);
-
-			fptr = fopen(argv[1], "r");
-			printf(">>>>>> Get Viterbi-decoder output bits from file. >>>>>> \n");
-			line_num = 1;
-			int len3 = frame.n_data_bits + strlen(str4)+10; //additional 10 values
-			char temp4[len3];
-
-			while(fgets(temp4, len3, fptr) != NULL)
-			{
-				if((strstr(temp4, str4)) != NULL)
+	uint8_t input[MAX_Encoded_bits]; //={0};
+	uint8_t reference[MAX_Decoded_bits]; // ={0}; 1000 is maximum used here
+	uint8_t descramble[MAX_Descram_bytes]; // ={0}; 1000 is maximum used here
+	uint8_t actual_msg[MAX_MSG_chars]; // ={0}; 1000 is maximum used here
+	
+	//printf(">>>>>> Get de-interleaved bits from file. >>>>>> \n");
+	fptr = fopen(argv[1], "r");
+		line_num = 1;
+		int len2 = frame.n_encoded_bits + strlen(str3)+10; //additional 10 values
+		char temp3[len2];
+		while(fgets(temp3, len2, fptr) != NULL)
+		{
+				if((strstr(temp3, str3)) != NULL)
 				{
-					char *ptr = temp4;
-					for (int i =0;i<frame.n_data_bits;i++)
+					char *ptr = temp3;
+					for (int i =0;i<frame.n_encoded_bits;i++)
 					{
-						reference[i] = *(ptr+24+i) - '0'; // in file: 24: strlen(str4)
-
+						input[i] = *(ptr+24+i) - '0'; //in file: 24: strlen(str3)
 					}
 				}
 				line_num++;
 			}
-			fclose(fptr);
+		fclose(fptr);
 
-			fptr = fopen(argv[1], "r");
-			printf(">>>>>> Get Descrambler output bytes from file. >>>>>> \n");
-			line_num = 1;
-			int len4 = (frame.psdu_size +2)*4 + strlen(str5) + 10;
-			//(frame.psdu_size +2) bytes of data and each-one max value: 255 (3 chars) + 1 space (total = 4 charc) + additional 10 values
-			char temp5[len4];
-			while(fgets(temp5, len4, fptr) != NULL)
+	fptr = fopen(argv[1], "r");
+	//printf(">>>>>> Get Viterbi-decoder output bits from file. >>>>>> \n");
+	line_num = 1;
+	int len3 = frame.n_data_bits + strlen(str4)+10; //additional 10 values
+	char temp4[len3];
+
+	while(fgets(temp4, len3, fptr) != NULL)
+	{
+		if((strstr(temp4, str4)) != NULL)
+		{
+			char *ptr = temp4;
+			for (int i =0;i<frame.n_data_bits;i++)
 			{
-				if((strstr(temp5, str5)) != NULL)
-				{
-					char *ptr = temp5;
-					int k=0;
-					while (*ptr)
-					{
-						if (isdigit(*ptr))
-						{
-							long val = strtol(ptr, &ptr, 10);
-							descramble[k] = val;
-							k++;
-						}
-						else
-						{
-							ptr++;
-						}
-						count++;
-					}
-				}
-				line_num++;
+				reference[i] = *(ptr+24+i) - '0'; // in file: 24: strlen(str4)
+
 			}
-			fclose(fptr);
+		}
+		line_num++;
+	}
+	fclose(fptr);
 
-int input_s = (int)(sizeof(input)/sizeof(input[0])); //input bits_length
-int ref_s = (int)(sizeof(reference)/sizeof(reference[0])); //decoder output reference bits length
-int descram_s = (int)(sizeof(descramble)/sizeof(descramble[0])); //decoder descramble reference bytes length
+	fptr = fopen(argv[1], "r");
+	//printf(">>>>>> Get Descrambler output bytes from file. >>>>>> \n");
+	line_num = 1;
+	int len4 = (frame.psdu_size +2)*4 + strlen(str5) + 10;
+	//(frame.psdu_size +2) bytes of data and each-one max value: 255 (3 chars) + 1 space (total = 4 charc) + additional 10 values
+	char temp5[len4];
+	while(fgets(temp5, len4, fptr) != NULL)
+	{
+		if((strstr(temp5, str5)) != NULL)
+		{
+			char *ptr = temp5;
+			int k=0;
+			while (*ptr)
+			{
+				if (isdigit(*ptr))
+				{
+					long val = strtol(ptr, &ptr, 10);
+					descramble[k] = val;
+					k++;
+				}
+				else
+				{
+					ptr++;
+				}
+				count++;
+			}
+		}
+		line_num++;
+	}
+	fclose(fptr);
 
-  uint8_t *in = input;
-  uint8_t *ref = reference;
-  uint8_t *descram_ref = descramble;
+	fptr = fopen(argv[1], "r");
+	printf(">>>>>> Get Actual message from file. >>>>>> \n");
+	line_num = 1;
+	int len5 = (frame.psdu_size + 2) + strlen(str5) + 10; //psdu lenght = txt length + 28 ((header) 6 + address1 (6)+add2 (6) + add3 (6) + crc (4))
+	//(frame.psdu_size +2) bytes of data and each-one max value: 255 (3 chars) + 1 space (total = 4 charc) + additional 10 values
+	char temp6[len5];
+	//int len6 = frame.psdu_size - 28;
+	while (fgets(temp6, len5, fptr) != NULL)
+	{
+		if ((strstr(temp6, str6)) != NULL)
+		{
+			char* ptr = temp6;
+			for (int i = 0; i < (frame.psdu_size - 28); i++)
+			{
+				actual_msg[i] = *(ptr + 24 + i); //in file: 24: strlen(str6)
+				printf("%c",actual_msg[i]);
+			}
+			printf("\n");
+		}
+		line_num++;
+	}
+	printf("\n");
+	fclose(fptr);
 
-  // our main module starts from here
-   	  uint8_t *result;
-  	  result = decode(&ofdm, &frame, in);
-  	  int count_res =0;
-  	  int result_s = (int)(sizeof(result)/sizeof(result[0]));
-  	  printf(">>>>>> Decoded bits are here >>>>>> \n");
-  	  error_count = 0;
-  	 int max_bits = frame.n_data_bits;
+	int input_s = (int)(sizeof(input)/sizeof(input[0])); //input bits_length
+	int ref_s = (int)(sizeof(reference)/sizeof(reference[0])); //decoder output reference bits length
+	int descram_s = (int)(sizeof(descramble)/sizeof(descramble[0])); //descramble reference bytes length
+	int msg_s = (int)(sizeof(actual_msg)/sizeof(actual_msg[0])); // actual message chars length
+
+	uint8_t *in = input;
+	uint8_t *ref = reference;
+	uint8_t *descram_ref = descramble;
+	uint8_t *msg = actual_msg;
+
+  	// our main module starts from here
+	uint8_t *result;
+	result = decode(&ofdm, &frame, in);
+	int count_res =0;
+	int result_s = (int)(sizeof(result)/sizeof(result[0]));
+	printf(">>>>>> Decoded bits are here >>>>>> \n");
+	error_count = 0;
+	int max_bits = frame.n_data_bits;
     for (int i = 0; i < max_bits ; i++)
     {
-      if (result[i] != reference[i])
-      {
-         printf(">>>>>> Miscompare: result[%d] = %u vs %u = EXPECTED_VALUE[%d] >>>>>>\n", i, result[i], reference[i], i);
-    	  error_count++;
-      }
+		if (result[i] != reference[i])
+		{
+			printf(">>>>>> Miscompare: result[%d] = %u vs %u = EXPECTED_VALUE[%d] >>>>>>\n", i, result[i], reference[i], i);
+    		error_count++;
+      	}
     }
     if (error_count !=0)
     {
@@ -263,11 +301,12 @@ int descram_s = (int)(sizeof(descramble)/sizeof(descramble[0])); //decoder descr
     {
     	printf("!!!!!! Great Job, Viterbi decoder algorithm works fine for the given configuration. !!!!!! \n");
     }
+	printf("\n");
     //descrambler
     int psdusize = frame.psdu_size;
     uint8_t *descram;
 
-    descrambler(result,psdusize, descram_ref);
+    descrambler(result,psdusize, descram_ref, msg);
 
   return 0;
   }
