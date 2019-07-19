@@ -19,6 +19,11 @@
  */
 #include "base.h"
 
+#ifdef VERBOSE_OUTPUT
+ #define VERBOSE(_x_) _x_;
+#else
+ #define VERBOSE(_x_) ;
+#endif
 
 /* This Viterbi decoder was taken from the gr-dvbt module of
  * GNU Radio. It is an SSE2 version of the Viterbi Decoder

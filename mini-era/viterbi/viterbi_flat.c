@@ -30,6 +30,7 @@
 #include "viterbi_flat.h"
 #include "viterbi_standalone.h"
 
+
 // GLOBAL VARIABLES
 t_branchtab27 d_branchtab27_generic[2];
 //unsigned char d_metric0_generic[64] __attribute__ ((aligned(16)));
@@ -119,19 +120,58 @@ uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture
 
 #ifdef USE_ESP_INTERFACE
   int* inWords = (int*)inMemory;
-  int in_cbps        = inWords[  0]; // inMemory[    0]
-  int in_ntraceback  = inWords[  1]; // inMemory[    4]
-  int in_n_data_bits = inWords[  2]; // inMemory[    8]
-  unsigned char* d_brtab27[2] = {     &(inMemory[   12]), 
-                                      &(inMemory[   44]) };
-  int8_t* in_depuncture_pattern     = &(inMemory[   76]);
-  uint8_t* depd_data                = &(inMemory[   82]);
-  uint8_t* l_decoded                = &(inMemory[24862]);
 
+  int  in_cbps        = inWords[  0]; // inMemory[    0]
+  int  in_ntraceback  = inWords[  1]; // inMemory[    4]
+  int  in_n_data_bits = inWords[  2]; // inMemory[    8]
+  unsigned char* d_brtab27[2] = {      &(inMemory[   12]), 
+                                       &(inMemory[   44]) };
+  int8_t*  in_depuncture_pattern     = &(inMemory[   76]);
+  uint8_t* depd_data                 = &(inMemory[   82]);
+  uint8_t* l_decoded                 = &(inMemory[24862]);
 #else
   unsigned char* d_brtab27[2] = {&(d_branchtab27_generic[0].c[0]), &(d_branchtab27_generic[1].c[0])};
   uint8_t*       l_decoded = d_decoded;
 #endif
+
+  VERBOSE({
+      printf("\nVBS: in_cbps        = %u\n", in_cbps);
+      printf("VBS: in_ntraceback  = %u\n", in_ntraceback);
+      printf("VBS: in_n_data_bits = %u\n", in_n_data_bits);
+      for (int ti = 0; ti < 2; ti ++) {
+	printf("d_brtab[%u] = [ ", ti);
+	for (int tj = 0; tj < 32; tj++) {
+	  if (tj > 0) { printf(", "); }
+	  printf("%u", d_brtab27[ti][tj]);
+	}
+	printf(" ]\n");
+      }
+      printf("VBS: in_depuncture_pattern = [ ");
+      for (int ti = 0; ti < 6; ti ++) {
+	if (ti > 0) { printf(", "); }
+	printf("%02x", in_depuncture_pattern[ti]);
+      }
+      printf("]\n");
+
+      printf("\nVBS: depd_data = [\n");
+      for (int ti = 0; ti < MAX_ENCODED_BITS; ti ++) {
+	if (ti > 0) { printf(", "); }
+	if ((ti > 0) && ((ti % 8) == 0)) { printf("  "); }
+	if ((ti > 0) && ((ti % 40) == 0)) { printf("\n"); }
+	printf("%02x", depd_data[ti]);
+      }
+      printf("\n");
+
+      printf("\nVBS: l_decoded = [\n");
+      for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti ++) {
+	if (ti > 0) { printf(", "); }
+	if ((ti > 0) && ((ti % 8) == 0)) { printf("  "); }
+	if ((ti > 0) && ((ti % 40) == 0)) { printf("\n"); }
+	printf("%02x", l_decoded[ti]);
+      }
+      printf("\n\n");
+    });      
+
 
   uint8_t  l_metric0_generic[64];
   uint8_t  l_metric1_generic[64];
@@ -489,6 +529,17 @@ uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
   reset();
 
   uint8_t *depunctured = depuncture(in);
+
+  VERBOSE({
+      printf("VBS: depunctured = [\n");
+      for (int ti = 0; ti < MAX_ENCODED_BITS; ti ++) {
+	if (ti > 0) { printf(", "); }
+	if ((ti > 0) && ((ti % 8) == 0)) { printf("  "); }
+	if ((ti > 0) && ((ti % 40) == 0)) { printf("\n"); }
+	printf("%02x", depunctured[ti]);
+      }
+      printf("\n");
+    });
   
 #ifdef USE_ESP_INTERFACE
   {
@@ -506,13 +557,15 @@ uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
 	inMemory[imi++] = d_branchtab27_generic[ti].c[tj];
       }
     }
+    if (imi != 76) { printf("ERROR : imi = %u and should be 76\n", imi); }
     // imi = 76;
     for (int ti = 0; ti < 6; ti ++) {
       inMemory[imi++] = d_depuncture_pattern[ti];
     }
+    if (imi != 82) { printf("ERROR : imi = %u and should be 82\n", imi); }
     // imi = 82
     for (int ti = 0; ti < MAX_ENCODED_BITS; ti ++) {
-      inMemory[imi] = depunctured[ti];
+      inMemory[imi++] = depunctured[ti];
     }
     // imi = 24862 : OUTPUT ONLY -- DON'T NEED TO SEND INPUTS
     // uint8_t* l_decoded                  = inMemory[24862];
