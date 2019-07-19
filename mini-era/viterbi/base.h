@@ -26,13 +26,6 @@
  * GNU Radio. It is a version of the Viterbi Decoder
  * created by Phil Karn. For more info see: gr-dvbt/lib/d_viterbi.h
  */
-// Position in circular buffer where the current decoded byte is stored
-
-static int d_store_pos = 0;
-// Metrics for each state
-static unsigned char d_mmresult[64] __attribute__((aligned(16)));
-// Paths for each state
-static unsigned char d_ppresult[TRACEBACK_MAX][64] __attribute__((aligned(16)));
 
 int d_ntraceback;
 int d_k;

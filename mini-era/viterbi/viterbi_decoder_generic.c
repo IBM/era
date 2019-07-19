@@ -37,6 +37,18 @@
 
 #undef GENERATE_TEST_DATA
 
+
+// GLOBAL VARIABLES
+
+// Position in circular buffer where the current decoded byte is stored
+static int d_store_pos = 0;
+// Metrics for each state
+static unsigned char d_mmresult[64] __attribute__((aligned(16)));
+// Paths for each state
+static unsigned char d_ppresult[TRACEBACK_MAX][64] __attribute__((aligned(16)));
+
+
+
 uint8_t* depuncture(uint8_t *in) {
   int count;
   int n_cbps = d_ofdm->n_cbps;

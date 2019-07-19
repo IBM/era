@@ -32,10 +32,18 @@
 
 // GLOBAL VARIABLES
 t_branchtab27 d_branchtab27_generic[2];
-unsigned char d_metric0_generic[64] __attribute__ ((aligned(16)));
-unsigned char d_metric1_generic[64] __attribute__ ((aligned(16)));
-unsigned char d_path0_generic[64] __attribute__ ((aligned(16)));
-unsigned char d_path1_generic[64] __attribute__ ((aligned(16)));
+//unsigned char d_metric0_generic[64] __attribute__ ((aligned(16)));
+//unsigned char d_metric1_generic[64] __attribute__ ((aligned(16)));
+//unsigned char d_path0_generic[64] __attribute__ ((aligned(16)));
+//unsigned char d_path1_generic[64] __attribute__ ((aligned(16)));
+
+// Position in circular buffer where the current decoded byte is stored
+int d_store_pos = 0;
+// Metrics for each state
+unsigned char d_mmresult[64] __attribute__((aligned(16)));
+// Paths for each state
+unsigned char d_ppresult[TRACEBACK_MAX][64] __attribute__((aligned(16)));
+
 
 // This routine "depunctures" the input data stream according to the 
 //  relevant encoding parameters, etc. and returns the depunctured data.
@@ -78,17 +86,18 @@ uint8_t* depuncture(uint8_t *in) {
 /* This is the main "do_decoding" function; takes the necessary inputs
  * from the decode call (above) and does the decoding, outputing the decoded result.
  */
-// INPUTS/OUTPUTS:          :  I/O   : Size
-//    in_cbps               : INPUT  : int 
-//    in_ntraceback         : INPUT  : int
-//    in_depuncture_pattern : INPUT  : uint8_t[]
-//    in_n_data_bits        : INPUT  : int
-//    d_branchtab27_generic : INPUT  : uint8_t[2][32]
-//    depd_data             : INPUT  : Array [ MAX_ENCODED_BITS == 24780 ] (depunctured data)
-//    <return_val>          : OUTPUT : uint8_t Array [ ?? ] : The decoded data stream
+// INPUTS/OUTPUTS:          :  I/O   : Offset : Size
+//    in_cbps               : INPUT  :     0  : int = 4 bytes
+//    in_ntraceback         : INPUT  :     4  : int = 4 bytes
+//    in_n_data_bits        : INPUT  :     8  : int = 4 bytes
+//    d_branchtab27_generic : INPUT  :    12  : uint8_t[2][32] = 64 bytes
+//    in_depuncture_pattern : INPUT  :    76  : uint8_t[6] (max is 6 bytes)
+//    depd_data             : INPUT  :    82  : uint8_t[MAX_ENCODED_BITS == 24780] (depunctured data)
+//    <return_val>          : OUTPUT : 24862  : uint8_t[MAX_ENCODED_BITS * 3 / 4 == 18585 ] : The decoded data stream
 
 /* THESE ARE JUST USED LOCALLY IN THIS FUNCTION NOW  */
 /*  BUT they must reset to zero on each invocation   */
+/*  AND they might be used in other places in GnuRadio? */
 //    d_metric0_generic     : INPUT  : uint8_t[64]
 //    d_metric1_generic     : INPUT  : uint8_t[64]
 //    d_path0_generic       : INPUT  : uint8_t[64]
@@ -109,6 +118,9 @@ uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture
   uint8_t l_mmresult[64];
   uint8_t l_ppresult[TRACEBACK_MAX][64];
   int     l_store_pos = 0;
+
+  unsigned char *d_brtab27[2] = {&(d_branchtab27_generic[0].c[0]), &(d_branchtab27_generic[1].c[0])};
+  uint8_t*       l_decoded = d_decoded;
 
   // This is the "reset" portion:
   //  Do this before the real operation so local memories are "cleared to zero"
@@ -174,7 +186,6 @@ uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture
 	unsigned char *mm1       = l_metric1_generic;
 	unsigned char *pp0       = d_path0_generic;
 	unsigned char *pp1       = d_path1_generic;
-	unsigned char *d_brtab27[2] = {&(d_branchtab27_generic[0].c[0]), &(d_branchtab27_generic[1].c[0])};
 	unsigned char *symbols   = &depd_data[in_count & 0xfffffffc];
 
 	// These are used to "virtually" rename the uses below (for symmetry; reduces code size)
@@ -383,8 +394,8 @@ uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture
 	//std::cout << "OUTPUT: " << (unsigned int)c << std::endl; 
 	if (out_count >= in_ntraceback) {
 	  for (int i= 0; i < 8; i++) {
-	    d_decoded[(out_count - in_ntraceback) * 8 + i] = (c >> (7 - i)) & 0x1;
-	    //printf("d_decoded[ %u ] written\n", (out_count - in_ntraceback) * 8 + i);
+	    l_decoded[(out_count - in_ntraceback) * 8 + i] = (c >> (7 - i)) & 0x1;
+	    //printf("l_decoded[ %u ] written\n", (out_count - in_ntraceback) * 8 + i);
 	    n_decoded++;
 	  }
 	}
@@ -394,7 +405,7 @@ uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture
     in_count++;
   }
 
-  return d_decoded;
+  return l_decoded;
 }
 
 // Initialize starting metrics to prefer 0 state
@@ -447,7 +458,7 @@ void reset() {
 //    ofdm   : INPUT  : Struct (see utils.h) [enum, char, int, int, int]
 //    frame  : INPUT  : Struct (see utils.h) [int, int, int, int]
 //    in     : INPUT  : uint8_t Array [ MAX_ENCODED_BITS == 24780 ]
-//  <return> : OUTPUT : uint8_t Array [ ?? ] : The decoded data stream
+//  <return> : OUTPUT : uint8_t Array [ MAX_ENCODED_BITS * 3 / 4 == 18585 ] : The decoded data stream
 
 uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
 
