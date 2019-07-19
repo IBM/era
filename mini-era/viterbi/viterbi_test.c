@@ -156,7 +156,7 @@ int main(int argc, char* argv[])
   int MAX_Decoded_bits = frame.n_data_bits;
   int MAX_Descram_bytes = frame.psdu_size +2;
 
-  uint8_t input[MAX_Encoded_bits]; //={0};
+  uint8_t input[MAX_ENCODED_BITS]; // MAX_Encoded_bits]; //={0};
   uint8_t reference[MAX_Decoded_bits]; // ={0}; 1000 is maximum used here
   uint8_t descramble[MAX_Descram_bytes]; // ={0}; 1000 is maximum used here
   printf(">>>>>> Get de-interleaved bits from file. >>>>>> \n");

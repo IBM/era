@@ -106,21 +106,40 @@ uint8_t* depuncture(uint8_t *in) {
 //    d_mmresult            : OUTPUT : uint8_t[64] 
 //    d_ppresult            : OUTPUT : uint8_t[ntraceback_MAX][ 64 bytes ]
 
-uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture_pattern, int in_n_data_bits, uint8_t* depd_data) {
+
+#ifdef USE_ESP_INTERFACE
+void do_decoding(unsigned char *inMemory)
+#else
+uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture_pattern, int in_n_data_bits, uint8_t* depd_data) 
+#endif
+{
   int in_count = 0;
   int out_count = 0;
   int n_decoded = 0;
 
-  uint8_t l_metric0_generic[64];
-  uint8_t l_metric1_generic[64];
-  uint8_t l_path0_generic[64];
-  uint8_t l_path1_generic[64];
-  uint8_t l_mmresult[64];
-  uint8_t l_ppresult[TRACEBACK_MAX][64];
-  int     l_store_pos = 0;
+#ifdef USE_ESP_INTERFACE
+  int* inWords = (int*)inMemory;
+  int in_cbps        = inWords[  0]; // inMemory[    0]
+  int in_ntraceback  = inWords[  1]; // inMemory[    4]
+  int in_n_data_bits = inWords[  2]; // inMemory[    8]
+  unsigned char* d_brtab27[2] = {     &(inMemory[   12]), 
+                                      &(inMemory[   44]) };
+  int8_t* in_depuncture_pattern     = &(inMemory[   76]);
+  uint8_t* depd_data                = &(inMemory[   82]);
+  uint8_t* l_decoded                = &(inMemory[24862]);
 
-  unsigned char *d_brtab27[2] = {&(d_branchtab27_generic[0].c[0]), &(d_branchtab27_generic[1].c[0])};
+#else
+  unsigned char* d_brtab27[2] = {&(d_branchtab27_generic[0].c[0]), &(d_branchtab27_generic[1].c[0])};
   uint8_t*       l_decoded = d_decoded;
+#endif
+
+  uint8_t  l_metric0_generic[64];
+  uint8_t  l_metric1_generic[64];
+  uint8_t  l_path0_generic[64];
+  uint8_t  l_path1_generic[64];
+  uint8_t  l_mmresult[64];
+  uint8_t  l_ppresult[TRACEBACK_MAX][64];
+  int      l_store_pos = 0;
 
   // This is the "reset" portion:
   //  Do this before the real operation so local memories are "cleared to zero"
@@ -143,7 +162,7 @@ uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture
     if ((in_count % 4) == 0) { //0 or 3
       //printf(" Viterbi_Butterfly Call,%d,n_decoded,%d,n_data_bits,%d,in_count,%d,%d\n", viterbi_butterfly_calls, n_decoded, in_n_data_bits, in_count, (in_count & 0xfffffffc));
 
-      //CALL viterbi_butterfly2_generic(&depunctured[in_count & 0xfffffffc], l_metric0_generic, l_metric1_generic, d_path0_generic, d_path1_generic);
+      //CALL viterbi_butterfly2_generic(&depunctured[in_count & 0xfffffffc], l_metric0_generic, l_metric1_generic, l_path0_generic, l_path1_generic);
       /* The basic Viterbi decoder operation, called a "butterfly"
        * operation because of the way it looks on a trellis diagram. Each
        * butterfly involves an Add-Compare-Select (ACS) operation on the two nodes
@@ -184,8 +203,8 @@ uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture
       {
 	unsigned char *mm0       = l_metric0_generic;
 	unsigned char *mm1       = l_metric1_generic;
-	unsigned char *pp0       = d_path0_generic;
-	unsigned char *pp1       = d_path1_generic;
+	unsigned char *pp0       = l_path0_generic;
+	unsigned char *pp1       = l_path1_generic;
 	unsigned char *symbols   = &depd_data[in_count & 0xfffffffc];
 
 	// These are used to "virtually" rename the uses below (for symmetry; reduces code size)
@@ -331,11 +350,11 @@ uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture
 	//    l_mmresult  : GLOBAL OUTPUT : Array [ 64 bytes ] 
 	//    l_ppresult  : GLOBAL OUTPUT : Array [ntraceback][ 64 bytes ]
 
-	// CALL : viterbi_get_output_generic(l_metric0_generic, d_path0_generic, in_ntraceback, &c);
+	// CALL : viterbi_get_output_generic(l_metric0_generic, l_path0_generic, in_ntraceback, &c);
 	// unsigned char viterbi_get_output_generic(unsigned char *mm0, unsigned char *pp0, int ntraceback, unsigned char *outbuf) 
 	{
 	  unsigned char *mm0       = l_metric0_generic;
-	  unsigned char *pp0       = d_path0_generic;
+	  unsigned char *pp0       = l_path0_generic;
 	  int ntraceback = in_ntraceback;
 	  unsigned char *outbuf = &c;
 
@@ -405,7 +424,9 @@ uint8_t* do_decoding(int in_cbps, int in_ntraceback, const int8_t* in_depuncture
     in_count++;
   }
 
+#ifndef USE_ESP_INTERFACE
   return l_decoded;
+#endif
 }
 
 // Initialize starting metrics to prefer 0 state
@@ -469,7 +490,46 @@ uint8_t* decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in) {
 
   uint8_t *depunctured = depuncture(in);
   
+#ifdef USE_ESP_INTERFACE
+  {
+    // Copy inputs into the inMemory for esp-interface version
+    uint8_t inMemory[43447]; // This is "minimally sized for max entries"
+    int*    inWords = (int*)inMemory; // This is an "integer" view of inMemory
+
+    inWords[  0] = ofdm->n_cbps;
+    inWords[  1] = d_ntraceback; 
+    inWords[  2] = frame->n_data_bits;
+
+    int imi = 12;
+    for (int ti = 0; ti < 2; ti ++) {
+      for (int tj = 0; tj < 32; tj++) {
+	inMemory[imi++] = d_branchtab27_generic[ti].c[tj];
+      }
+    }
+    // imi = 76;
+    for (int ti = 0; ti < 6; ti ++) {
+      inMemory[imi++] = d_depuncture_pattern[ti];
+    }
+    // imi = 82
+    for (int ti = 0; ti < MAX_ENCODED_BITS; ti ++) {
+      inMemory[imi] = depunctured[ti];
+    }
+    // imi = 24862 : OUTPUT ONLY -- DON'T NEED TO SEND INPUTS
+    // uint8_t* l_decoded                  = inMemory[24862];
+
+    // Call the do_decoding routine
+    do_decoding(inMemory);
+    
+    // Copy the outputs back into the composite locations
+    imi = 24862; // start of the outputs
+    for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti ++) {
+      d_decoded[ti] = inMemory[imi++];
+    }
+  }
+  return d_decoded;
+#else
   return do_decoding(ofdm->n_cbps, d_ntraceback, d_depuncture_pattern, frame->n_data_bits, depunctured);
+#endif
 }
 
 

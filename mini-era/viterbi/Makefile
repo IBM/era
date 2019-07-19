@@ -1,5 +1,5 @@
 CC     = gcc -std=c99
-CFLAGS = 
+CFLAGS = -g
 
 AR      = ar rcs
 
