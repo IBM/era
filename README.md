@@ -2,6 +2,8 @@
 
 This is the package to get if you want to install ERA. The rosinstall script will fetch the necessary packages in the catkin workspace.
 
+### We recommend installing Ubuntu 18.04 with ROS Melodic. Installation instructions can be found <a href="https://github.com/IBM/era/wiki/ERA-on-Ubuntu-18.04-with-ROS-Melodic" target="_blank">here</a>
+
 
 ## Requirements
 
