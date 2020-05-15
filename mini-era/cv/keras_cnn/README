@@ -1,8 +1,0 @@
-This folder consists of keras based training modules for varying datasets
-
-lenet.py: LeNET network for MNIST training with HPVM supported kernels
-gtsrb.py: CNN network (similar to VGGNet) for GTSRB training without data augmentation
-gtsrb_data.py: CNN network (similar to VGGNet) for GTSRB training with data augmentation
-
-model.h5: gtsrb model, can be used for retraining and inference: Achieves 95.36%
-model_data.h5: gtsrb model to be used for inference: Achieves 98.1%
