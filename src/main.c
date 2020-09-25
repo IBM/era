@@ -6,6 +6,9 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <signal.h>
+#include <fcntl.h> // for open
+#include <unistd.h> // for close
+#include <arpa/inet.h>
 
 #include "occgrid.h"
 
@@ -109,8 +112,8 @@ int main(int argc, char *argv[])
 		printf("read %d bytes\n", valread);
 
 		if(buffer[0] == 'L' && buffer[7] == 'L') {
-
-			int message_size = strtol(buffer+1, buffer+6, 10);
+			char * ptr;
+			int message_size = strtol(buffer+1, &ptr, 10);
 			printf("expecting message size: %d\n", message_size);
 			send(sock, ack, 2, 0);
 
@@ -130,7 +133,8 @@ int main(int argc, char *argv[])
 		}
 
 		if(buffer[0] == 'O' && buffer[3]) {
-			int message_size = strtol(buffer+1, buffer+2, 10);
+			char * ptr;
+			int message_size = strtol(buffer+1, &ptr, 10);
 			printf("expecting message size: %d\n", message_size);
 			send(sock, ack, 2, 0);
 
