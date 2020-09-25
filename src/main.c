@@ -1,16 +1,17 @@
-#include "occgrid.h"
-
 #include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
+#include <sys/socket.h> // Unbuntu 18 on x86_64 has this at /usr/include/x86_64-linux-gnu/sys/socket.h
 #include <signal.h>
 #include <fcntl.h> // for open
 #include <unistd.h> // for close
-#include <arpa/inet.h>
+#include <arpa/inet.h> // for inet_addr
 
-#include "occgrid.h"
+#include "occgrid.h"    // Occupancy Grid Map Create/Fuse
+#include "lz4.h"        // LZ4 Compression/Decompression
+#include "xmit_pipe.h"  // IEEE 802.11p WiFi SDR Transmit Pipeline
+#include "recv_pipe.h"  // IEEE 802.11p WiFi SDR Receive Pipeline
 
 #define PORT 5556
 
@@ -56,19 +57,38 @@ void write_array_to_file(unsigned char * data, long size)
   counter++;
 }
 
+#define MAX_GRID_SIZE   50 * 50  // Taken from size_x, size_y, resolution
+#define MAX_COMPRESSED_DATA_SIZE    MAX_GRID_SIZE
+
+#define MAX_XMIT_OUTPUTS  41800  // Really something like 41782 I think
+
 void process_data(char* data, int data_size)
 {
-
+  printf("Calling cloudToOccgrid...\n");
 	unsigned char * grid = cloudToOccgrid((float*)data, data_size/sizeof(float),
 		odometry[0],odometry[1],odometry[2],1.5,
 		false,
 		0.05, 2.05,
 		100,
-		100, 100, 2.0,
+	        100, 100, 2.0,  // size_x, size_y, resolution
 		254);
 
 	write_array_to_file(grid, 100/2.0*100/2.0);
 
+	// Now we compress the grid for transmission...
+	printf("Calling LZ4_compress_default...\n");
+	unsigned char cmp_data[MAX_COMPRESSED_DATA_SIZE];
+	int r_bytes = LZ4_compress_default((char*)grid, (char*)cmp_data, MAX_GRID_SIZE, MAX_COMPRESSED_DATA_SIZE);
+	double c_ratio = 100*(1-((double)(r_bytes)/(double)(MAX_GRID_SIZE)));
+	printf("  Back from LZ4_compress_default: %u bytes -> %u bytes for %5.2f%%\n", MAX_GRID_SIZE, r_bytes, c_ratio);
+
+	// Now we encode and transmit the grid...
+	printf("Calling do_xmit_pipeline for %u compressed grid elements\n", r_bytes);
+	int n_xmit_out;
+	float xmit_out_real[MAX_XMIT_OUTPUTS];
+	float xmit_out_imag[MAX_XMIT_OUTPUTS];
+	do_xmit_pipeline(r_bytes, cmp_data, &n_xmit_out, xmit_out_real, xmit_out_imag);
+	printf("  Back from do_xmit_pipeline with %u xmit outputs...\n", n_xmit_out);
 }
 
 
@@ -78,7 +98,8 @@ int main(int argc, char *argv[])
 	char *ack = "OK";
 	unsigned char buffer[200000] = {0};
 
-
+	xmit_pipe_init(); // Initialize the IEEE SDR Transmit Pipeline
+	
 	signal(SIGINT, INThandler);
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)  {
