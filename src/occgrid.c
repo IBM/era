@@ -47,6 +47,11 @@ void printMap() {
     }
 }
 
+/** This is not used?  Should be cleaned up, anyway:
+    Move from a string input to an enum type for obstaclt_type?
+    Do a proper strcmp -- I think this will ALWAYS FAIL (as it compares pointer addresses)
+**/
+#if(0)
 void addStaticObstacle(unsigned char* obstacle_type) {
     int cell_size_x = master_observation.master_costmap.size_x / master_observation.master_resolution;
     int cell_size_y = master_observation.master_costmap.size_y / master_observation.master_resolution;
@@ -61,6 +66,7 @@ void addStaticObstacle(unsigned char* obstacle_type) {
         }
     }
 }
+#endif
 
 void initCostmap(bool rolling_window, double min_obstacle_height, double max_obstacle_height, double raytrace_range, unsigned int size_x,
                  unsigned int size_y, double resolution, unsigned char default_value, double robot_x, double robot_y, double robot_z) {
@@ -279,7 +285,7 @@ void copyMapRegion(unsigned char* source_map, unsigned int sm_lower_left_x, unsi
     unsigned int cell_size_y = master_observation.master_costmap.size_y / master_observation.master_resolution;
 
     //printf("\n Copying Map... \nRegion Size of Map -> <%d, %d>\n", region_size_x, region_size_y);
-    char* local_costmap [cell_size_x * cell_size_y];
+    char local_costmap [cell_size_x * cell_size_y];
     for (int i = 0; i < cell_size_x * cell_size_y; i++) {
         local_costmap[i] = master_observation.master_costmap.default_value;
         //printf("%d, ", local_costmap[i]);
