@@ -53,7 +53,7 @@ int d_frame_symbols;
 int d_frame_mod;
 
 bool
-decode_signal_field(uint8_t *rx_bits) {
+decode_signal_field(uint8_t *rx_bits, unsigned* msg_psdu) {
   DEBUG(printf("In decode_signal_field - DSF...\n"));
   ofdm_param ofdm = {   BPSK_1_2, //  encoding   : 0 = BPSK_1_2
 			13,       //             : rate field of SIGNAL header //Taken constant
@@ -91,8 +91,8 @@ decode_signal_field(uint8_t *rx_bits) {
   }
   // }
   
-  //uint8_t *decoded_bits = d_decoder.decode(&ofdm, &frame, d_deinterleaved);
-  uint8_t decoded_bits[48]; // extra-big for now (should need 48 bytes)
+  // Do the decoding of the header bits
+  uint8_t decoded_bits[48]; 
   int n_bits;
   DEBUG(printf("DSF: Calling decode...\n"));
   sdr_decode(&ofdm, &frame, d_deinterleaved, &n_bits, decoded_bits);
@@ -125,6 +125,17 @@ decode_signal_field(uint8_t *rx_bits) {
     return false;
   }
 
+  unsigned hdr_psdu = 0x0;
+  //printf("DEC LENGTH PSDU      ");
+  //printf("decode_signal_field: PSDU bits : 0x ");
+  for (int i = 16; i >= 5; i--) {
+    //printf("%01x", decoded_bits[i]);
+    hdr_psdu = (hdr_psdu << 1) | decoded_bits[i];
+  }
+  //printf("  = %03x = %u\n", hdr_psdu, hdr_psdu);
+  *msg_psdu = hdr_psdu;
+  DEBUG(printf("  Setting msg_psdu to %u\n", *msg_psdu));
+  
   // NOTE: Currently we ONLY work in BPSK_1_2 -- all non-BPSK return a "false" (bad message)
   switch(r) {
   case 11:
@@ -244,7 +255,10 @@ void do_LS_equalize(fx_pt *in, int n, fx_pt *symbols, uint8_t *bits) // BPSK , b
 
 
 
-void gr_equalize( float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_IN_MAX_SIZE], unsigned* num_out_bits, uint8_t outputs[FRAME_EQ_OUT_MAX_SIZE], unsigned* num_out_sym, fx_pt out_symbols[FRAME_EQ_OUT_MAX_SIZE] )
+void gr_equalize( float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_IN_MAX_SIZE],
+		  unsigned* msg_psdu,
+		  unsigned* num_out_bits, uint8_t outputs[FRAME_EQ_OUT_MAX_SIZE],
+		  unsigned* num_out_sym, fx_pt out_symbols[FRAME_EQ_OUT_MAX_SIZE] )
 {
   DEBUG(printf("\nIn gr_equalize with %u inputs\n", num_inputs));
   const fx_pt POLARITY[127] = { 1 , 1, 1, 1,-1,-1,-1, 1,-1,-1,-1,-1, 1, 1,-1, 1,
@@ -323,7 +337,7 @@ void gr_equalize( float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_I
       // ASSUME GOOD PARITY FOR NOW ?!?
       // Otherwise, I think we decode this frame, and do some checking, etc... in the decode_signal_field (above)
       DEBUG(printf("Calling decode_signal_field with out_sym = %u and d_current_symbol = %u\n", out_sym, d_current_symbol));
-      if (!decode_signal_field(&(outputs[out_sym * 48]))) {
+      if (!decode_signal_field(&(outputs[out_sym * 48]), msg_psdu)) {
         printf("ERROR : Bad decode_signal_field return value ...\n");
 	exit(-20); // return false;
       }

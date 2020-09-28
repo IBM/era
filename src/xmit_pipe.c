@@ -771,6 +771,14 @@ void generate_signal_field(char *out) { // , frame_param &frame, ofdm_param &ofd
   }
   signal_header[17] = sum % 2;
 
+  DEBUG(unsigned hdr_psdu = 0x0;
+	printf("ENC LENGTH PSDU      ");
+	for (int i = 16; i >= 5; i--) {
+	  printf("%01x", signal_header[i]);
+	  hdr_psdu = (hdr_psdu << 1) | signal_header[i];
+	}
+	printf("  = %03x vs 0x%03x = %u vs %u\n", hdr_psdu, length, hdr_psdu, length));
+
   // last 6 bits must be set to 0
   for (int i = 0; i < 6; i++) {
     signal_header[18 + i] = 0;

@@ -93,6 +93,13 @@ void process_data(char* data, int data_size)
 	float xmit_out_imag[MAX_XMIT_OUTPUTS];
 	do_xmit_pipeline(r_bytes, cmp_data, &n_xmit_out, xmit_out_real, xmit_out_imag);
 	printf("  Back from do_xmit_pipeline with %u xmit outputs...\n", n_xmit_out);
+
+	// This is now the content that should be sent out via IEEE 802.11p WiFi
+	//  The n_xmit_out values of xmit_out_real and xmit_out_imag
+
+
+	// If we receive a transmission, the process to turn it back into the gridMap is:
+	//do_recv_pipeline(int msg_len, int num_recvd_vals, float* recvd_in_real, float* recvd_in_imag, int* recvd_msg_len, char * recvd_msg)
 }
 
 

@@ -110,7 +110,7 @@ uint8_t  decoded_message[MAX_PAYLOAD_SIZE];   // Holds the resulting decodede me
 fx_pt*   input_data = &delay16_out[16]; // [2*(RAW_DATA_IN_MAX_SIZE + 16)];  // Holds the input data (plus a "front-pad" of 16 0's for delay16
 
 
-void compute(unsigned in_msg_len, unsigned num_inputs, fx_pt *inbuff, uint8_t *outbuff);
+void compute(unsigned num_inputs, fx_pt *inbuff, uint8_t *outbuff);
 
 
 /********************************************************************************
@@ -201,7 +201,7 @@ do_recv_pipeline(int msg_len, int num_recvd_vals, float* recvd_in_real, float* r
  #ifdef INT_TIME
   gettimeofday(&r_pipe_start, NULL);
  #endif
-  compute(msg_len, num_recvd_vals, input_data, (uint8_t*)recvd_msg); // outbuff);
+  compute(num_recvd_vals, input_data, (uint8_t*)recvd_msg); // outbuff);
   *recvd_msg_len = 1500; // Default max size...
  #ifdef INT_TIME
   gettimeofday(&r_pipe_stop, NULL);
@@ -213,7 +213,7 @@ do_recv_pipeline(int msg_len, int num_recvd_vals, float* recvd_in_real, float* r
 }
 
 
-void compute(unsigned in_msg_len, unsigned num_inputs, fx_pt *input_data, uint8_t *out_msg) {
+void compute(unsigned num_inputs, fx_pt *input_data, uint8_t *out_msg) {
   uint8_t scrambled_msg[MAX_ENCODED_BITS * 3 / 4];
   DEBUG(for (int ti = 0; ti < num_inputs /*RAW_DATA_IN_MAX_SIZE*/; ti++) {
 	  printf("  %6u : TOP_INBUF %12.8f %12.8f\n", ti, crealf(input_data[ti]), cimagf(input_data[ti]));
@@ -338,7 +338,6 @@ void compute(unsigned in_msg_len, unsigned num_inputs, fx_pt *input_data, uint8_
 	  printf(" S_S_OUT %5u : TMPBUF %12.8f %12.8f : CORR_CMP %12.8f %12.8f : CORRZ %12.8f : SS_FRAME %12.8f %12.8f\n", ti, crealf(delay16_out[ti]), cimagf(delay16_out[ti]), crealf(correlation_complex[ti]), cimagf(correlation_complex[ti]), the_correlation[ti], crealf(sync_short_out_frames[ti]), cimagf(sync_short_out_frames[ti])); 
 	});
 
-  DEBUG(printf("In receive pipe compute routine with in_msg_len @ %p = %u\n", (void*)&in_msg_len, in_msg_len));
   DEBUG(printf("\nCalling delay320...\n"));
   // We've used a similar memory-placement trick to avoid having to do the delay320 function; sync_short_out_frames = &(frame_d[320])
   //delay320(frame_d, synch_short_out_frames);
@@ -347,7 +346,6 @@ void compute(unsigned in_msg_len, unsigned num_inputs, fx_pt *input_data, uint8_
     });
   
 
-  DEBUG(printf("In receive pipe compute routine with in_msg_len @ %p = %u\n", (void*)&in_msg_len, in_msg_len));
   DEBUG(printf("\nCalling sync_long...\n"));
   float sl_freq_offset;
   unsigned num_sync_long_vals;
@@ -392,14 +390,15 @@ void compute(unsigned in_msg_len, unsigned num_inputs, fx_pt *input_data, uint8_
   for (int ii = 0; ii < FRAME_EQ_OUT_MAX_SIZE; ii++) {
     equalized_bits[ii] = 0;
   }
-  DEBUG(printf("In receive pipe compute routine with in_msg_len @ %p = %u\n", (void*)&in_msg_len, in_msg_len));
+
   DEBUG(printf("\nCalling gr_equalize (frame_equalizer) with wifi_start = %12.8f\n", wifi_start));
   unsigned num_eq_out_bits;
   unsigned num_eq_out_sym;
  #ifdef INT_TIME
   gettimeofday(&r_eqlz_start, NULL);
  #endif
-  gr_equalize( wifi_start, num_fft_outs, toBeEqualized, &num_eq_out_bits, equalized_bits, &num_eq_out_sym, equalized);
+  unsigned psdu = 0;
+  gr_equalize( wifi_start, num_fft_outs, toBeEqualized, &psdu, &num_eq_out_bits, equalized_bits, &num_eq_out_sym, equalized);
   DEBUG(printf("GR_FR_EQ : fft_outs = %u items %u ffts : num_eq_out_bits = %u %u : num_eq_out_sym = %u\n", num_fft_outs, num_fft_outs/64, num_eq_out_bits, num_eq_out_bits/48, num_eq_out_sym));
   DEBUG(printf("\nback from equalize call (frame_equalizer)\n");
 	for (int ti = 0; ti < num_eq_out_bits; ti++) {
@@ -407,7 +406,6 @@ void compute(unsigned in_msg_len, unsigned num_inputs, fx_pt *input_data, uint8_
 	});
   
   //decode signal
-  DEBUG(printf("In receive pipe compute routine with in_msg_len @ %p = %u\n", (void*)&in_msg_len, in_msg_len));
   DEBUG(printf("\nCalling decode_signal...\n"));
   unsigned num_dec_bits;
  #ifdef INT_TIME
@@ -421,8 +419,6 @@ void compute(unsigned in_msg_len, unsigned num_inputs, fx_pt *input_data, uint8_
     });
 
   //descrambler
-  unsigned psdu = (in_msg_len + 28);
-  DEBUG(printf("In receive pipe compute routine with in_msg_len @ %p = %u\n", (void*)&in_msg_len, in_msg_len));
   DEBUG(printf("\nCalling sdr_descrambler with psdu = %u\n", psdu));
  #ifdef INT_TIME
   gettimeofday(&r_descrmbl_start, NULL);
