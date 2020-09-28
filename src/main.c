@@ -13,7 +13,11 @@
 #include "xmit_pipe.h"  // IEEE 802.11p WiFi SDR Transmit Pipeline
 #include "recv_pipe.h"  // IEEE 802.11p WiFi SDR Receive Pipeline
 
-#define PORT 5556
+// The PORT is now defined in the compilation process, and comforms to the
+// definition in the read_bag_x.py files.
+//#define PORT 
+//#define PORT1 5556
+//#define PORT2 5557
 
 int sock = 0;
 
