@@ -82,16 +82,16 @@ void process_data(char* data, int data_size)
 	// Now we compress the grid for transmission...
 	printf("Calling LZ4_compress_default...\n");
 	unsigned char cmp_data[MAX_COMPRESSED_DATA_SIZE];
-	int r_bytes = LZ4_compress_default((char*)grid, (char*)cmp_data, MAX_GRID_SIZE, MAX_COMPRESSED_DATA_SIZE);
-	double c_ratio = 100*(1-((double)(r_bytes)/(double)(MAX_GRID_SIZE)));
-	printf("  Back from LZ4_compress_default: %u bytes -> %u bytes for %5.2f%%\n", MAX_GRID_SIZE, r_bytes, c_ratio);
+	int cmp_bytes = LZ4_compress_default((char*)grid, (char*)cmp_data, MAX_GRID_SIZE, MAX_COMPRESSED_DATA_SIZE);
+	double c_ratio = 100*(1-((double)(cmp_bytes)/(double)(MAX_GRID_SIZE)));
+	printf("  Back from LZ4_compress_default: %u bytes -> %u bytes for %5.2f%%\n", MAX_GRID_SIZE, cmp_bytes, c_ratio);
 
 	// Now we encode and transmit the grid...
-	printf("Calling do_xmit_pipeline for %u compressed grid elements\n", r_bytes);
+	printf("Calling do_xmit_pipeline for %u compressed grid elements\n", cmp_bytes);
 	int n_xmit_out;
 	float xmit_out_real[MAX_XMIT_OUTPUTS];
 	float xmit_out_imag[MAX_XMIT_OUTPUTS];
-	do_xmit_pipeline(r_bytes, cmp_data, &n_xmit_out, xmit_out_real, xmit_out_imag);
+	do_xmit_pipeline(cmp_bytes, cmp_data, &n_xmit_out, xmit_out_real, xmit_out_imag);
 	printf("  Back from do_xmit_pipeline with %u xmit outputs...\n", n_xmit_out);
 
 	// This is now the content that should be sent out via IEEE 802.11p WiFi
@@ -99,7 +99,28 @@ void process_data(char* data, int data_size)
 
 
 	// If we receive a transmission, the process to turn it back into the gridMap is:
-	//do_recv_pipeline(int msg_len, int num_recvd_vals, float* recvd_in_real, float* recvd_in_imag, int* recvd_msg_len, char * recvd_msg)
+	int   n_recvd_in;
+	float recvd_in_real[MAX_XMIT_OUTPUTS];
+	float recvd_in_imag[MAX_XMIT_OUTPUTS];
+	int   recvd_msg_len;
+	unsigned char recvd_msg[1500]; // MAX size of original message in bytes
+	//do_recv_pipeline(int n_recvd_in, recvd_in_real, recvd_in_imag, recvd_msg_len, recvd_msg)
+
+	// Now we decompress the grid for transmission...
+	printf("Calling LZ4_decompress_default...\n");
+	unsigned char uncmp_data[MAX_GRID_SIZE];
+	int dec_bytes = LZ4_decompress_safe((char*)recvd_msg, (char*)uncmp_data, n_recvd_in, MAX_GRID_SIZE);
+	printf("  Back from LZ4_decompress_safe with %u decompressed bytes\n", dec_bytes);
+
+	
+	// Then we should "Fuse" the received GridMap with our local one
+	//  We need to "peel out" the remote odometry data from somewhere (in the message?)
+	//unsigned char* combineGrids(unsigned char* grid1, unsigned char* grid2, double robot_x1, double robot_y1,
+	//unsigned char *fusedMap = combineGrids(local_map, recvd_msg,
+	//		                         odometry[0], odometry[1], // local_x,   local_y
+	//		                         remote_x,    remote_y,    // remotel_x, remotel_y
+	//                                       100, 100, 2.0,  // size_x, size_y, resolution
+	//                                       ?? ); // def_val -- unused?
 }
 
 

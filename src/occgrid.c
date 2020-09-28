@@ -97,10 +97,15 @@ void initCostmap(bool rolling_window, double min_obstacle_height, double max_obs
 
 /******************* FUNCTIONS *********************/
 
-unsigned char* combineGrids(unsigned char* grid1, unsigned char* grid2, double robot_x1, double robot_y1,
-                            double robot_x2, double robot_y2, unsigned int cell_size_x, unsigned int cell_size_y, double resolution, char def_val){
-    //TODO: Input parameters needed: size of map, resolution, default value
-    //TODO: Change size_x to cell_size_x
+/* The combineGrids function takes two input functions, grid1 and grid2, 
+   and "fuses" (or combines) the information from both into grid2
+   (overwriting some or all af that grid's contents).
+*/
+unsigned char* combineGrids(unsigned char* grid1, unsigned char* grid2,
+			    double robot_x1, double robot_y1,
+                            double robot_x2, double robot_y2,
+			    unsigned int cell_size_x, unsigned int cell_size_y, double resolution,
+			    char def_val ){
     //grid1 is previous map, grid2 is current map
 
     //Calculate the new origin of the map
