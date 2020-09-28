@@ -107,10 +107,10 @@ void process_data(char* data, int data_size)
 	//do_recv_pipeline(int n_recvd_in, recvd_in_real, recvd_in_imag, recvd_msg_len, recvd_msg)
 
 	// Now we decompress the grid for transmission...
-	printf("Calling LZ4_decompress_default...\n");
-	unsigned char uncmp_data[MAX_GRID_SIZE];
-	int dec_bytes = LZ4_decompress_safe((char*)recvd_msg, (char*)uncmp_data, n_recvd_in, MAX_GRID_SIZE);
-	printf("  Back from LZ4_decompress_safe with %u decompressed bytes\n", dec_bytes);
+	//printf("Calling LZ4_decompress_default...\n");
+	//unsigned char uncmp_data[MAX_GRID_SIZE];
+	//int dec_bytes = LZ4_decompress_safe((char*)recvd_msg, (char*)uncmp_data, n_recvd_in, MAX_GRID_SIZE);
+	//printf("  Back from LZ4_decompress_safe with %u decompressed bytes\n", dec_bytes);
 
 	
 	// Then we should "Fuse" the received GridMap with our local one
