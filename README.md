@@ -32,33 +32,41 @@ cmake ..
 make
 ```
 
-At this point, you should have generated an executable file named ```era``` which is the
-main ERA executable for this Demo-ERA version.
+At this point, you should have generated two executables file named ```eraX```
+which are the main ERA executables for this Demo-ERA version.  There are two
+executables because one is generated for each of the Autonomous Vehicles (cars)
+in the simulation.  The bagfile contains data currently for two AVs, so we generate the
+two ERA executables:
+ - era1 : the ```hero1``` executable, that reads and reacts to the hero1 bagfile contents
+ - era2 : the ```hero2``` executable, that reads and reacts to the hero2 bagfile contents
 
 ## Execution
 
-To execute the Deom-ERA program requires two simultaneous processes, one to read the bagfile,
+To execute the Demo-ERA program requires two simultaneous processes, one to read the bagfile,
 which it then streams through a TCP/IP socket to the main Demo-ERA program.  Meanwhile the main
 Demo-ERA program, running in another process, watches the socket for input data.
 
-The easiest way to run the standalone Demo-ERA is to start two terminals, and in one
-invoke the bagfile reader/publisher and then in the other to start the ```era``` executable.
+The easiest way to run the standalone Demo-ERA is to start multiple terminals in pairs, and in one
+to invoke the bagfile reader/publisher and then in the other to start the associated
+```eraX``` executable.  
 To do this, first obtain a bagfile, which we will assume is named ```bagfile``` and stored in
 ```era/data```.  Activate one terminal, and type
 
 ```
 cd era/src
-python ./read_bagfile.py ../data/bagfile
+python ./read_bagfile_1.py ../data/bagfile
 ```
 
 Now activate a second terminal, and type
 ```
 cd era/build
-./era
+./era1
 ```
 
-At this point, you will have invoked the standalone Demo-ERA program and driven it
-with your bagfile.
+At this point, you will have invoked the standalone Demo-ERA program for AV 1
+and driven it with your bagfile.  This is similarly done for AV 2, using the
+similar commands but with the idnetifier 2 in place of 1.
+
 
 
 ### Usage
