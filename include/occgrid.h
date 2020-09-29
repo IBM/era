@@ -132,10 +132,13 @@ typedef struct nav_msgs_Odometry {
 } Odometry;
 
 typedef struct Costmap2D_struct {
+  double   av_x;
+  double   av_y;
+  double   av_z;
+  //double   av_w;
   double   cell_size;
   unsigned int x_dim;
   unsigned int y_dim;
-  MapLocation  location;
   unsigned char default_value;
   unsigned char costmap_[2500];
 } Costmap2D;

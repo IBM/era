@@ -86,6 +86,10 @@ void initCostmap(bool rolling_window, double min_obstacle_height, double max_obs
     master_observation.master_costmap.y_dim = y_dim;
     master_observation.master_costmap.default_value = default_value;
 
+    master_observation.master_costmap.av_x = robot_x;
+    master_observation.master_costmap.av_y = robot_y;
+    master_observation.master_costmap.av_z = robot_z;
+
     master_observation.master_resolution = resolution;
 
     master_observation.master_origin.x = robot_x - (x_dim - 1) / 2;
