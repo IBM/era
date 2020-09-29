@@ -23,6 +23,22 @@ int sock = 0;
 
 float odometry[] = {0.0, 0.0, 0.0};
 
+char pr_map_char[256] = {' ','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /*  16 */
+			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /*  32 */
+			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /*  48 */
+			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /*  64 */
+			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /*  80 */
+			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /*  96 */
+			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /* 112 */
+			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /* 128 */
+			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /* 144 */
+			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /* 160 */
+			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /* 176 */
+			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /* 192 */
+			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /* 208 */
+			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /* 224 */
+			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /* 240 */
+			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','.','X'}; /* 256 */
 void INThandler(int dummy)
 {
 	printf("Closing the connection\n");
@@ -85,11 +101,15 @@ void process_data(char* data, int data_size)
 	printf("Calling LZ4_compress_default...\n");
 	printf("  Input Costmap: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
 	printf("               : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
-	printf("               : Def_V %02x : ", local_map->default_value);
-	for (int ii = 0; ii < 8; ii++) {
-	  printf("%02x ", local_map->costmap_[ii]);
+	printf(" MAP (def = %02x) :\n  ", local_map->default_value);
+	for (int ii = 0; ii < 50; ii++) {
+	  for (int ij = 0; ij < 50; ij++) {
+	    int idx = 50*ii + ij;
+	    printf("%c", pr_map_char[local_map->costmap_[idx]]);
+	  }
+	  printf("\n  ");
 	}
-	printf("\n\n");
+	printf("\n");
 	unsigned char cmp_data[MAX_COMPRESSED_DATA_SIZE];
 	int n_cmp_bytes = LZ4_compress_default((char*)local_map, (char*)cmp_data, MAX_UNCOMPRESSED_DATA_SIZE, MAX_COMPRESSED_DATA_SIZE);
 	double c_ratio = 100*(1-((double)(n_cmp_bytes)/(double)(MAX_UNCOMPRESSED_DATA_SIZE)));
@@ -124,11 +144,15 @@ void process_data(char* data, int data_size)
 	printf("  Back from LZ4_decompress_safe with %u decompressed bytes\n", dec_bytes);
 	printf("  Output Costmap: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
 	printf("                : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
-	printf("                : Def_V %02x : ", remote_map->default_value);
-	for (int ii = 0; ii < 8; ii++) {
-	  printf("%02x ", remote_map->costmap_[ii]);
+	printf(" MAP (def = %02x) :\n  ", remote_map->default_value);
+	for (int ii = 0; ii < 50; ii++) {
+	  for (int ij = 0; ij < 50; ij++) {
+	    int idx = 50*ii + ij;
+	    printf("%c", pr_map_char[remote_map->costmap_[idx]]);
+	  }
+	  printf("\n  ");
 	}
-	printf("\n\n");
+	printf("\n");
 
 	
 	// Then we should "Fuse" the received GridMap with our local one
