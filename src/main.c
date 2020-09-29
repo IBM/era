@@ -163,8 +163,8 @@ void process_data(char* data, int data_size)
 	//		                         remote_x,    remote_y,    // remotel_x, remotel_y
 	//                                       100, 100, 2.0,  // size_x, size_y, resolution
 	//                                       ?? ); // def_val -- unused?
-#if(0)
 	printf("\nCalling combineGrids...\n");
+
 	combineGrids(local_map->costmap_, remote_map->costmap_,
 		     local_map->av_x, local_map->av_y,
 		     remote_map->av_x, remote_map->av_y,
@@ -172,15 +172,14 @@ void process_data(char* data, int data_size)
 		     local_map->default_value);
 
 	printf("Fused map: \n  ");
-	for (int i = 0; i < 10; i++) {
-	  for (int j = 0; j < 10; j++) {
-            int index = i * 10 + j;
-            printf("%4d", remote_map->costmap_[index]);
+	for (int ii = 0; ii < 50; ii++) {
+	  for (int ij = 0; ij < 50; ij++) {
+	    int idx = 50*ii + ij;
+	    printf("%c", pr_map_char[remote_map->costmap_[idx]]);
 	  }
 	  printf("\n  ");
 	}
 	printf("\n");
-#endif
 }
 
 

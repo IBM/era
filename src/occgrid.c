@@ -114,22 +114,26 @@ void initCostmap(bool rolling_window, double min_obstacle_height, double max_obs
 void combineGrids(unsigned char* grid1, unsigned char* grid2,
 		  double robot_x1, double robot_y1,
 		  double robot_x2, double robot_y2,
-		  unsigned int cell_x_dim, unsigned int cell_y_dim, double resolution,
+		  unsigned int x_dim, unsigned int y_dim, double resolution,
 		  char def_val ){
     //grid1 is previous map, grid2 is current map
 
     //Calculate the new origin of the map
-    double new_origin_x = robot_x2 - (cell_x_dim - 1) / 2.0;
-    double new_origin_y = robot_y2 - (cell_y_dim - 1) / 2.0;
+    double new_origin_x = robot_x2 - (x_dim - 1) / 2.0;
+    double new_origin_y = robot_y2 - (y_dim - 1) / 2.0;
 
     //Calculate the old origin of the map
-    double origin_x = robot_x1 - (cell_x_dim - 1) / 2;
-    double origin_y = robot_y1 - (cell_y_dim - 1) / 2;
+    double origin_x = robot_x1 - (x_dim - 1) / 2;
+    double origin_y = robot_y1 - (y_dim - 1) / 2;
 
     //Calculate the number of cells between the old and new origin
     unsigned int cell_ox = ((new_origin_x - origin_x) / resolution);
     unsigned int cell_oy = ((new_origin_y - origin_y) / resolution);
 
+    // Determine the dimensions (x, y) in terms of Grid cells
+    unsigned int cell_x_dim = (int)(x_dim / resolution);
+    unsigned int cell_y_dim = (int)(y_dim / resolution);
+    
     //Determine the lower left cells of the origin
     unsigned int g1_lower_left_x = min(max(cell_ox, 0), cell_x_dim);
     unsigned int g1_lower_left_y = min(max(cell_oy, 0), cell_y_dim);
@@ -144,11 +148,11 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
     unsigned int region_x_dim = cell_x_dim - cell_ox;
     unsigned int region_y_dim = cell_y_dim - cell_oy;
 
-    printf("Lower Left of Old Map = (%d, %d) \n", g1_lower_left_x, g1_lower_left_y);
-    printf("Lower Left of New Map = (%d, %d) \n", g2_lower_left_x, g2_lower_left_y);
+    printf("Lower Left: Old (%d, %d)  New (%d, %d)\n", g1_lower_left_x, g1_lower_left_y, g2_lower_left_x, g2_lower_left_y);
+    //printf("Lower Left of New Map = (%d, %d) \n", g2_lower_left_x, g2_lower_left_y);
     printf("Index of Old Map, Index of New Map = %d, %d \n", g1_index, g2_index);
     printf("Dimensions of Overlapping Region = (%d, %d) \n", region_x_dim, region_y_dim);
-
+    /*
     printf("  map1: \n  ");
     for (int i = 0; i < 10; i++) {
         for (int j = 0; j < 10; j++) {
@@ -166,26 +170,27 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
         }
         printf("\n  ");
     }
-
+    */
     //Iterate through grids and assign corresponding max value
     unsigned int total_count = 0;
     unsigned int count = 0;
     for (int i = 0; i < cell_x_dim; i++) {
         for (int j = 0; j < cell_y_dim; j++) {
-	  if (g1_index == cell_x_dim * cell_y_dim) return;
+	    if (g1_index == cell_x_dim * cell_y_dim) return;
             if (count == region_x_dim) {
                 g1_index = g1_index + cell_ox;
                 g2_index = g2_index + cell_ox;
                 count = 0;
             }
             grid2[g2_index] = max(grid2[g2_index], grid1[g1_index]);
-	    // printf("%d, %d \n", g1_index, g2_index);
+	    printf("%d : %d v %d : %d, %d \n", total_count, count, region_x_dim, g1_index, g2_index);
             g1_index++;
             g2_index++;
             count++;
             total_count++;
         }
     }
+    /*
     printf("combined map: \n  ");
     for (int i = 0; i < 10; i++) {
         for (int j = 0; j < 10; j++) {
@@ -195,6 +200,7 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
         printf("\n  ");
     }
     printf("\n");
+    */
     return;
 }
 
