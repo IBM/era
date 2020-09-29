@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
 	while (true) {
 
 		int valread = read(sock , buffer, 10);
-		printf("read %d bytes\n", valread);
+		printf("Top: read %d bytes\n", valread);
 		fflush(stdout);
 
 		if(buffer[0] == 'L' && buffer[7] == 'L') {
@@ -219,12 +219,16 @@ int main(int argc, char *argv[])
 				printf("read %d bytes for %d total bytes of %d\n", valread, total_bytes_read, message_size);
 				fflush(stdout);
 			}
+			if (total_bytes_read > message_size) {
+                          printf("NOTE: read more total bytes than expected: %u vs %u\n", total_bytes_read, message_size);
+                        }
 			printf("Calling process_buffer for %d total bytes\n", total_bytes_read);
 			process_data(buffer, total_bytes_read);
 
 		}
 
-		if(buffer[0] == 'O' && buffer[3]) {
+		if(buffer[0] == 'O' && buffer[3] == 'O') {
+                        //printf("BUFFER %s\n", buffer); fflush(stdout);
 			char * ptr;
 			int message_size = strtol(buffer+1, &ptr, 10);
 			printf("Odometry: expecting message size: %d\n", message_size);
