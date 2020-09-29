@@ -132,10 +132,14 @@ typedef struct nav_msgs_Odometry {
 } Odometry;
 
 typedef struct Costmap2D {
-    unsigned int size_x;
-    unsigned int size_y;
-    unsigned char default_value;
-    unsigned char costmap_[2500];
+  double x_posn;
+  double y_posn;
+  //double z_posn;
+  double cell_size;
+  unsigned int x_dim;
+  unsigned int y_dim;
+  unsigned char default_value;
+  unsigned char costmap_[2500];
 } Costmap2D;
 
 typedef struct Observation {
@@ -150,9 +154,9 @@ typedef struct Observation {
 } Observation;
 
 //Define global variables
-Observation master_observation;
-char data[199992];
-bool rotating_window;
+extern Observation master_observation;
+extern char data[199992];
+extern bool rotating_window;
 
 //Define functions
 unsigned char* combineGrids(unsigned char* grid1, unsigned char* grid2, double robot_x1, double robot_y1,
