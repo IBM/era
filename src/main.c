@@ -61,8 +61,9 @@ void write_array_to_file(unsigned char * data, long size)
   counter++;
 }
 
-#define MAX_GRID_SIZE   50 * 50  // Taken from size_x, size_y, resolution
-#define MAX_COMPRESSED_DATA_SIZE    MAX_GRID_SIZE
+//#define MAX_GRID_SIZE   50 * 50  // Taken from size_x, size_y, resolution
+#define MAX_UNCOMPRESSED_DATA_SIZE  sizeof(Costmap2D) // MAX_GRID_SIZE
+#define MAX_COMPRESSED_DATA_SIZE    MAX_UNCOMPRESSED_DATA_SIZE //(In case of no compression)?  
 
 #define MAX_XMIT_OUTPUTS  41800  // Really something like 41782 I think
 
@@ -82,9 +83,9 @@ void process_data(char* data, int data_size)
 	// Now we compress the grid for transmission...
 	printf("Calling LZ4_compress_default...\n");
 	unsigned char cmp_data[MAX_COMPRESSED_DATA_SIZE];
-	int cmp_bytes = LZ4_compress_default((char*)grid, (char*)cmp_data, MAX_GRID_SIZE, MAX_COMPRESSED_DATA_SIZE);
-	double c_ratio = 100*(1-((double)(cmp_bytes)/(double)(MAX_GRID_SIZE)));
-	printf("  Back from LZ4_compress_default: %u bytes -> %u bytes for %5.2f%%\n", MAX_GRID_SIZE, cmp_bytes, c_ratio);
+	int cmp_bytes = LZ4_compress_default((char*)grid, (char*)cmp_data, MAX_UNCOMPRESSED_DATA_SIZE, MAX_COMPRESSED_DATA_SIZE);
+	double c_ratio = 100*(1-((double)(cmp_bytes)/(double)(MAX_UNCOMPRESSED_DATA_SIZE)));
+	printf("  Back from LZ4_compress_default: %lu bytes -> %u bytes for %5.2f%%\n", MAX_UNCOMPRESSED_DATA_SIZE, cmp_bytes, c_ratio);
 
 	// Now we encode and transmit the grid...
 	printf("Calling do_xmit_pipeline for %u compressed grid elements\n", cmp_bytes);
@@ -108,8 +109,8 @@ void process_data(char* data, int data_size)
 
 	// Now we decompress the grid for transmission...
 	//printf("Calling LZ4_decompress_default...\n");
-	//unsigned char uncmp_data[MAX_GRID_SIZE];
-	//int dec_bytes = LZ4_decompress_safe((char*)recvd_msg, (char*)uncmp_data, n_recvd_in, MAX_GRID_SIZE);
+	//unsigned char uncmp_data[MAX_UNCOMPRESSED_DATA_SIZE];
+	//int dec_bytes = LZ4_decompress_safe((char*)recvd_msg, (char*)uncmp_data, n_recvd_in, MAX_UNCOMPRESSED_DATA_SIZE);
 	//printf("  Back from LZ4_decompress_safe with %u decompressed bytes\n", dec_bytes);
 
 	
