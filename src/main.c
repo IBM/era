@@ -81,18 +81,26 @@ void process_data(char* data, int data_size)
 	write_array_to_file(grid, 100/2.0*100/2.0);
 
 	// Now we compress the grid for transmission...
+	Costmap2D* local_map = &(master_observation.master_costmap);
 	printf("Calling LZ4_compress_default...\n");
+	printf("  Input Costmap: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
+	printf("               : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
+	printf("               : Def_V %02x : ", local_map->default_value);
+	for (int ii = 0; ii < 8; ii++) {
+	  printf("%02x ", local_map->costmap_[ii]);
+	}
+	printf("\n\n");
 	unsigned char cmp_data[MAX_COMPRESSED_DATA_SIZE];
-	int cmp_bytes = LZ4_compress_default((char*)grid, (char*)cmp_data, MAX_UNCOMPRESSED_DATA_SIZE, MAX_COMPRESSED_DATA_SIZE);
-	double c_ratio = 100*(1-((double)(cmp_bytes)/(double)(MAX_UNCOMPRESSED_DATA_SIZE)));
-	printf("  Back from LZ4_compress_default: %lu bytes -> %u bytes for %5.2f%%\n", MAX_UNCOMPRESSED_DATA_SIZE, cmp_bytes, c_ratio);
+	int n_cmp_bytes = LZ4_compress_default((char*)local_map, (char*)cmp_data, MAX_UNCOMPRESSED_DATA_SIZE, MAX_COMPRESSED_DATA_SIZE);
+	double c_ratio = 100*(1-((double)(n_cmp_bytes)/(double)(MAX_UNCOMPRESSED_DATA_SIZE)));
+	printf("  Back from LZ4_compress_default: %lu bytes -> %u bytes for %5.2f%%\n", MAX_UNCOMPRESSED_DATA_SIZE, n_cmp_bytes, c_ratio);
 
 	// Now we encode and transmit the grid...
-	printf("Calling do_xmit_pipeline for %u compressed grid elements\n", cmp_bytes);
+	printf("Calling do_xmit_pipeline for %u compressed grid elements\n", n_cmp_bytes);
 	int n_xmit_out;
 	float xmit_out_real[MAX_XMIT_OUTPUTS];
 	float xmit_out_imag[MAX_XMIT_OUTPUTS];
-	do_xmit_pipeline(cmp_bytes, cmp_data, &n_xmit_out, xmit_out_real, xmit_out_imag);
+	do_xmit_pipeline(n_cmp_bytes, cmp_data, &n_xmit_out, xmit_out_real, xmit_out_imag);
 	printf("  Back from do_xmit_pipeline with %u xmit outputs...\n", n_xmit_out);
 
 	// This is now the content that should be sent out via IEEE 802.11p WiFi
@@ -107,11 +115,20 @@ void process_data(char* data, int data_size)
 	unsigned char recvd_msg[1500]; // MAX size of original message in bytes
 	//do_recv_pipeline(int n_recvd_in, recvd_in_real, recvd_in_imag, recvd_msg_len, recvd_msg)
 
-	// Now we decompress the grid for transmission...
-	//printf("Calling LZ4_decompress_default...\n");
-	//unsigned char uncmp_data[MAX_UNCOMPRESSED_DATA_SIZE];
+	// Now we decompress the grid received via transmission...
+	printf("Calling LZ4_decompress_default...\n");
+	unsigned char uncmp_data[MAX_UNCOMPRESSED_DATA_SIZE];
 	//int dec_bytes = LZ4_decompress_safe((char*)recvd_msg, (char*)uncmp_data, n_recvd_in, MAX_UNCOMPRESSED_DATA_SIZE);
-	//printf("  Back from LZ4_decompress_safe with %u decompressed bytes\n", dec_bytes);
+	int dec_bytes = LZ4_decompress_safe((char*)cmp_data, (char*)uncmp_data, n_cmp_bytes, MAX_UNCOMPRESSED_DATA_SIZE);
+	Costmap2D* remote_map = (Costmap2D*)&(uncmp_data); // Convert "type" to Costmap2D
+	printf("  Back from LZ4_decompress_safe with %u decompressed bytes\n", dec_bytes);
+	printf("  Output Costmap: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
+	printf("                : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
+	printf("                : Def_V %02x : ", remote_map->default_value);
+	for (int ii = 0; ii < 8; ii++) {
+	  printf("%02x ", remote_map->costmap_[ii]);
+	}
+	printf("\n\n");
 
 	
 	// Then we should "Fuse" the received GridMap with our local one
@@ -122,6 +139,24 @@ void process_data(char* data, int data_size)
 	//		                         remote_x,    remote_y,    // remotel_x, remotel_y
 	//                                       100, 100, 2.0,  // size_x, size_y, resolution
 	//                                       ?? ); // def_val -- unused?
+#if(0)
+	printf("\nCalling combineGrids...\n");
+	combineGrids(local_map->costmap_, remote_map->costmap_,
+		     local_map->av_x, local_map->av_y,
+		     remote_map->av_x, remote_map->av_y,
+		     local_map->x_dim, local_map->y_dim, local_map->cell_size,
+		     local_map->default_value);
+
+	printf("Fused map: \n  ");
+	for (int i = 0; i < 10; i++) {
+	  for (int j = 0; j < 10; j++) {
+            int index = i * 10 + j;
+            printf("%4d", remote_map->costmap_[index]);
+	  }
+	  printf("\n  ");
+	}
+	printf("\n");
+#endif
 }
 
 
@@ -164,24 +199,27 @@ int main(int argc, char *argv[])
 
 		int valread = read(sock , buffer, 10);
 		printf("read %d bytes\n", valread);
+		fflush(stdout);
 
 		if(buffer[0] == 'L' && buffer[7] == 'L') {
 			char * ptr;
 			int message_size = strtol(buffer+1, &ptr, 10);
-			printf("expecting message size: %d\n", message_size);
+			printf("Lidar: expecting message size: %d\n", message_size);
+			fflush(stdout);
 			send(sock, ack, 2, 0);
 
 			char * message_ptr = buffer;
 			int total_bytes_read = 0;
-			while(total_bytes_read != message_size) {
+			while(total_bytes_read < message_size) {
 
 				valread = read(sock , message_ptr, 10000);
-				printf("read %d bytes\n", valread);
 
 				message_ptr = message_ptr + valread;
 				total_bytes_read += valread;
+				printf("read %d bytes for %d total bytes of %d\n", valread, total_bytes_read, message_size);
+				fflush(stdout);
 			}
-
+			printf("Calling process_buffer for %d total bytes\n", total_bytes_read);
 			process_data(buffer, total_bytes_read);
 
 		}
@@ -189,7 +227,7 @@ int main(int argc, char *argv[])
 		if(buffer[0] == 'O' && buffer[3]) {
 			char * ptr;
 			int message_size = strtol(buffer+1, &ptr, 10);
-			printf("expecting message size: %d\n", message_size);
+			printf("Odometry: expecting message size: %d\n", message_size);
 			send(sock, ack, 2, 0);
 
 			int total_bytes_read = 0;

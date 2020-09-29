@@ -82,6 +82,7 @@ void initCostmap(bool rolling_window, double min_obstacle_height, double max_obs
     master_observation.max_obstacle_height_ = max_obstacle_height; //TODO:
     master_observation.raytrace_range_ = raytrace_range; //TODO:
 
+    master_observation.master_costmap.cell_size = resolution;
     master_observation.master_costmap.x_dim = x_dim;
     master_observation.master_costmap.y_dim = y_dim;
     master_observation.master_costmap.default_value = default_value;
@@ -106,15 +107,15 @@ void initCostmap(bool rolling_window, double min_obstacle_height, double max_obs
 
 /******************* FUNCTIONS *********************/
 
-/* The combineGrids function takes two input functions, grid1 and grid2, 
+/* The combineGrids function takes two input map grids, grid1 and grid2, 
    and "fuses" (or combines) the information from both into grid2
    (overwriting some or all af that grid's contents).
 */
-unsigned char* combineGrids(unsigned char* grid1, unsigned char* grid2,
-			    double robot_x1, double robot_y1,
-                            double robot_x2, double robot_y2,
-			    unsigned int cell_x_dim, unsigned int cell_y_dim, double resolution,
-			    char def_val ){
+void combineGrids(unsigned char* grid1, unsigned char* grid2,
+		  double robot_x1, double robot_y1,
+		  double robot_x2, double robot_y2,
+		  unsigned int cell_x_dim, unsigned int cell_y_dim, double resolution,
+		  char def_val ){
     //grid1 is previous map, grid2 is current map
 
     //Calculate the new origin of the map
@@ -148,22 +149,22 @@ unsigned char* combineGrids(unsigned char* grid1, unsigned char* grid2,
     printf("Index of Old Map, Index of New Map = %d, %d \n", g1_index, g2_index);
     printf("Dimensions of Overlapping Region = (%d, %d) \n", region_x_dim, region_y_dim);
 
-    printf("OLD map: \n");
+    printf("  map1: \n  ");
     for (int i = 0; i < 10; i++) {
         for (int j = 0; j < 10; j++) {
             int index = i * 10 + j;
-            printf("%4d", *(grid1 + index));
+            printf("%4d", grid1[index]);
         }
-        printf("\n\n");
+        printf("\n  ");
     }
 
-    printf("NEW map: \n");
+    printf("map2: \n  ");
     for (int i = 0; i < 10; i++) {
         for (int j = 0; j < 10; j++) {
             int index = i * 10 + j;
-            printf("%4d", *(grid2 + index));
+            printf("%4d", grid2[index]);
         }
-        printf("\n\n");
+        printf("\n  ");
     }
 
     //Iterate through grids and assign corresponding max value
@@ -171,20 +172,30 @@ unsigned char* combineGrids(unsigned char* grid1, unsigned char* grid2,
     unsigned int count = 0;
     for (int i = 0; i < cell_x_dim; i++) {
         for (int j = 0; j < cell_y_dim; j++) {
-            if (g1_index == cell_x_dim * cell_y_dim) return grid2;
+	  if (g1_index == cell_x_dim * cell_y_dim) return;
             if (count == region_x_dim) {
                 g1_index = g1_index + cell_ox;
                 g2_index = g2_index + cell_ox;
                 count = 0;
             }
             grid2[g2_index] = max(grid2[g2_index], grid1[g1_index]);
-            printf("%d, %d \n", g1_index, g2_index);
+	    // printf("%d, %d \n", g1_index, g2_index);
             g1_index++;
             g2_index++;
             count++;
             total_count++;
         }
     }
+    printf("combined map: \n  ");
+    for (int i = 0; i < 10; i++) {
+        for (int j = 0; j < 10; j++) {
+            int index = i * 10 + j;
+            printf("%4d", grid2[index]);
+        }
+        printf("\n  ");
+    }
+    printf("\n");
+    return;
 }
 
 unsigned char* cloudToOccgrid(float* data, unsigned int data_size, double robot_x, double robot_y, double robot_z, double robot_yaw, bool rolling_window, double min_obstacle_height, double max_obstacle_height, double raytrace_range, unsigned int x_dim,

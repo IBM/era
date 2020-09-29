@@ -160,7 +160,7 @@ extern char data[199992];
 extern bool rotating_window;
 
 //Define functions
-unsigned char* combineGrids(unsigned char* grid1, unsigned char* grid2, double robot_x1, double robot_y1,
+void combineGrids(unsigned char* grid1, unsigned char* grid2, double robot_x1, double robot_y1,
                             double robot_x2, double robot_y2, unsigned int cell_size_x, unsigned int cell_size_y, double resolution, char def_val);
 
 unsigned char* cloudToOccgrid(float* data, unsigned int data_size, double robot_x, double robot_y, double robot_z, double robot_yaw, bool rolling_window,
