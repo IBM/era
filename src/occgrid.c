@@ -73,33 +73,34 @@ void addStaticObstacle(unsigned char* obstacle_type) {
 }
 #endif
 
-void initCostmap(bool rolling_window, double min_obstacle_height, double max_obstacle_height, double raytrace_range, unsigned int x_dim,
+void initCostmap(Observation* obsvtn,
+		 bool rolling_window, double min_obstacle_height, double max_obstacle_height, double raytrace_range, unsigned int x_dim,
                  unsigned int y_dim, double resolution, unsigned char default_value, double robot_x, double robot_y, double robot_z) {
     printf("Initialize Master Costmap\n");
 
-    master_observation.rolling_window_ = rolling_window; //TODO:
-    master_observation.min_obstacle_height_ = min_obstacle_height; //TODO:
-    master_observation.max_obstacle_height_ = max_obstacle_height; //TODO:
-    master_observation.raytrace_range_ = raytrace_range; //TODO:
+    obsvtn->rolling_window_ = rolling_window; //TODO:
+    obsvtn->min_obstacle_height_ = min_obstacle_height; //TODO:
+    obsvtn->max_obstacle_height_ = max_obstacle_height; //TODO:
+    obsvtn->raytrace_range_ = raytrace_range; //TODO:
 
-    master_observation.master_costmap.cell_size = resolution;
-    master_observation.master_costmap.x_dim = x_dim;
-    master_observation.master_costmap.y_dim = y_dim;
-    master_observation.master_costmap.default_value = default_value;
+    obsvtn->master_costmap.cell_size = resolution;
+    obsvtn->master_costmap.x_dim = x_dim;
+    obsvtn->master_costmap.y_dim = y_dim;
+    obsvtn->master_costmap.default_value = default_value;
 
-    master_observation.master_costmap.av_x = robot_x;
-    master_observation.master_costmap.av_y = robot_y;
-    master_observation.master_costmap.av_z = robot_z;
+    obsvtn->master_costmap.av_x = robot_x;
+    obsvtn->master_costmap.av_y = robot_y;
+    obsvtn->master_costmap.av_z = robot_z;
 
-    master_observation.master_resolution = resolution;
+    obsvtn->master_resolution = resolution;
 
-    master_observation.master_origin.x = robot_x - (x_dim - 1) / 2;
-    master_observation.master_origin.y = robot_y - (y_dim - 1) / 2;
-    master_observation.master_origin.z = robot_z;
-    printf("Master Origin -> <%f, %f, %f>\n", master_observation.master_origin.x, master_observation.master_origin.y, master_observation.master_origin.z);
+    obsvtn->master_origin.x = robot_x - (x_dim - 1) / 2;
+    obsvtn->master_origin.y = robot_y - (y_dim - 1) / 2;
+    obsvtn->master_origin.z = robot_z;
+    printf("Master Origin -> <%f, %f, %f>\n", obsvtn->master_origin.x, obsvtn->master_origin.y, obsvtn->master_origin.z);
 
-    for (int i = 0; i < master_observation.master_costmap.x_dim * master_observation.master_costmap.y_dim / (master_observation.master_resolution * master_observation.master_resolution); i++) {
-        master_observation.master_costmap.costmap_[i] = master_observation.master_costmap.default_value;
+    for (int i = 0; i < obsvtn->master_costmap.x_dim * obsvtn->master_costmap.y_dim / (obsvtn->master_resolution * obsvtn->master_resolution); i++) {
+        obsvtn->master_costmap.costmap_[i] = obsvtn->master_costmap.default_value;
     }
 
     printf("Initialize Master Costmap ... DONE\n\n");
@@ -204,10 +205,14 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
     return;
 }
 
-unsigned char* cloudToOccgrid(float* data, unsigned int data_size, double robot_x, double robot_y, double robot_z, double robot_yaw, bool rolling_window, double min_obstacle_height, double max_obstacle_height, double raytrace_range, unsigned int x_dim,
-                              unsigned int y_dim, double resolution, unsigned char default_value) {
+unsigned char* cloudToOccgrid(float* data, unsigned int data_size,
+			      double robot_x, double robot_y, double robot_z, double robot_yaw,
+			      bool rolling_window,
+			      double min_obstacle_height, double max_obstacle_height, double raytrace_range,
+			      unsigned int x_dim, unsigned int y_dim, double resolution,
+			      unsigned char default_value) {
 
-    initCostmap(rolling_window, min_obstacle_height, max_obstacle_height, raytrace_range, x_dim, y_dim, resolution, default_value, robot_x, robot_y, robot_z);
+    initCostmap(&master_observation, rolling_window, min_obstacle_height, max_obstacle_height, raytrace_range, x_dim, y_dim, resolution, default_value, robot_x, robot_y, robot_z);
 
     //printf("(1) Number of elements : %d ... ", data_size);
     //printf("First Coordinate = <%f, %f>\n", *data, *(data+1));
@@ -217,7 +222,8 @@ unsigned char* cloudToOccgrid(float* data, unsigned int data_size, double robot_
     return master_observation.master_costmap.costmap_;
 }
 
-void updateMap(float* data, unsigned int data_size, double robot_x, double robot_y, double robot_z, double robot_yaw) {
+void updateMap(float* data, unsigned int data_size,
+	       double robot_x, double robot_y, double robot_z, double robot_yaw) {
     if (master_observation.rolling_window_) {
         //printf("\nUpdating Map .... \n");
         //printf("   robot_x = %f, robot_y = %f, robot_yaw = %f \n", robot_x, robot_y, robot_yaw);
@@ -292,8 +298,10 @@ void updateOrigin(double new_origin_x, double new_origin_y) {
 
     // copy the local window in the costmap to the local map
     copyMapRegion(master_observation.master_costmap.costmap_, lower_left_x, lower_left_y,
-                  master_observation.master_costmap.x_dim / master_observation.master_resolution, start_x, start_y,
-                  master_observation.master_costmap.x_dim / master_observation.master_resolution, cell_x_dim, cell_y_dim);
+                  master_observation.master_costmap.x_dim / master_observation.master_resolution,
+		  start_x, start_y,
+                  master_observation.master_costmap.x_dim / master_observation.master_resolution,
+		  cell_x_dim, cell_y_dim);
 
 
     // now we want to copy the overlapping information back into the map, but in its new location
@@ -301,11 +309,11 @@ void updateOrigin(double new_origin_x, double new_origin_y) {
 }
 
 //TODO: Modify such that it explicitly copies the data to the destination map
-void copyMapRegion(unsigned char* source_map, unsigned int sm_lower_left_x, unsigned int sm_lower_left_y,
-                       unsigned int sm_x_dim, unsigned int dm_lower_left_x,
-                       unsigned int dm_lower_left_y, unsigned int dm_x_dim, unsigned int region_x_dim,
-                       unsigned int region_y_dim) {
-// we'll first need to compute the starting points for each map
+void copyMapRegion(unsigned char* source_map,
+		   unsigned int sm_lower_left_x, unsigned int sm_lower_left_y, unsigned int sm_x_dim,
+		   unsigned int dm_lower_left_x, unsigned int dm_lower_left_y, unsigned int dm_x_dim,
+		   unsigned int region_x_dim,    unsigned int region_y_dim) {
+    // we'll first need to compute the starting points for each map
     //printf("CopyMapRegion() Input Parameters: \n ... sm_lower_left_x = %d,\n ... sm_lowerLeft_y = %d,\n ... sm_x_dim = %d,\n ... dm_lower_left_x = %d,\n ... dm_lower_left_y = %d,\n ... dm_x_dim = %d,\n ... regions_x_dim = %d,\n ... region_y_dim = %d\n",sm_lower_left_x, sm_lower_left_y, sm_x_dim, dm_lower_left_x, dm_lower_left_y, dm_x_dim, region_x_dim, region_y_dim);
     unsigned int sm_index = (sm_lower_left_y * sm_x_dim + sm_lower_left_x);
     unsigned int dm_index = (dm_lower_left_y * dm_x_dim + dm_lower_left_x);

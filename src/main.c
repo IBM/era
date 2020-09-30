@@ -83,6 +83,12 @@ void write_array_to_file(unsigned char * data, long size)
 
 #define MAX_XMIT_OUTPUTS  41800  // Really something like 41782 I think
 
+// Setting these up as globals so I can test the combineGrids
+//  against "historic" gridmaps (rather than the same one)
+#define  RMAP_HIST_DEPTH  10
+unsigned int  uncmp_count = 0;
+unsigned char uncmp_data[RMAP_HIST_DEPTH][MAX_UNCOMPRESSED_DATA_SIZE];
+
 void process_data(char* data, int data_size)
 {
   printf("Calling cloudToOccgrid...\n");
@@ -98,10 +104,11 @@ void process_data(char* data, int data_size)
 
 	// Now we compress the grid for transmission...
 	Costmap2D* local_map = &(master_observation.master_costmap);
+#if(1)
 	printf("Calling LZ4_compress_default...\n");
-	printf("  Input Costmap: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
+	printf("  Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
 	printf("               : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
-	printf(" MAP (def = %02x) :\n  ", local_map->default_value);
+	printf("  ");
 	for (int ii = 0; ii < 50; ii++) {
 	  for (int ij = 0; ij < 50; ij++) {
 	    int idx = 50*ii + ij;
@@ -110,6 +117,7 @@ void process_data(char* data, int data_size)
 	  printf("\n  ");
 	}
 	printf("\n");
+#endif
 	unsigned char cmp_data[MAX_COMPRESSED_DATA_SIZE];
 	int n_cmp_bytes = LZ4_compress_default((char*)local_map, (char*)cmp_data, MAX_UNCOMPRESSED_DATA_SIZE, MAX_COMPRESSED_DATA_SIZE);
 	double c_ratio = 100*(1-((double)(n_cmp_bytes)/(double)(MAX_UNCOMPRESSED_DATA_SIZE)));
@@ -137,14 +145,19 @@ void process_data(char* data, int data_size)
 
 	// Now we decompress the grid received via transmission...
 	printf("Calling LZ4_decompress_default...\n");
-	unsigned char uncmp_data[MAX_UNCOMPRESSED_DATA_SIZE];
+	//unsigned char uncmp_data[MAX_UNCOMPRESSED_DATA_SIZE];
 	//int dec_bytes = LZ4_decompress_safe((char*)recvd_msg, (char*)uncmp_data, n_recvd_in, MAX_UNCOMPRESSED_DATA_SIZE);
-	int dec_bytes = LZ4_decompress_safe((char*)cmp_data, (char*)uncmp_data, n_cmp_bytes, MAX_UNCOMPRESSED_DATA_SIZE);
-	Costmap2D* remote_map = (Costmap2D*)&(uncmp_data); // Convert "type" to Costmap2D
+	unsigned int  uncmp_idx = uncmp_count % RMAP_HIST_DEPTH;
+	unsigned int  rmap_idx  = (uncmp_count >= RMAP_HIST_DEPTH) ? (uncmp_idx + 1)%RMAP_HIST_DEPTH : 0;
+	int dec_bytes = LZ4_decompress_safe((char*)cmp_data, (char*)uncmp_data[uncmp_idx++], n_cmp_bytes, MAX_UNCOMPRESSED_DATA_SIZE);
+	uncmp_count++;
+
+	Costmap2D* remote_map = (Costmap2D*)&(uncmp_data[rmap_idx]); // Convert "type" to Costmap2D
+#if(1)
 	printf("  Back from LZ4_decompress_safe with %u decompressed bytes\n", dec_bytes);
-	printf("  Output Costmap: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
+	printf("  Output CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
 	printf("                : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
-	printf(" MAP (def = %02x) :\n  ", remote_map->default_value);
+	printf("  ");
 	for (int ii = 0; ii < 50; ii++) {
 	  for (int ij = 0; ij < 50; ij++) {
 	    int idx = 50*ii + ij;
@@ -153,8 +166,8 @@ void process_data(char* data, int data_size)
 	  printf("\n  ");
 	}
 	printf("\n");
+#endif
 
-	
 	// Then we should "Fuse" the received GridMap with our local one
 	//  We need to "peel out" the remote odometry data from somewhere (in the message?)
 	//unsigned char* combineGrids(unsigned char* grid1, unsigned char* grid2, double robot_x1, double robot_y1,
@@ -170,8 +183,10 @@ void process_data(char* data, int data_size)
 		     remote_map->av_x, remote_map->av_y,
 		     local_map->x_dim, local_map->y_dim, local_map->cell_size,
 		     local_map->default_value);
-
-	printf("Fused map: \n  ");
+#if(1)
+	printf("  Fused CostMAP : AV x %lf y %lf z %lf  IDX %d\n", remote_map->av_x, remote_map->av_y, remote_map->av_z, rmap_idx);
+	printf("                : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
+	printf("  ");
 	for (int ii = 0; ii < 50; ii++) {
 	  for (int ij = 0; ij < 50; ij++) {
 	    int idx = 50*ii + ij;
@@ -180,6 +195,9 @@ void process_data(char* data, int data_size)
 	  printf("\n  ");
 	}
 	printf("\n");
+#endif
+	printf("Returning from process_buffer\n");
+	fflush(stdout);
 }
 
 
@@ -219,7 +237,7 @@ int main(int argc, char *argv[])
 	}
 
 	while (true) {
-
+	  printf("Calling read on the socket...\n"); fflush(stdout);
 		int valread = read(sock , buffer, 10);
 		printf("Top: read %d bytes\n", valread);
 		fflush(stdout);
@@ -247,11 +265,10 @@ int main(int argc, char *argv[])
                         }
 			printf("Calling process_buffer for %d total bytes\n", total_bytes_read);
 			process_data(buffer, total_bytes_read);
-
+			printf("Back from process_buffer for Lidar\n");
+			fflush(stdout);
 		}
-
-		if(buffer[0] == 'O' && buffer[3] == 'O') {
-                        //printf("BUFFER %s\n", buffer); fflush(stdout);
+		else if(buffer[0] == 'O' && buffer[3] == 'O') {
 			char * ptr;
 			int message_size = strtol(buffer+1, &ptr, 10);
 			printf("Odometry: expecting message size: %d\n", message_size);
@@ -269,7 +286,13 @@ int main(int argc, char *argv[])
 
 			printf("odometry: %f %f %f\n", odometry[0], odometry[1], odometry[2]);
 
-
+		} else {
+		  printf("BUFFER : '");
+		  for (int ii = 0; ii < 8; ii++) {
+		    printf("%c", buffer[ii]);
+		  }
+		  printf("'\n");
+		  fflush(stdout);
 		}
 
 	}

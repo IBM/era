@@ -202,7 +202,11 @@ void printMap();
 
 void addStaticObstacle(unsigned char* obstacle_type);
 
-void initCostmap(bool rolling_window, double min_obstacle_height, double max_obstacle_height, double raytrace_range, unsigned int size_x,
-                 unsigned int size_y, double resolution, unsigned char default_value, double robot_x, double robot_y, double robot_z);
+void initCostmap(Observation* obsvtn,
+		 bool rolling_window,
+		 double min_obstacle_height, double max_obstacle_height, double raytrace_range,
+		 unsigned int size_x, unsigned int size_y, double resolution,
+		 unsigned char default_value,
+		 double robot_x, double robot_y, double robot_z);
 
 #endif // OCCGRID_H_
