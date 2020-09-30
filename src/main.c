@@ -25,22 +25,8 @@ int sock = 0;
 
 float odometry[] = {0.0, 0.0, 0.0};
 
-char pr_map_char[256] = {'.','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /*  16 */
-			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /*  32 */
-			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /*  48 */
-			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /*  64 */
-			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /*  80 */
-			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /*  96 */
-			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /* 112 */
-			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /* 128 */
-			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /* 144 */
-			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /* 160 */
-			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /* 176 */
-			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /* 192 */
-			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /* 208 */
-			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /* 224 */
-			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /* 240 */
-			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?',' ','X'}; /* 256 */
+char pr_map_char[256];
+
 void INThandler(int dummy)
 {
   printf("In SIGINT INThandler -- Closing the connection and exiting\n");
@@ -48,6 +34,7 @@ void INThandler(int dummy)
   exit(-1);
 }
 
+/* 
 float bytes_to_float(unsigned char * bytes)
 {
 	unsigned char b[] = {bytes[0], bytes[1], bytes[2], bytes[3]};
@@ -56,6 +43,7 @@ float bytes_to_float(unsigned char * bytes)
 
 	return f;
 }
+*/
 
 int counter = 0;
 
@@ -222,6 +210,14 @@ int main(int argc, char *argv[])
 	
 	signal(SIGINT, INThandler);
 
+	// Set up the print-map-character array (to xlate map values to ASCII symbols)
+	for (int i = 0; i < 256; i++) {
+	  pr_map_char[i] = '?';
+	}
+	pr_map_char[NO_INFORMATION]  = '.';
+	pr_map_char[FREE_SPACE]      = ' ';
+	pr_map_char[LETHAL_OBSTACLE] = 'X';
+
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)  {
 		printf("Socket creation failed...\n");
 		exit(0);
@@ -290,9 +286,9 @@ int main(int argc, char *argv[])
 			DBGOUT(printf("read %d bytes\n", valread));
 
 
-			odometry[0] = bytes_to_float(buffer);
-			odometry[1] = bytes_to_float(buffer+4);
-			odometry[2] = bytes_to_float(buffer+8);
+			odometry[0] = *((float*)(buffer));   //bytes_to_float(buffer);
+			odometry[1] = *((float*)(buffer+4)); //bytes_to_float(buffer+4);
+			odometry[2] = *((float*)(buffer+8)); //bytes_to_float(buffer+8);
 
 			printf("odometry: %f %f %f\n", odometry[0], odometry[1], odometry[2]);
 
