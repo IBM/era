@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "globals.h"
 #include "occgrid.h"
 
 //Define global variables
@@ -41,6 +42,7 @@ unsigned int getIndex(unsigned int i, unsigned int j) {
     return (master_observation.master_costmap.x_dim / master_observation.master_resolution) * j + i;
 }
 
+/*
 void printMap() {
     printf("map: \n");
     for (int i = 0; i < master_observation.master_costmap.y_dim / master_observation.master_resolution; i++) {
@@ -51,6 +53,7 @@ void printMap() {
         printf("\n\n");
     }
 }
+*/
 
 /** This is not used?  Should be cleaned up, anyway:
     Move from a string input to an enum type for obstaclt_type?
@@ -76,7 +79,7 @@ void addStaticObstacle(unsigned char* obstacle_type) {
 void initCostmap(Observation* obsvtn,
 		 bool rolling_window, double min_obstacle_height, double max_obstacle_height, double raytrace_range, unsigned int x_dim,
                  unsigned int y_dim, double resolution, unsigned char default_value, double robot_x, double robot_y, double robot_z) {
-    printf("Initialize Master Costmap\n");
+  DBGOUT(printf("Initialize Master Costmap\n"));
 
     obsvtn->rolling_window_ = rolling_window; //TODO:
     obsvtn->min_obstacle_height_ = min_obstacle_height; //TODO:
@@ -97,13 +100,13 @@ void initCostmap(Observation* obsvtn,
     obsvtn->master_origin.x = robot_x - (x_dim - 1) / 2;
     obsvtn->master_origin.y = robot_y - (y_dim - 1) / 2;
     obsvtn->master_origin.z = robot_z;
-    printf("Master Origin -> <%f, %f, %f>\n", obsvtn->master_origin.x, obsvtn->master_origin.y, obsvtn->master_origin.z);
+    DBGOUT(printf("Master Origin -> <%f, %f, %f>\n", obsvtn->master_origin.x, obsvtn->master_origin.y, obsvtn->master_origin.z));
 
     for (int i = 0; i < obsvtn->master_costmap.x_dim * obsvtn->master_costmap.y_dim / (obsvtn->master_resolution * obsvtn->master_resolution); i++) {
         obsvtn->master_costmap.costmap_[i] = obsvtn->master_costmap.default_value;
     }
 
-    printf("Initialize Master Costmap ... DONE\n\n");
+    DBGOUT(printf("Initialize Master Costmap ... DONE\n\n"));
 }
 
 /******************* FUNCTIONS *********************/
@@ -149,29 +152,10 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
     unsigned int region_x_dim = cell_x_dim - cell_ox;
     unsigned int region_y_dim = cell_y_dim - cell_oy;
 
-    printf("Lower Left: Old (%d, %d)  New (%d, %d)\n", g1_lower_left_x, g1_lower_left_y, g2_lower_left_x, g2_lower_left_y);
-    //printf("Lower Left of New Map = (%d, %d) \n", g2_lower_left_x, g2_lower_left_y);
-    printf("Index of Old Map, Index of New Map = %d, %d \n", g1_index, g2_index);
-    printf("Dimensions of Overlapping Region = (%d, %d) \n", region_x_dim, region_y_dim);
-    /*
-    printf("  map1: \n  ");
-    for (int i = 0; i < 10; i++) {
-        for (int j = 0; j < 10; j++) {
-            int index = i * 10 + j;
-            printf("%4d", grid1[index]);
-        }
-        printf("\n  ");
-    }
-
-    printf("map2: \n  ");
-    for (int i = 0; i < 10; i++) {
-        for (int j = 0; j < 10; j++) {
-            int index = i * 10 + j;
-            printf("%4d", grid2[index]);
-        }
-        printf("\n  ");
-    }
-    */
+    DBGOUT(printf("Lower Left: Old (%d, %d)  New (%d, %d)\n", g1_lower_left_x, g1_lower_left_y, g2_lower_left_x, g2_lower_left_y);
+	   //printf("Lower Left of New Map = (%d, %d) \n", g2_lower_left_x, g2_lower_left_y);
+	   printf("Index of Old Map, Index of New Map = %d, %d \n", g1_index, g2_index);
+	   printf("Dimensions of Overlapping Region = (%d, %d) \n", region_x_dim, region_y_dim));
     //Iterate through grids and assign corresponding max value
     unsigned int total_count = 0;
     unsigned int count = 0;
@@ -184,24 +168,13 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
                 count = 0;
             }
             grid2[g2_index] = max(grid2[g2_index], grid1[g1_index]);
-	    printf("%d : %d v %d : %d, %d \n", total_count, count, region_x_dim, g1_index, g2_index);
+	    DBGOUT(printf("%d : %d v %d : %d, %d \n", total_count, count, region_x_dim, g1_index, g2_index));
             g1_index++;
             g2_index++;
             count++;
             total_count++;
         }
     }
-    /*
-    printf("combined map: \n  ");
-    for (int i = 0; i < 10; i++) {
-        for (int j = 0; j < 10; j++) {
-            int index = i * 10 + j;
-            printf("%4d", grid2[index]);
-        }
-        printf("\n  ");
-    }
-    printf("\n");
-    */
     return;
 }
 
@@ -488,7 +461,7 @@ bool worldToMap(double wx, double wy, double robot_x, double robot_y) {
     //printf("World To Map (Relative to Origin) = (%d, %d)\n", (int)((wx_rel_origin - master_observation.master_origin.x) / master_observation.master_resolution), (int)((wy_rel_origin - master_observation.master_origin.y) / master_observation.master_resolution));
 
     if (wx_rel_origin < master_observation.master_origin.x || wy_rel_origin < master_observation.master_origin.y) {
-        printf("Coordinates Out Of Bounds .... (wx, wy) = (%f, %f); (ox, oy) = (%f, %f)\n", wx, wy, master_observation.master_origin.x, master_observation.master_origin.y);
+      DBGOUT(printf("Coordinates Out Of Bounds .... (wx, wy) = (%f, %f); (ox, oy) = (%f, %f)\n", wx, wy, master_observation.master_origin.x, master_observation.master_origin.y));
         return false;
     }
 
