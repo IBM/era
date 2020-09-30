@@ -9,8 +9,8 @@
 #define OCCGRID_H_
 
 //Define Costmap values
-#define NO_INFORMATION 254
-#define FREE_SPACE 0
+#define NO_INFORMATION    0 //254
+#define FREE_SPACE      254 //  0
 #define LETHAL_OBSTACLE 255
 
 //Define datatype values

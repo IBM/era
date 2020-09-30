@@ -6,7 +6,7 @@
 
 //Define global variables
 Observation master_observation;
-char data[199992];
+//char data[199992];
 bool rotating_window;
 
 /*************** HELPER FUNCTIONS ******************/
@@ -168,7 +168,7 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
                 count = 0;
             }
             grid2[g2_index] = max(grid2[g2_index], grid1[g1_index]);
-	    DBGOUT(printf("%d : %d v %d : %d, %d \n", total_count, count, region_x_dim, g1_index, g2_index));
+	    //DBGOUT(printf("%d : %d v %d : %d, %d \n", total_count, count, region_x_dim, g1_index, g2_index));
             g1_index++;
             g2_index++;
             count++;

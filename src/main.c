@@ -25,7 +25,7 @@ int sock = 0;
 
 float odometry[] = {0.0, 0.0, 0.0};
 
-char pr_map_char[256] = {' ','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /*  16 */
+char pr_map_char[256] = {'.','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /*  16 */
 			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /*  32 */
 			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /*  48 */
 			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /*  64 */
@@ -40,12 +40,12 @@ char pr_map_char[256] = {' ','?','?','?','?','?','?','?','?','?','?','?','?','?'
 			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /* 208 */
 			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /* 224 */
 			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','?','?',  /* 240 */
-			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?','.','X'}; /* 256 */
+			 '?','?','?','?','?','?','?','?','?','?','?','?','?','?',' ','X'}; /* 256 */
 void INThandler(int dummy)
 {
-  printf("Closing the connection\n");
+  printf("In SIGINT INThandler -- Closing the connection and exiting\n");
   close(sock);
-  exit(0);
+  exit(-1);
 }
 
 float bytes_to_float(unsigned char * bytes)
@@ -100,7 +100,7 @@ void process_data(char* data, int data_size)
 		0.05, 2.05,
 		100,
 	        100, 100, 2.0,  // size_x, size_y, resolution
-		254);
+		NO_INFORMATION);
 
 	write_array_to_file(grid, 100/2.0*100/2.0);
 
@@ -246,11 +246,15 @@ int main(int argc, char *argv[])
 			break;
 		}
 	}
-
-	while (true) {
+	bool hit_eof = false;
+	while (!hit_eof) {
 	  DBGOUT(printf("Calling read on the socket...\n"); fflush(stdout));
 		int valread = read(sock , buffer, 10);
 		DBGOUT(printf("Top: read %d bytes\n", valread));
+		if (valread == 0) {
+		  // This means EOF?
+		  hit_eof = true;
+		}
 
 		if(buffer[0] == 'L' && buffer[7] == 'L') {
 			char * ptr;
@@ -261,9 +265,7 @@ int main(int argc, char *argv[])
 			char * message_ptr = buffer;
 			int total_bytes_read = 0;
 			while(total_bytes_read < message_size) {
-
 				valread = read(sock , message_ptr, 10000);
-
 				message_ptr = message_ptr + valread;
 				total_bytes_read += valread;
 				printf("read %d bytes for %d total bytes of %d\n", valread, total_bytes_read, message_size);
@@ -295,12 +297,12 @@ int main(int argc, char *argv[])
 			printf("odometry: %f %f %f\n", odometry[0], odometry[1], odometry[2]);
 
 		} else {
-		  DBGOUT(printf("BUFFER : '");
+		  /*DBGOUT(printf("BUFFER : '");
 			 for (int ii = 0; ii < 8; ii++) {
 			   printf("%c", buffer[ii]);
 			 }
 			 printf("'\n");
-			 fflush(stdout));
+			 fflush(stdout));*/
 		}
 
 	}
