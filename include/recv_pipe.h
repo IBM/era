@@ -24,6 +24,6 @@
 
 void recv_pipe_init();
 
-void do_recv_pipeline(int msg_len, int n_in, float* in_real, float* in_imag, int* out_msg_len, char* out_msg);
+void do_recv_pipeline(int n_in, float* in_real, float* in_imag, int* out_msg_len, char* out_msg);
 
 #endif

@@ -125,22 +125,24 @@ void process_data(char* data, int data_size)
 
 
 	// If we receive a transmission, the process to turn it back into the gridMap is:
+	DBGOUT(printf("Calling do_recv_pipeline...\n"));
 	int   n_recvd_in;
 	float recvd_in_real[MAX_XMIT_OUTPUTS];
 	float recvd_in_imag[MAX_XMIT_OUTPUTS];
 	int   recvd_msg_len;
 	unsigned char recvd_msg[1500]; // MAX size of original message in bytes
-	//do_recv_pipeline(int n_recvd_in, recvd_in_real, recvd_in_imag, recvd_msg_len, recvd_msg)
+	// Fake this with a "loopback" of the xmit message..
+	//do_recv_pipeline(n_recvd_in, recvd_in_real, recvd_in_imag, &recvd_msg_len, recvd_msg)
+	do_recv_pipeline(n_xmit_out, xmit_out_real, xmit_out_imag, &recvd_msg_len, recvd_msg);
 
 	// Now we decompress the grid received via transmission...
 	DBGOUT(printf("Calling LZ4_decompress_default...\n"));
 	//unsigned char uncmp_data[MAX_UNCOMPRESSED_DATA_SIZE];
-	//int dec_bytes = LZ4_decompress_safe((char*)recvd_msg, (char*)uncmp_data, n_recvd_in, MAX_UNCOMPRESSED_DATA_SIZE);
 	unsigned int  uncmp_idx = uncmp_count % RMAP_HIST_DEPTH;
 	unsigned int  rmap_idx  = (uncmp_count >= RMAP_HIST_DEPTH) ? (uncmp_idx + 1)%RMAP_HIST_DEPTH : 0;
 	printf("uncmp_idx = %d :  %d    MOD %d\n", uncmp_idx, uncmp_count, RMAP_HIST_DEPTH);
 	printf("rmap_idx  = %d : (%d+1) MOD %d = %d\n", rmap_idx, uncmp_idx,  RMAP_HIST_DEPTH, (uncmp_idx + 1)%RMAP_HIST_DEPTH);
-	int dec_bytes = LZ4_decompress_safe((char*)cmp_data, (char*)uncmp_data[uncmp_idx++], n_cmp_bytes, MAX_UNCOMPRESSED_DATA_SIZE);
+	int dec_bytes = LZ4_decompress_safe((char*)recvd_msg, (char*)uncmp_data[uncmp_idx++], n_cmp_bytes, MAX_UNCOMPRESSED_DATA_SIZE);
 	uncmp_count++;
 
 	Costmap2D* remote_map = (Costmap2D*)&(uncmp_data[rmap_idx]); // Convert "type" to Costmap2D
