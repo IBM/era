@@ -1,7 +1,16 @@
 cmake_minimum_required(VERSION 2.8.11)
 project(ERA)
 
-set(CMAKE_BUILD_TYPE Debug)
+#variable_watch(CMAKE_BUILD_TYPE)
+#set (CMAKE_BUILD_TYPE "Debug" CACHE STRING "Default build type: Debug" FORCE)
+#set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Default build type: Release" FORCE)
+
+# None of this seems to work at all...
+#set(CMAKE_BUILD_TYPE Debug)
+#set(default_build_type "Debug")
+#if (NOT CMAKE_BUILD_TYPE)
+#  set (CMAKE_BUILD_TYPE "Debug" CACHE STRING "Default build type: Debug" FORCE)
+#endif()
 
 include_directories(include)
 
@@ -14,7 +23,9 @@ add_executable(era1 src/main.c)
 add_executable(era2 src/main.c)
 
 target_compile_definitions(era1 PRIVATE PORT=5556)
+target_compile_definitions(era1 PRIVATE IMAGE_FN="gridimage_era1_")
 target_compile_definitions(era2 PRIVATE PORT=5557)
+target_compile_definitions(era2 PRIVATE IMAGE_FN="gridimage_era2_")
 
 target_link_libraries(era1 LINK_PUBLIC occgrid lz4 sdr m)
 target_link_libraries(era2 LINK_PUBLIC occgrid lz4 sdr m)

@@ -54,7 +54,7 @@ void write_array_to_file(unsigned char * data, long size)
 
   char file_name[32];
 
-  snprintf(file_name,sizeof(char)*32, "image%d.ppm", counter);
+  snprintf(file_name,sizeof(char)*32, "%s%04d.ppm", IMAGE_FN, counter);
 
   FILE *fp = fopen(file_name, "w");
   fprintf(fp, "P3 %d %d 255\n", dimx, dimy);
