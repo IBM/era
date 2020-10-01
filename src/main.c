@@ -204,7 +204,7 @@ void process_data(char* data, int data_size)
 	// Write the combined map to a file
 	write_array_to_file(local_map->costmap_, 100/2.0*100/2.0);
 	
-	DBGOUT(printf("Returning from process_buffer\n"));
+	DBGOUT(printf("Returning from process_data\n"));
 	fflush(stdout);
 }
 
@@ -252,6 +252,8 @@ int main(int argc, char *argv[])
 		}
 	}
 	bool hit_eof = false;
+	unsigned odo_count = 0;
+	unsigned lidar_count = 0;
 	while (!hit_eof) {
 	  DBGOUT(printf("Calling read on the socket...\n"); fflush(stdout));
 		int valread = read(sock , buffer, 10);
@@ -270,7 +272,9 @@ int main(int argc, char *argv[])
 			char * message_ptr = buffer;
 			int total_bytes_read = 0;
 			while(total_bytes_read < message_size) {
-				valread = read(sock , message_ptr, 10000);
+			        unsigned rem_len = (message_size - total_bytes_read);
+				int read_max_bytes = rem_len; //(rem_len > 10000) ? 10000 : rem_len;
+				valread = read(sock , message_ptr, read_max_bytes/*10000*/);
 				message_ptr = message_ptr + valread;
 				total_bytes_read += valread;
 				DBGOUT(printf("read %d bytes for %d total bytes of %d\n", valread, total_bytes_read, message_size));
@@ -278,10 +282,12 @@ int main(int argc, char *argv[])
 			if (total_bytes_read > message_size) {
                           printf("NOTE: read more total bytes than expected: %u vs %u\n", total_bytes_read, message_size);
                         }
-			DBGOUT(printf("Calling process_buffer for %d total bytes\n", total_bytes_read));
+			DBGOUT(printf("Calling process_data for %d total bytes\n", total_bytes_read));
+			printf("Processing Lidar msg %4u data\n", lidar_count);
 			process_data(buffer, total_bytes_read);
 			DBGOUT(printf("Back from process_buffer for Lidar\n"));
 			fflush(stdout);
+			lidar_count++;
 		}
 		else if(buffer[0] == 'O' && buffer[3] == 'O') {
 			char * ptr;
@@ -299,7 +305,8 @@ int main(int argc, char *argv[])
 			odometry[1] = *((float*)(buffer+4)); //bytes_to_float(buffer+4);
 			odometry[2] = *((float*)(buffer+8)); //bytes_to_float(buffer+8);
 
-			printf("odometry: %f %f %f\n", odometry[0], odometry[1], odometry[2]);
+			printf("Odometry msg %4u: %.2f %.2f %.2f\n", odo_count, odometry[0], odometry[1], odometry[2]);
+			odo_count++;
 
 		} else {
 		  /*DBGOUT(printf("BUFFER : '");
