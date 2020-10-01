@@ -49,7 +49,7 @@ int counter = 0;
 
 void write_array_to_file(unsigned char * data, long size)
 {
-	const int dimx = 50, dimy = 50;
+  const int dimx = 50, dimy = 50;
   int i, j;
 
   char file_name[32];
@@ -90,7 +90,8 @@ void process_data(char* data, int data_size)
 	        100, 100, 2.0,  // size_x, size_y, resolution
 		NO_INFORMATION);
 
-	write_array_to_file(grid, 100/2.0*100/2.0);
+	// Write the read-in image to a file
+	//write_array_to_file(grid, 100/2.0*100/2.0);
 
 	// Now we compress the grid for transmission...
 	Costmap2D* local_map = &(master_observation.master_costmap);
@@ -140,8 +141,8 @@ void process_data(char* data, int data_size)
 	//unsigned char uncmp_data[MAX_UNCOMPRESSED_DATA_SIZE];
 	unsigned int  uncmp_idx = uncmp_count % RMAP_HIST_DEPTH;
 	unsigned int  rmap_idx  = (uncmp_count >= RMAP_HIST_DEPTH) ? (uncmp_idx + 1)%RMAP_HIST_DEPTH : 0;
-	printf("uncmp_idx = %d :  %d    MOD %d\n", uncmp_idx, uncmp_count, RMAP_HIST_DEPTH);
-	printf("rmap_idx  = %d : (%d+1) MOD %d = %d\n", rmap_idx, uncmp_idx,  RMAP_HIST_DEPTH, (uncmp_idx + 1)%RMAP_HIST_DEPTH);
+	DBGOUT(printf("uncmp_idx = %d :  %d    MOD %d\n", uncmp_idx, uncmp_count, RMAP_HIST_DEPTH);
+	       printf("rmap_idx  = %d : (%d+1) MOD %d = %d\n", rmap_idx, uncmp_idx,  RMAP_HIST_DEPTH, (uncmp_idx + 1)%RMAP_HIST_DEPTH));
 	int dec_bytes = LZ4_decompress_safe((char*)recvd_msg, (char*)uncmp_data[uncmp_idx++], n_cmp_bytes, MAX_UNCOMPRESSED_DATA_SIZE);
 	uncmp_count++;
 
@@ -180,9 +181,12 @@ void process_data(char* data, int data_size)
 	//                                       100, 100, 2.0,  // size_x, size_y, resolution
 	//                                       ?? ); // def_val -- unused?
 	DBGOUT(printf("\nCalling combineGrids: count %d u_idx %d r_idx %d\n", uncmp_count, uncmp_idx, rmap_idx));
-	combineGrids(local_map->costmap_, remote_map->costmap_,
-		     local_map->av_x, local_map->av_y,
+	// Note: The direction in which this is called is slightly significant:
+	//  The first map is copied into the second map, in this case remote into local,
+	//  and the x_dim, et.c MUST correspond to that second map (here local)
+	combineGrids(remote_map->costmap_, local_map->costmap_,
 		     remote_map->av_x, remote_map->av_y,
+		     local_map->av_x, local_map->av_y,
 		     local_map->x_dim, local_map->y_dim, local_map->cell_size,
 		     local_map->default_value);
 	DBGOUT(printf("  Fused CostMAP : AV x %lf y %lf z %lf  IDX %d\n", remote_map->av_x, remote_map->av_y, remote_map->av_z, rmap_idx);
@@ -197,6 +201,9 @@ void process_data(char* data, int data_size)
 	       }
 	       printf("\n"));
 
+	// Write the combined map to a file
+	write_array_to_file(local_map->costmap_, 100/2.0*100/2.0);
+	
 	DBGOUT(printf("Returning from process_buffer\n"));
 	fflush(stdout);
 }
@@ -206,7 +213,7 @@ int main(int argc, char *argv[])
 {
 	struct sockaddr_in servaddr;
 	char *ack = "OK";
-	unsigned char buffer[200000] = {0};
+	unsigned char buffer[200002] = {0};
 
 	xmit_pipe_init(); // Initialize the IEEE SDR Transmit Pipeline
 	
@@ -266,7 +273,7 @@ int main(int argc, char *argv[])
 				valread = read(sock , message_ptr, 10000);
 				message_ptr = message_ptr + valread;
 				total_bytes_read += valread;
-				printf("read %d bytes for %d total bytes of %d\n", valread, total_bytes_read, message_size);
+				DBGOUT(printf("read %d bytes for %d total bytes of %d\n", valread, total_bytes_read, message_size));
 			}
 			if (total_bytes_read > message_size) {
                           printf("NOTE: read more total bytes than expected: %u vs %u\n", total_bytes_read, message_size);
