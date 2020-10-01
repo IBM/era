@@ -30,8 +30,6 @@ typedef struct MapLocation {
     unsigned int y;
 } MapLocation;
 
-#define SAFETY_SPACE  0
-
 typedef struct Costmap2D_struct {
   double   av_x;
   double   av_y;
@@ -41,7 +39,7 @@ typedef struct Costmap2D_struct {
   unsigned int x_dim;
   unsigned int y_dim;
   unsigned char default_value;
-  unsigned char costmap_[GRID_MAP_MAX_ENTRIES + SAFETY_SPACE];
+  unsigned char costmap_[GRID_MAP_MAX_ENTRIES];
 } Costmap2D;
 
 typedef struct Observation {
