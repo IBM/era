@@ -129,7 +129,8 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
 		  double robot_x1, double robot_y1,
 		  double robot_x2, double robot_y2,
 		  unsigned int x_dim, unsigned int y_dim, double resolution,
-		  char def_val ){
+		  char def_val )
+{
     //grid1 is previous map, grid2 is current map
 
     //Calculate the new origin of the map
@@ -162,7 +163,9 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
     unsigned int region_x_dim = cell_x_dim - cell_ox;
     unsigned int region_y_dim = cell_y_dim - cell_oy;
 
-    DBGOUT(printf("Lower Left: Old (%d, %d)  New (%d, %d)\n", g1_lower_left_x, g1_lower_left_y, g2_lower_left_x, g2_lower_left_y);
+    DBGOUT(printf("origin : %.1lf %.1lf   new_origin: %.1lf %.1lf\n", origin_x, origin_y, new_origin_x, new_origin_y);
+	   printf("cell : ox,y %u %u  dimx,y %u %u\n", cell_ox, cell_oy, cell_x_dim, cell_y_dim);
+	   printf("Lower Left: Old (%d, %d)  New (%d, %d)\n", g1_lower_left_x, g1_lower_left_y, g2_lower_left_x, g2_lower_left_y);
 	   //printf("Lower Left of New Map = (%d, %d) \n", g2_lower_left_x, g2_lower_left_y);
 	   printf("Index of Old Map, Index of New Map = %d, %d \n", g1_index, g2_index);
 	   printf("Dimensions of Overlapping Region = (%d, %d) \n", region_x_dim, region_y_dim));
@@ -177,6 +180,13 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
                 g2_index = g2_index + cell_ox;
                 count = 0;
             }
+	    CHECK(if ((g2_index < 0) || (g2_index >= GRID_MAP_MAX_ENTRIES)) {
+		printf("ERROR : combineGrids g2_index too large at %d vs %d\n", g2_index, GRID_MAP_MAX_ENTRIES);
+	      });
+	    CHECK(if ((g1_index < 0) || (g1_index >= GRID_MAP_MAX_ENTRIES)) {
+		printf("ERROR : combineGrids g1_index too large at %d vs %d\n", g1_index, GRID_MAP_MAX_ENTRIES);
+	      });
+
             grid2[g2_index] = max(grid2[g2_index], grid1[g1_index]);
 	    //DBGOUT(printf("%d : %d v %d : %d, %d \n", total_count, count, region_x_dim, g1_index, g2_index));
             g1_index++;
