@@ -131,20 +131,22 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
 		  unsigned int x_dim, unsigned int y_dim, double resolution,
 		  char def_val )
 {
+    DBGOUT(printf("in combineGrids: x1 = %.1f x2 = %.1f  y1 = %.1f y2 = %.1f\n", robot_x1, robot_x2, robot_y1, robot_y2));
     //grid1 is previous map, grid2 is current map
-
-    //Calculate the new origin of the map
-    double new_origin_x = robot_x2 - (x_dim - 1) / 2.0;
-    double new_origin_y = robot_y2 - (y_dim - 1) / 2.0;
 
     //Calculate the old origin of the map
     double origin_x = robot_x1 - (x_dim - 1) / 2;
     double origin_y = robot_y1 - (y_dim - 1) / 2;
+	   
+    //Calculate the new origin of the map
+    double new_origin_x = robot_x2 - (x_dim - 1) / 2.0;
+    double new_origin_y = robot_y2 - (y_dim - 1) / 2.0;
 
     //Calculate the number of cells between the old and new origin
     unsigned int cell_ox = ((new_origin_x - origin_x) / resolution);
     unsigned int cell_oy = ((new_origin_y - origin_y) / resolution);
-
+    DBGOUT(printf("cell_ox = (%.1f - %.1f) / %.1f = %.1f = %u\n", new_origin_x, origin_x, resolution, ((new_origin_x - origin_x) / resolution), cell_ox);
+	   printf("cell_oy = (%.1f - %.1f) / %.1f = %.1f = %u\n", new_origin_y, origin_y, resolution, ((new_origin_y - origin_y) / resolution), cell_oy));
     // Determine the dimensions (x, y) in terms of Grid cells
     unsigned int cell_x_dim = (int)(x_dim / resolution);
     unsigned int cell_y_dim = (int)(y_dim / resolution);

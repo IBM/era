@@ -78,7 +78,7 @@ void write_array_to_file(unsigned char * data, long size)
 
 // Setting these up as globals so I can test the combineGrids
 //  against "historic" gridmaps (rather than the same one)
-#define  RMAP_HIST_DEPTH  10
+#define  RMAP_HIST_DEPTH  50
 unsigned int  uncmp_count = 0;
 unsigned char uncmp_data[RMAP_HIST_DEPTH][MAX_UNCOMPRESSED_DATA_SIZE];
 
