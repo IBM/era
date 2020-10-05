@@ -55,7 +55,7 @@ six terminal windows, and to invoke the related processes in each window.
 It is recommended that one start the bagfiles and WiFi interconnect (socket server)
 processes before invocation of either the ```era1``` or ```era2``` program.
 A possible environment for this is illustrated below.
-<p align="center"><img src="src/era_invocation_example.png" width=250></p>
+<p align="center"><img src="src/era_invocation_example.png" width=1000></p>
 
 The underlying function is as follows
 ### ```read_bag_X.py```
