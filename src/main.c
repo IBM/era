@@ -15,26 +15,35 @@
 #include "xmit_pipe.h"  // IEEE 802.11p WiFi SDR Transmit Pipeline
 #include "recv_pipe.h"  // IEEE 802.11p WiFi SDR Receive Pipeline
 
-// The PORT is now defined in the compilation process, and comforms to the
-// definition in the read_bag_x.py files.
-//#define PORT 
-//#define PORT1 5556
-//#define PORT2 5557
+// The PORTS are defined in the compilation process, and comforms to the
+// definition in the read_bag_x.py files and wifi_comm_x.py files.
 
-int sock = 0;
+int bag_sock = 0;
+int xmit_sock = 0;
+int recv_sock = 0;
+
+char *ack = "OK";
 
 float odometry[] = {0.0, 0.0, 0.0};
 
 char pr_map_char[256];
 
-unsigned odo_count = 0;
-unsigned lidar_count = 0;
-
 void INThandler(int dummy)
 {
   printf("In SIGINT INThandler -- Closing the connection and exiting\n");
-  close(sock);
+  close(bag_sock);
+  close(xmit_sock);
+  close(recv_sock);
   exit(-1);
+}
+
+void closeout_and_exit(int rval)
+{
+  printf("closeout_and_exit -- Closing the connection and exiting %d\n", rval);
+  close(bag_sock);
+  close(xmit_sock);
+  close(recv_sock);
+  exit(rval);
 }
 
 /* 
@@ -49,6 +58,10 @@ float bytes_to_float(unsigned char * bytes)
 */
 
 int counter = 0;
+
+unsigned odo_count = 0;
+unsigned lidar_count = 0;
+unsigned xmit_recv_count = 0;
 
 void write_array_to_file(unsigned char * data, long size)
 {
@@ -76,11 +89,6 @@ void write_array_to_file(unsigned char * data, long size)
 
 #define MAX_XMIT_OUTPUTS  41800  // Really something like 41782 I think
 
-// Setting these up as globals so I can test the combineGrids
-//  against "historic" gridmaps (rather than the same one)
-#define  RMAP_HIST_DEPTH  50
-unsigned int  uncmp_count = 0;
-unsigned char uncmp_data[RMAP_HIST_DEPTH][MAX_UNCOMPRESSED_DATA_SIZE];
 
 void process_data(char* data, int data_size)
 {
@@ -99,8 +107,8 @@ void process_data(char* data, int data_size)
 	// Now we compress the grid for transmission...
 	Costmap2D* local_map = &(master_observation.master_costmap);
 	DBGOUT(printf("Calling LZ4_compress_default...\n");
-	       printf("  Input CostMAP %4u : AV x %lf y %lf z %lf\n", lidar_count, local_map->av_x, local_map->av_y, local_map->av_z);
-	       printf("                     : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
+	       printf("  Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
+	       printf("               : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
 	       printf("  ");
 	       for (int ii = 0; ii < 50; ii++) {
 		 for (int ij = 0; ij < 50; ij++) {
@@ -110,7 +118,7 @@ void process_data(char* data, int data_size)
 		 printf("\n  ");
 	       }
 	       printf("\n"));
-
+	
 	unsigned char cmp_data[MAX_COMPRESSED_DATA_SIZE];
 	int n_cmp_bytes = LZ4_compress_default((char*)local_map, (char*)cmp_data, MAX_UNCOMPRESSED_DATA_SIZE, MAX_COMPRESSED_DATA_SIZE);
 	double c_ratio = 100*(1-((double)(n_cmp_bytes)/(double)(MAX_UNCOMPRESSED_DATA_SIZE)));
@@ -126,33 +134,116 @@ void process_data(char* data, int data_size)
 
 	// This is now the content that should be sent out via IEEE 802.11p WiFi
 	//  The n_xmit_out values of xmit_out_real and xmit_out_imag
-
-
+	// Connect to the Wifi-Socket and send the n_xmit_out
+	char w_buffer[10];
+	unsigned xfer_bytes = n_xmit_out*sizeof(float);
+	snprintf(w_buffer, 9, "X%-6uX", xfer_bytes);
+	printf("\nXMIT Sending %s on XMIT port %u socket\n", w_buffer, XMIT_PORT);
+	send(xmit_sock, w_buffer, 8, 0);
+	DBGOUT(printf("     Send %u REAL values %u bytes on XMIT port %u socket\n", n_xmit_out, xfer_bytes, XMIT_PORT));
+	DBGOUT2(printf("XFER %4u : Dumping XMIT-PIPE REAL raw bytes\n", xmit_recv_count);
+		for (int i = 0; i < n_xmit_out; i++) {
+		  printf("XFER %4u REAL-byte %6u : %f\n", xmit_recv_count, i, xmit_out_real[i]);
+		}
+		printf("\n"));
+	send(xmit_sock, (char*)(xmit_out_real), n_xmit_out*sizeof(float), 0);
+	DBGOUT(printf("     Send %u IMAG values %u bytes on XMIT port %u socket\n", n_xmit_out, xfer_bytes, XMIT_PORT));
+	DBGOUT2(printf("XFER %4u : Dumping XMIT-PIPE IMAG raw bytes\n", xmit_recv_count);
+		for (int i = 0; i < n_xmit_out; i++) {
+		  printf("XFER %4u IMAG-byte %6u : %f\n", xmit_recv_count, i, xmit_out_imag[i]);
+		}
+	       printf("\n"));
+	send(xmit_sock, (char*)(xmit_out_imag), n_xmit_out*sizeof(float), 0);
+	
+	// Now we take in a recevied transmission with the other AV's map
 	// If we receive a transmission, the process to turn it back into the gridMap is:
-	DBGOUT(printf("Calling do_recv_pipeline...\n"));
 	int   n_recvd_in;
 	float recvd_in_real[MAX_XMIT_OUTPUTS];
 	float recvd_in_imag[MAX_XMIT_OUTPUTS];
+
+	printf("\nTrying to Receive data on RECV port %u socket\n", RECV_PORT);
+	int message_size = 8;
+	char * message_ptr = w_buffer;
+	int total_recvd = 0;
+	while(total_recvd < 8) {
+	  unsigned rem_len = (message_size - total_recvd);
+	  int read_max_bytes = rem_len; //(rem_len > 10000) ? 10000 : rem_len;
+	  int valread = read(recv_sock , message_ptr, read_max_bytes/*10000*/);
+	  message_ptr = message_ptr + valread;
+	  total_recvd += valread;
+	}
+	DBGOUT2(printf("  RECV got msg %s\n", w_buffer);
+		printf("  RECV msg psn %s\n", "01234567890"));
+	if(!(w_buffer[0] == 'X' && w_buffer[7] == 'X')) {
+	  printf("ERROR: Unexpected message from WiFi...\n");
+	  closeout_and_exit(-3);
+	}
+
+	char * ptr;
+	unsigned xfer_in_bytes = strtol(w_buffer+1, &ptr, 10);
+	message_size = xfer_in_bytes;
+	n_recvd_in = message_size / sizeof(float);
+	message_ptr = (char*)recvd_in_real;
+	total_recvd = 0;
+	DBGOUT(printf("     Recv %u REAL values %u bytes from RECV port %u socket\n", n_recvd_in, xfer_in_bytes, RECV_PORT));
+	while(total_recvd < message_size) {
+	  unsigned rem_len = (message_size - total_recvd);
+	  int read_max_bytes = rem_len; //(rem_len > 10000) ? 10000 : rem_len;
+	  int valread = read(recv_sock , message_ptr, read_max_bytes/*10000*/);	  
+	  message_ptr = message_ptr + valread;
+	  total_recvd += valread;
+	  DBGOUT2(printf("        read %d bytes for %d total bytes of %d\n", valread, total_recvd, message_size));
+	  if (valread == 0) {
+	    printf("  ZERO bytes -- END of TRANSFER?\n");
+	    closeout_and_exit(-1);
+	  }
+	}
+	DBGOUT2(printf("XFER %4u : Dumping RECV-PIPE REAL raw bytes\n", xmit_recv_count);
+	       for (int i = 0; i < n_recvd_in; i++) {
+		 printf("XFER %4u REAL-byte %6u : %f\n", odo_count, i, recvd_in_real[i]);
+	       }
+	       printf("\n"));
+
+	//message_size = xfer_in_bytes;
+	message_ptr = (char*)recvd_in_imag;
+	total_recvd = 0;
+	DBGOUT(printf("     Recv %u IMAG values %u bytes from RECV port %u socket\n", n_recvd_in, xfer_in_bytes, RECV_PORT));
+	while(total_recvd < message_size) {
+	  unsigned rem_len = (message_size - total_recvd);
+	  int read_max_bytes = rem_len; //(rem_len > 10000) ? 10000 : rem_len;
+	  int valread = read(recv_sock , message_ptr, read_max_bytes/*10000*/);
+	  message_ptr = message_ptr + valread;
+	  total_recvd += valread;
+	  DBGOUT2(printf("        read %d bytes for %d total bytes of %d\n", valread, total_recvd, message_size));
+	  if (valread == 0) {
+	    printf("  ZERO bytes -- END of TRANSFER?\n");
+	    closeout_and_exit(-1);
+	  }
+	}
+	DBGOUT2(printf("XFER %4u : Dumping RECV-PIPE IMAG raw bytes\n", xmit_recv_count);
+	       for (int i = 0; i < n_recvd_in; i++) {
+		 printf("XFER %4u IMAG-byte %6u : %f\n", odo_count, i, recvd_in_imag[i]);
+	       }
+	       printf("\n"));
+
+
+	// Now we have the tranmission input data to be decoded...
+	DBGOUT(printf("Calling do_recv_pipeline...\n"));
 	int   recvd_msg_len;
 	unsigned char recvd_msg[1500]; // MAX size of original message in bytes
 	// Fake this with a "loopback" of the xmit message..
-	//do_recv_pipeline(n_recvd_in, recvd_in_real, recvd_in_imag, &recvd_msg_len, recvd_msg)
-	do_recv_pipeline(n_xmit_out, xmit_out_real, xmit_out_imag, &recvd_msg_len, recvd_msg);
+	do_recv_pipeline(n_recvd_in, recvd_in_real, recvd_in_imag, &recvd_msg_len, recvd_msg);
+	//do_recv_pipeline(n_xmit_out, xmit_out_real, xmit_out_imag, &recvd_msg_len, recvd_msg);
 
 	// Now we decompress the grid received via transmission...
 	DBGOUT(printf("Calling LZ4_decompress_default...\n"));
-	//unsigned char uncmp_data[MAX_UNCOMPRESSED_DATA_SIZE];
-	unsigned int  uncmp_idx = uncmp_count % RMAP_HIST_DEPTH;
-	unsigned int  rmap_idx  = (uncmp_count >= RMAP_HIST_DEPTH) ? (uncmp_idx + 1)%RMAP_HIST_DEPTH : 0;
-	DBGOUT(printf("uncmp_idx = %d :  %d    MOD %d\n", uncmp_idx, uncmp_count, RMAP_HIST_DEPTH);
-	       printf("rmap_idx  = %d : (%d+1) MOD %d = %d\n", rmap_idx, uncmp_idx,  RMAP_HIST_DEPTH, (uncmp_idx + 1)%RMAP_HIST_DEPTH));
-	int dec_bytes = LZ4_decompress_safe((char*)recvd_msg, (char*)uncmp_data[uncmp_idx++], n_cmp_bytes, MAX_UNCOMPRESSED_DATA_SIZE);
-	uncmp_count++;
+	unsigned char uncmp_data[MAX_UNCOMPRESSED_DATA_SIZE];
+	int dec_bytes = LZ4_decompress_safe((char*)recvd_msg, (char*)uncmp_data, n_cmp_bytes, MAX_UNCOMPRESSED_DATA_SIZE);
 
-	Costmap2D* remote_map = (Costmap2D*)&(uncmp_data[rmap_idx]); // Convert "type" to Costmap2D
+	Costmap2D* remote_map = (Costmap2D*)&(uncmp_data); // Convert "type" to Costmap2D
 	DBGOUT(printf("  Back from LZ4_decompress_safe with %u decompressed bytes\n", dec_bytes);
-	       printf("  Remote CostMAP %4u : AV x %lf y %lf z %lf\n", lidar_count, remote_map->av_x, remote_map->av_y, remote_map->av_z);
-	       printf("                      : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
+	       printf("  Remote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
+	       printf("                : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
 	       printf("  ");
 	       for (int ii = 0; ii < 50; ii++) {
 		 for (int ij = 0; ij < 50; ij++) {
@@ -162,7 +253,7 @@ void process_data(char* data, int data_size)
 		 printf("\n  ");
 	       }
 	       printf("\n"));
-
+	
 	// Then we should "Fuse" the received GridMap with our local one
 	//  We need to "peel out" the remote odometry data from somewhere (in the message?)
 	//unsigned char* combineGrids(unsigned char* grid1, unsigned char* grid2, double robot_x1, double robot_y1,
@@ -171,7 +262,7 @@ void process_data(char* data, int data_size)
 	//		                         remote_x,    remote_y,    // remotel_x, remotel_y
 	//                                       100, 100, 2.0,  // size_x, size_y, resolution
 	//                                       ?? ); // def_val -- unused?
-	DBGOUT(printf("\nCalling combineGrids: count %d u_idx %d r_idx %d\n", uncmp_count, uncmp_idx, rmap_idx));
+	DBGOUT(printf("\nCalling combineGrids...\n"));
 	// Note: The direction in which this is called is slightly significant:
 	//  The first map is copied into the second map, in this case remote into local,
 	//  and the x_dim, et.c MUST correspond to that second map (here local)
@@ -180,8 +271,8 @@ void process_data(char* data, int data_size)
 		     local_map->av_x, local_map->av_y,
 		     local_map->x_dim, local_map->y_dim, local_map->cell_size,
 		     local_map->default_value);
-	DBGOUT(printf("  Fused CostMAP %4u : AV x %lf y %lf z %lf  IDX %d\n", lidar_count, local_map->av_x, local_map->av_y, local_map->av_z, rmap_idx);
-	       printf("                     : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
+	DBGOUT(printf("  Fused CostMAP : AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
+	       printf("                : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
 	       printf("  ");
 	       for (int ii = 0; ii < 50; ii++) {
 		 for (int ij = 0; ij < 50; ij++) {
@@ -202,8 +293,9 @@ void process_data(char* data, int data_size)
 
 int main(int argc, char *argv[])
 {
-	struct sockaddr_in servaddr;
-	char *ack = "OK";
+        struct sockaddr_in bag_servaddr;
+	struct sockaddr_in xmit_servaddr;
+	struct sockaddr_in recv_servaddr;
 	unsigned char buffer[200002] = {0};
 
 	xmit_pipe_init(); // Initialize the IEEE SDR Transmit Pipeline
@@ -218,34 +310,87 @@ int main(int argc, char *argv[])
 	pr_map_char[FREE_SPACE]      = ' ';
 	pr_map_char[LETHAL_OBSTACLE] = 'X';
 
-	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)  {
-		printf("Socket creation failed...\n");
-		exit(0);
+	// Open and connect to the BAG_SERVER 
+	if ((bag_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)  {
+	  printf("BAG Socket creation failed...\n");
+	  exit(0);
 	}
 	else {
-		printf("Socket successfully created..\n");
+	  printf("BAG Socket successfully created..\n");
 	}
 
-	servaddr.sin_family = AF_INET;
-	servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-	servaddr.sin_port = htons(PORT);
+	bag_servaddr.sin_family = AF_INET;
+	bag_servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	bag_servaddr.sin_port = htons(BAG_PORT);
 
 	while (true) {
-
-		if (connect(sock, (struct sockaddr*)&servaddr, sizeof(servaddr)) != 0) {
-			printf("connection with the server failed...\n");
-			sleep(1);
-			continue;
-		}
-		else {
-			printf("connected to the server..\n");
-			break;
-		}
+	  if (connect(bag_sock, (struct sockaddr*)&bag_servaddr, sizeof(bag_servaddr)) != 0) {
+	    printf("connection with the BAG server failed...\n");
+	    sleep(1);
+	    continue;
+	  }
+	  else {
+	    printf("connected to the BAG server..\n");
+	    break;
+	  }
 	}
+
+	// Open and connect to the XMIT_SERVER
+	printf("Setting up WIFI XMIT server on port %u\n", XMIT_PORT);
+	if ((xmit_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)  {
+	  printf("WIFI XMIT Socket creation failed...\n");
+	  exit(0);
+	}
+	else {
+	  printf("WIFI XMIT Socket successfully created..\n");
+	}
+
+	xmit_servaddr.sin_family = AF_INET;
+	xmit_servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	xmit_servaddr.sin_port = htons(XMIT_PORT);
+
+	while (true) {
+	  if (connect(xmit_sock, (struct sockaddr*)&xmit_servaddr, sizeof(xmit_servaddr)) != 0) {
+	    printf("connection with the WIFI XMIT server failed...\n");
+	    sleep(1);
+	    continue;
+	  }
+	  else {
+	    printf("connected to the WIFI XMIT server..\n");
+	    break;
+	  }
+	}
+
+	// Open and connect to the RECV_SERVER 
+	printf("Setting up WIFI RECV server on port %u\n", RECV_PORT);
+	if ((recv_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)  {
+	  printf("WIFI RECV Socket creation failed...\n");
+	  exit(0);
+	}
+	else {
+	  printf("WIFI RECV Socket successfully created..\n");
+	}
+
+	recv_servaddr.sin_family = AF_INET;
+	recv_servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	recv_servaddr.sin_port = htons(RECV_PORT);
+
+	while (true) {
+	  if (connect(recv_sock, (struct sockaddr*)&recv_servaddr, sizeof(recv_servaddr)) != 0) {
+	    printf("connection with the WIFI RECV server failed...\n");
+	    sleep(1);
+	    continue;
+	  }
+	  else {
+	    printf("connected to the WIFI RECV server..\n");
+	    break;
+	  }
+	}
+
 	bool hit_eof = false;
 	while (!hit_eof) {
-	  DBGOUT(printf("Calling read on the socket...\n"); fflush(stdout));
-		int valread = read(sock , buffer, 10);
+	  DBGOUT(printf("Calling read on the BAG socket...\n"); fflush(stdout));
+		int valread = read(bag_sock , buffer, 10);
 		DBGOUT(printf("Top: read %d bytes\n", valread));
 		if (valread == 0) {
 		  // This means EOF?
@@ -256,14 +401,14 @@ int main(int argc, char *argv[])
 			char * ptr;
 			int message_size = strtol(buffer+1, &ptr, 10);
 			DBGOUT(printf("Lidar: expecting message size: %d\n", message_size));
-			send(sock, ack, 2, 0);
+			send(bag_sock, ack, 2, 0);
 
 			char * message_ptr = buffer;
 			int total_bytes_read = 0;
 			while(total_bytes_read < message_size) {
 			        unsigned rem_len = (message_size - total_bytes_read);
 				int read_max_bytes = rem_len; //(rem_len > 10000) ? 10000 : rem_len;
-				valread = read(sock , message_ptr, read_max_bytes/*10000*/);
+				valread = read(bag_sock , message_ptr, read_max_bytes/*10000*/);
 				message_ptr = message_ptr + valread;
 				total_bytes_read += valread;
 				DBGOUT(printf("read %d bytes for %d total bytes of %d\n", valread, total_bytes_read, message_size));
@@ -274,7 +419,7 @@ int main(int argc, char *argv[])
 			DBGOUT(printf("Calling process_data for %d total bytes\n", total_bytes_read));
 			printf("Processing Lidar msg %4u data\n", lidar_count);
 			process_data(buffer, total_bytes_read);
-			DBGOUT(printf("Back from process_buffer for Lidar\n"));
+			DBGOUT(printf("Back from process_data for Lidar\n"));
 			fflush(stdout);
 			lidar_count++;
 		}
@@ -282,11 +427,11 @@ int main(int argc, char *argv[])
 			char * ptr;
 			int message_size = strtol(buffer+1, &ptr, 10);
 			DBGOUT(printf("Odometry: expecting message size: %d\n", message_size));
-			send(sock, ack, 2, 0);
+			send(bag_sock, ack, 2, 0);
 
 			int total_bytes_read = 0;
 
-			valread = read(sock , buffer, 10000);
+			valread = read(bag_sock , buffer, 10000);
 			DBGOUT(printf("read %d bytes\n", valread));
 
 
@@ -308,5 +453,7 @@ int main(int argc, char *argv[])
 
 	}
 
-	close(sock);
+	close(bag_sock);
+	close(xmit_sock);
+	close(recv_sock);
 }

@@ -42,32 +42,95 @@ two ERA executables:
 
 ## Execution
 
-To execute the Demo-ERA program requires two simultaneous processes, one to read the bagfile,
-which it then streams through a TCP/IP socket to the main Demo-ERA program.  Meanwhile the main
-Demo-ERA program, running in another process, watches the socket for input data.
+To execute the Demo-ERA program requires six simultaneous processes:
+ - one process to read the input bagfile for AV 1 (```read_bag_1.py```)
+ - one process to read the input bagfile for AV 2 (```read_bag_2.py```)
+ - one process to run the ERA (swarming) workload for AV 1 (```wifi_comm_1.py```)
+ - one process to run the ERA (swarming) workload for AV 2 (```wifi_comm_2.py```)
+ - one process to operate as the WiFi interconnect for AV 1 -> AV 2 messages (```era1```)
+ - one process to operate as the WiFi interconnect for AV 2 -> AV 1 messages (```era2```)
 
-The easiest way to run the standalone Demo-ERA is to start multiple terminals in pairs, and in one
-to invoke the bagfile reader/publisher and then in the other to start the associated
-```eraX``` executable.  
+The simplest method (currently) to invoke/execute ERA is therefore to set up
+six terminal windows, and to invoke the related processes in each window.
+It is recommended that one start the bagfiles and WiFi interconnect (socket server)
+processes before invocation of either the ```era1``` or ```era2``` program.
+A possible environment for this is illustrated below.
+<p align="center"><img src="src/era_invocation_example.png" width=250></p>
+
+The underlying function is as follows
+### ```read_bag_X.py```
+ The read_bag programs will read the bagfile and extract the appropriate content for their AV
+ (i.e. either the odometry and lidar data for Autonomous Vehicle 1 or 2) and provide it to
+ the era program via a socket interface.  The read_bag implements a socket server (in python) which
+ listens for a connection from the era program, and then uses that connection (held live throughout
+ the run) to transfer the bagfile data to the era program.  This provides a machine-independent
+ mechanism for reading these large trace files and providing them to a simpler or mroe limited
+ platform (e.g. an FPGA or smaller-memory SoC).
+
+### ```wifi_comm_X.py```
+ The wifi_comm programs will each set up another socket server, and listen for the appropriate
+ connections from the era programs.  The wifi_comm act as a stand-in for the over-air transmission
+ of the WiFi data, allowing the two AVs (embodied in the era programs) to communicate their
+ shared messages/data.
+
+The wifi_comm programs each implement a "receiver" channel (socket) and a "transmission" channel
+(socket) which provides them the means to take tranmitted data from one AV and provide it to the
+other AV.  At present this only supports the 2-AV initial system, and does not provide for broadcast
+communications, which may be future work.  Similarly, this operates in a "time-step" fully
+deterministic (and reproducible) manner, to provide consistency in the test environment, etc.
+
+### ```eraX```
+The era programs are the target workload, compiled from the underlying C source code, and
+represent the ERA functionality added to an underlying Autonomous Vehicle.  The
+two programs are identical, but for some compile-time assignments of TCP ports (for the
+sockets) and such.  In practice, each program will, however, be driven by different content
+from within the bagfile, and thus the execution profile can vary according to the environment,
+actions, etc. of that AV as described in that bagfile.
+
+### Recap
+
+The easiest way to run the standalone Demo-ERA is to start multiple (six) terminals in pairs,
+and in one pair to invoke the bagfile reader/publisher for each AV, in another pair
+to start eh wifi-communications proxy for each AV, 
+and then in the last to start the ERA executables.
+
 To do this, first obtain a bagfile, which we will assume is named ```bagfile``` and stored in
-```era/data```.  Activate one terminal, and type
+```era/data```.  Activate one pair of terminals, and in one type
 
 ```
 cd era/src
 python ./read_bagfile_1.py ../data/bagfile
 ```
+and in the other type
+```
+cd era/src
+python ./read_bagfile_2.py ../data/bagfile
+```
 
-Now activate a second terminal, and type
+Now activate a second pair of terminals, and type
+```
+cd era/src
+python ./wifi_comm_1.py
+```
+and in the other
+```
+cd era/src
+python ./wifi_comm_2.py
+```
+
+Now activate a third pair of terminals, and type in one
 ```
 cd era/build
 ./era1
 ```
+and in the other
+```
+cd era/build
+./era2
+```
 
-At this point, you will have invoked the standalone Demo-ERA program for AV 1
-and driven it with your bagfile.  This is similarly done for AV 2, using the
-similar commands but with the idnetifier 2 in place of 1.
-
-
+At this point, you will have invoked the standalone Demo-ERA program for
+the two AVs and driven it with your bagfile.  
 
 ### Usage
 

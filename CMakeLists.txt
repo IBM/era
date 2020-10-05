@@ -22,9 +22,16 @@ add_library(sdr STATIC src/complex_ops.c src/crc.c src/delay.c src/descrambler_f
 add_executable(era1 src/main.c)
 add_executable(era2 src/main.c)
 
-target_compile_definitions(era1 PRIVATE PORT=5556)
+target_compile_definitions(era1 PRIVATE BAG_PORT=5556)
+target_compile_definitions(era2 PRIVATE BAG_PORT=5557)
+
+target_compile_definitions(era1 PRIVATE XMIT_PORT=5558)
+target_compile_definitions(era2 PRIVATE XMIT_PORT=5560)
+
+target_compile_definitions(era1 PRIVATE RECV_PORT=5559)
+target_compile_definitions(era2 PRIVATE RECV_PORT=5561)
+
 target_compile_definitions(era1 PRIVATE IMAGE_FN="gridimage_era1_")
-target_compile_definitions(era2 PRIVATE PORT=5557)
 target_compile_definitions(era2 PRIVATE IMAGE_FN="gridimage_era2_")
 
 target_link_libraries(era1 LINK_PUBLIC occgrid lz4 sdr m)
