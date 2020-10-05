@@ -27,6 +27,9 @@ float odometry[] = {0.0, 0.0, 0.0};
 
 char pr_map_char[256];
 
+unsigned odo_count = 0;
+unsigned lidar_count = 0;
+
 void INThandler(int dummy)
 {
   printf("In SIGINT INThandler -- Closing the connection and exiting\n");
@@ -96,8 +99,8 @@ void process_data(char* data, int data_size)
 	// Now we compress the grid for transmission...
 	Costmap2D* local_map = &(master_observation.master_costmap);
 	DBGOUT(printf("Calling LZ4_compress_default...\n");
-	       printf("  Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
-	       printf("               : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
+	       printf("  Input CostMAP %4u : AV x %lf y %lf z %lf\n", lidar_count, local_map->av_x, local_map->av_y, local_map->av_z);
+	       printf("                     : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
 	       printf("  ");
 	       for (int ii = 0; ii < 50; ii++) {
 		 for (int ij = 0; ij < 50; ij++) {
@@ -148,20 +151,8 @@ void process_data(char* data, int data_size)
 
 	Costmap2D* remote_map = (Costmap2D*)&(uncmp_data[rmap_idx]); // Convert "type" to Costmap2D
 	DBGOUT(printf("  Back from LZ4_decompress_safe with %u decompressed bytes\n", dec_bytes);
-	       printf("  Output CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
-	       printf("                : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
-	       printf("  ");
-	       for (int ii = 0; ii < 50; ii++) {
-		 for (int ij = 0; ij < 50; ij++) {
-		   int idx = 50*ii + ij;
-		   printf("%c", pr_map_char[remote_map->costmap_[idx]]);
-		 }
-		 printf("\n  ");
-	       }
-	       printf("\n"));
-
-	DBGOUT(printf("  Remote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
-	       printf("                : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
+	       printf("  Remote CostMAP %4u : AV x %lf y %lf z %lf\n", lidar_count, remote_map->av_x, remote_map->av_y, remote_map->av_z);
+	       printf("                      : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
 	       printf("  ");
 	       for (int ii = 0; ii < 50; ii++) {
 		 for (int ij = 0; ij < 50; ij++) {
@@ -189,13 +180,13 @@ void process_data(char* data, int data_size)
 		     local_map->av_x, local_map->av_y,
 		     local_map->x_dim, local_map->y_dim, local_map->cell_size,
 		     local_map->default_value);
-	DBGOUT(printf("  Fused CostMAP : AV x %lf y %lf z %lf  IDX %d\n", remote_map->av_x, remote_map->av_y, remote_map->av_z, rmap_idx);
-	       printf("                : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
+	DBGOUT(printf("  Fused CostMAP %4u : AV x %lf y %lf z %lf  IDX %d\n", lidar_count, local_map->av_x, local_map->av_y, local_map->av_z, rmap_idx);
+	       printf("                     : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
 	       printf("  ");
 	       for (int ii = 0; ii < 50; ii++) {
 		 for (int ij = 0; ij < 50; ij++) {
 		   int idx = 50*ii + ij;
-		   printf("%c", pr_map_char[remote_map->costmap_[idx]]);
+		   printf("%c", pr_map_char[local_map->costmap_[idx]]);
 		 }
 		 printf("\n  ");
 	       }
@@ -252,8 +243,6 @@ int main(int argc, char *argv[])
 		}
 	}
 	bool hit_eof = false;
-	unsigned odo_count = 0;
-	unsigned lidar_count = 0;
 	while (!hit_eof) {
 	  DBGOUT(printf("Calling read on the socket...\n"); fflush(stdout));
 		int valread = read(sock , buffer, 10);
