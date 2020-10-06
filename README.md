@@ -45,8 +45,8 @@ two ERA executables:
 To execute the Demo-ERA program requires six simultaneous processes:
  - one process to read the input bagfile for AV 1 (```read_bag_1.py```)
  - one process to read the input bagfile for AV 2 (```read_bag_2.py```)
- - one process to run the ERA (swarming) workload for AV 1 (```wifi_comm_1.py```)
- - one process to run the ERA (swarming) workload for AV 2 (```wifi_comm_2.py```)
+ - one process to run the ERA (swarming) workload for AV 1 (```wifi_comm_1.sh```)
+ - one process to run the ERA (swarming) workload for AV 2 (```wifi_comm_2.sh```)
  - one process to operate as the WiFi interconnect for AV 1 -> AV 2 messages (```era1```)
  - one process to operate as the WiFi interconnect for AV 2 -> AV 1 messages (```era2```)
 
@@ -67,13 +67,15 @@ The underlying function is as follows
  mechanism for reading these large trace files and providing them to a simpler or mroe limited
  platform (e.g. an FPGA or smaller-memory SoC).
 
-### ```wifi_comm_X.py```
- The wifi_comm programs will each set up another socket server, and listen for the appropriate
- connections from the era programs.  The wifi_comm act as a stand-in for the over-air transmission
- of the WiFi data, allowing the two AVs (embodied in the era programs) to communicate their
- shared messages/data.
+### ```wifi_comm_X.sh```
+ The wifi_comm programs are really just shell-scripts that embody specific (command-line)
+ parameters for underlying invocations of the ```wifi_comm.py``` program.  The
+ ```wifi_comm.py``` program will set up a socket server, and listen for the appropriate
+ connections from the era programs.  The wifi_comm server then acts as a stand-in (substitute)
+ for the over-air transmission of the WiFi data, allowing the two AVs
+ (embodied in the era programs) to communicate their shared messages/data.
 
-The wifi_comm programs each implement a "receiver" channel (socket) and a "transmission" channel
+The ```wifi_comm.py``` program implements a "receiver" channel (socket) and a "transmission" channel
 (socket) which provides them the means to take tranmitted data from one AV and provide it to the
 other AV.  At present this only supports the 2-AV initial system, and does not provide for broadcast
 communications, which may be future work.  Similarly, this operates in a "time-step" fully
