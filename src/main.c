@@ -19,7 +19,8 @@
 // The PORTS are defined in the compilation process, and comforms to the
 // definition in the read_bag_x.py files and wifi_comm_x.py files.
 
-char inet_addr_str[20];
+char bag_inet_addr_str[20];
+char wifi_inet_addr_str[20];
 
 int bag_sock = 0;
 int xmit_sock = 0;
@@ -35,7 +36,8 @@ void print_usage(char * pname) {
   printf("Usage: %s <OPTIONS>\n", pname);
   printf(" OPTIONS:\n");
   printf("    -h         : print this helpful usage info\n");
-  printf("    -A <str>   : set the internet-address for the bag & wifi servers to <str>\n");
+  printf("    -B <str>   : set the internet-address for the bagfile server to <str>\n");
+  printf("    -W <str>   : set the internet-address for the WiFi server to <str>\n");
 }
 
 void INThandler(int dummy)
@@ -308,7 +310,8 @@ int main(int argc, char *argv[])
 	struct sockaddr_in recv_servaddr;
 	unsigned char buffer[200002] = {0};
 
-	snprintf(inet_addr_str, 20, "127.0.0.1");
+	snprintf(bag_inet_addr_str, 20, "127.0.0.1");
+	snprintf(wifi_inet_addr_str, 20, "127.0.0.1");
 	
 	xmit_pipe_init(); // Initialize the IEEE SDR Transmit Pipeline
 	
@@ -327,13 +330,16 @@ int main(int argc, char *argv[])
 	// string so that program can
 	// distinguish between '?' and ':'
 	int opt;
-	while((opt = getopt(argc, argv, ":hA:")) != -1) {
+	while((opt = getopt(argc, argv, ":hB:W:")) != -1) {
 		switch(opt) {
 		case 'h':
 			print_usage(argv[0]);
 			exit(0);
-		case 'A':
-			snprintf(inet_addr_str, 20, "%s", optarg);
+		case 'B':
+			snprintf(bag_inet_addr_str, 20, "%s", optarg);
+			break;
+		case 'W':
+			snprintf(wifi_inet_addr_str, 20, "%s", optarg);
 			break;
 
 		case ':':
@@ -346,7 +352,7 @@ int main(int argc, char *argv[])
 	}
 
 
-	printf("Connecting to bag-server at IP %s PORT %u\n", inet_addr_str, BAG_PORT);
+	printf("Connecting to bag-server at IP %s PORT %u\n", bag_inet_addr_str, BAG_PORT);
 	// Open and connect to the BAG_SERVER 
 	if ((bag_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)  {
 	  printf("BAG Socket creation failed...\n");
@@ -357,7 +363,7 @@ int main(int argc, char *argv[])
 	}
 
 	bag_servaddr.sin_family = AF_INET;
-	bag_servaddr.sin_addr.s_addr = inet_addr(inet_addr_str);
+	bag_servaddr.sin_addr.s_addr = inet_addr(bag_inet_addr_str);
 	bag_servaddr.sin_port = htons(BAG_PORT);
 
 	while (true) {
@@ -373,7 +379,7 @@ int main(int argc, char *argv[])
 	}
 
 	// Open and connect to the XMIT_SERVER
-	printf("Connecting to xmit-server at IP %s PORT %u\n", inet_addr_str, XMIT_PORT);
+	printf("Connecting to xmit-server at IP %s PORT %u\n", wifi_inet_addr_str, XMIT_PORT);
 	if ((xmit_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)  {
 	  printf("WIFI XMIT Socket creation failed...\n");
 	  exit(0);
@@ -383,7 +389,7 @@ int main(int argc, char *argv[])
 	}
 
 	xmit_servaddr.sin_family = AF_INET;
-	xmit_servaddr.sin_addr.s_addr = inet_addr(inet_addr_str);
+	xmit_servaddr.sin_addr.s_addr = inet_addr(wifi_inet_addr_str);
 	xmit_servaddr.sin_port = htons(XMIT_PORT);
 
 	while (true) {
@@ -399,7 +405,7 @@ int main(int argc, char *argv[])
 	}
 
 	// Open and connect to the RECV_SERVER 
-	printf("Connecting to recv-server at IP %s PORT %u\n", inet_addr_str, RECV_PORT);
+	printf("Connecting to recv-server at IP %s PORT %u\n", wifi_inet_addr_str, RECV_PORT);
 	if ((recv_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)  {
 	  printf("WIFI RECV Socket creation failed...\n");
 	  exit(0);
@@ -409,7 +415,7 @@ int main(int argc, char *argv[])
 	}
 
 	recv_servaddr.sin_family = AF_INET;
-	recv_servaddr.sin_addr.s_addr = inet_addr(inet_addr_str); //"127.0.0.1");
+	recv_servaddr.sin_addr.s_addr = inet_addr(wifi_inet_addr_str); //"127.0.0.1");
 	recv_servaddr.sin_port = htons(RECV_PORT);
 
 	while (true) {
