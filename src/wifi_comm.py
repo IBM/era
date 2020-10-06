@@ -1,7 +1,6 @@
 #!/usr/bin/python
 
 import sys
-import rosbag
 import socket
 import struct
 import argparse
