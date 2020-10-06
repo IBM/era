@@ -61,13 +61,14 @@ def main():
         args = parser.parse_args()
         if (args.address != None) :
                 HOST = args.address
-                print('Set HOST to ' + HOST);
+                #print('Set HOST to ' + HOST);
         if (args.port != None) :
                 PORT = args.port
-                print('Set PORT to %d' % PORT);
+                #print('Set PORT to %d' % PORT);
 	#for arg in sys.argv[1:]:
 	#	bag_file = arg
         bag_file = args.bag_file
+        print('Using HOST %s and PORT %d for file %s' % (HOST, PORT, bag_file))
 	send_data(bag_file)
 
 if __name__ == "__main__":
