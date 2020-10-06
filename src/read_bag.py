@@ -19,7 +19,7 @@ def send_data(bag_file):
 
 	s =  socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
+        #print('Calling s.bind for %s : %d' %(HOST, PORT))
 	s.bind((HOST, PORT))
 	s.listen(1)
 	conn, addr = s.accept()
@@ -51,16 +51,24 @@ def send_data(bag_file):
 	bag.close();
 
 def main():
+        global HOST
+        global PORT
 	global bag_file
         parser = argparse.ArgumentParser()
         parser.add_argument("bag_file", help="The name of the bag-file to use for AV 1")
         parser.add_argument("-A", "--address", help="define the IP address to connect to")
+        parser.add_argument("-P", "--port", type=int, help="define the Port for the socket to connect to")
         args = parser.parse_args()
-        
+        if (args.address != None) :
+                HOST = args.address
+                print('Set HOST to ' + HOST);
+        if (args.port != None) :
+                PORT = args.port
+                print('Set PORT to %d' % PORT);
 	#for arg in sys.argv[1:]:
 	#	bag_file = arg
-
-	send_data(args.bag_file)
+        bag_file = args.bag_file
+	send_data(bag_file)
 
 if __name__ == "__main__":
 	main()
