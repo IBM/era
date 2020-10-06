@@ -56,3 +56,5 @@ dkms.conf
 # The build directory
 build/*
 
+# Emacs auto-save backups
+*~
