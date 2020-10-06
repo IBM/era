@@ -16,7 +16,13 @@ large and not included in the baseline github repository).
 Demo-ERA has been successfully built and executed using the following set-up:
  - Ubuntu 18.04
  - Python 2.7
- 
+
+The bagfiles (see below) are in a ```rosbag``` format, and the python reader requires that the
+rosbag package be installed.  On Ubuntu 18, this can be achieved with
+```
+sudo apt install python-rosbag -y
+```
+
 
 ## Installation and Build
 
