@@ -346,7 +346,7 @@ int main(int argc, char *argv[])
 	}
 
 
-	printf("Connecting to server at IP %s\n", inet_addr_str);
+	printf("Connecting to bag-server at IP %s PORT %u\n", inet_addr_str, BAG_PORT);
 	// Open and connect to the BAG_SERVER 
 	if ((bag_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)  {
 	  printf("BAG Socket creation failed...\n");
@@ -373,7 +373,7 @@ int main(int argc, char *argv[])
 	}
 
 	// Open and connect to the XMIT_SERVER
-	printf("Setting up WIFI XMIT server on port %u\n", XMIT_PORT);
+	printf("Connecting to xmit-server at IP %s PORT %u\n", inet_addr_str, XMIT_PORT);
 	if ((xmit_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)  {
 	  printf("WIFI XMIT Socket creation failed...\n");
 	  exit(0);
@@ -383,7 +383,7 @@ int main(int argc, char *argv[])
 	}
 
 	xmit_servaddr.sin_family = AF_INET;
-	xmit_servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	xmit_servaddr.sin_addr.s_addr = inet_addr(inet_addr_str);
 	xmit_servaddr.sin_port = htons(XMIT_PORT);
 
 	while (true) {
@@ -399,7 +399,7 @@ int main(int argc, char *argv[])
 	}
 
 	// Open and connect to the RECV_SERVER 
-	printf("Setting up WIFI RECV server on port %u\n", RECV_PORT);
+	printf("Connecting to recv-server at IP %s PORT %u\n", inet_addr_str, RECV_PORT);
 	if ((recv_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)  {
 	  printf("WIFI RECV Socket creation failed...\n");
 	  exit(0);
@@ -409,7 +409,7 @@ int main(int argc, char *argv[])
 	}
 
 	recv_servaddr.sin_family = AF_INET;
-	recv_servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	recv_servaddr.sin_addr.s_addr = inet_addr(inet_addr_str); //"127.0.0.1");
 	recv_servaddr.sin_port = htons(RECV_PORT);
 
 	while (true) {
