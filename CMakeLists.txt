@@ -1,6 +1,18 @@
 cmake_minimum_required(VERSION 2.8.11)
 project(ERA)
 
+macro(use_c99)
+  if (CMAKE_VERSION VERSION_LESS "3.1")
+    if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+      set (CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
+    endif ()
+  else ()
+    sewt (CMAKE_STANDARD_99)
+  endif ()
+endmacro(use_c99)
+
+use_c99()
+
 #variable_watch(CMAKE_BUILD_TYPE)
 #set (CMAKE_BUILD_TYPE "Debug" CACHE STRING "Default build type: Debug" FORCE)
 #set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Default build type: Release" FORCE)
