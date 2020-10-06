@@ -9,6 +9,7 @@
 #include <arpa/inet.h> // for inet_addr
 
 #include "globals.h"
+#include "getopt.h"
 
 #include "occgrid.h"    // Occupancy Grid Map Create/Fuse
 #include "lz4.h"        // LZ4 Compression/Decompression
@@ -17,6 +18,8 @@
 
 // The PORTS are defined in the compilation process, and comforms to the
 // definition in the read_bag_x.py files and wifi_comm_x.py files.
+
+char inet_addr_str[20];
 
 int bag_sock = 0;
 int xmit_sock = 0;
@@ -27,6 +30,13 @@ char *ack = "OK";
 float odometry[] = {0.0, 0.0, 0.0};
 
 char pr_map_char[256];
+
+void print_usage(char * pname) {
+  printf("Usage: %s <OPTIONS>\n", pname);
+  printf(" OPTIONS:\n");
+  printf("    -h         : print this helpful usage info\n");
+  printf("    -A <str>   : set the internet-address for the bag & wifi servers to <str>\n");
+}
 
 void INThandler(int dummy)
 {
@@ -298,6 +308,8 @@ int main(int argc, char *argv[])
 	struct sockaddr_in recv_servaddr;
 	unsigned char buffer[200002] = {0};
 
+	snprintf(inet_addr_str, 20, "127.0.0.1");
+	
 	xmit_pipe_init(); // Initialize the IEEE SDR Transmit Pipeline
 	
 	signal(SIGINT, INThandler);
@@ -310,6 +322,31 @@ int main(int argc, char *argv[])
 	pr_map_char[FREE_SPACE]      = ' ';
 	pr_map_char[LETHAL_OBSTACLE] = 'X';
 
+	// Use getot to read in run-time options
+	// put ':' in the starting of the
+	// string so that program can
+	// distinguish between '?' and ':'
+	int opt;
+	while((opt = getopt(argc, argv, ":hA:")) != -1) {
+		switch(opt) {
+		case 'h':
+			print_usage(argv[0]);
+			exit(0);
+		case 'A':
+			snprintf(inet_addr_str, 20, "%s", optarg);
+			break;
+
+		case ':':
+			printf("option needs a value\n");
+			break;
+		case '?':
+			printf("unknown option: %c\n", optopt);
+			break;
+		}
+	}
+
+
+	printf("Connecting to server at IP %s\n", inet_addr_str);
 	// Open and connect to the BAG_SERVER 
 	if ((bag_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)  {
 	  printf("BAG Socket creation failed...\n");
@@ -320,7 +357,7 @@ int main(int argc, char *argv[])
 	}
 
 	bag_servaddr.sin_family = AF_INET;
-	bag_servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	bag_servaddr.sin_addr.s_addr = inet_addr(inet_addr_str);
 	bag_servaddr.sin_port = htons(BAG_PORT);
 
 	while (true) {
