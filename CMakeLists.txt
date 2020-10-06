@@ -7,7 +7,7 @@ macro(use_c99)
       set (CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
     endif ()
   else ()
-    sewt (CMAKE_STANDARD_99)
+    set (CMAKE_STANDARD_99)
   endif ()
 endmacro(use_c99)
 
