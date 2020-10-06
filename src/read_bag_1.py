@@ -4,6 +4,7 @@ import sys
 import rosbag
 import socket
 import struct
+import argparse
 
 HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
 PORT = 5556        # Port to listen on (non-privileged ports are > 1023)
@@ -51,10 +52,15 @@ def send_data(bag_file):
 
 def main():
 	global bag_file
-	for arg in sys.argv[1:]:
-		bag_file = arg
+        parser = argparse.ArgumentParser()
+        parser.add_argument("bag_file", help="The name of the bag-file to use for AV 1")
+        parser.add_argument("-A", "--address", help="define the IP address to connect to")
+        args = parser.parse_args()
+        
+	#for arg in sys.argv[1:]:
+	#	bag_file = arg
 
-	send_data(bag_file)
+	send_data(args.bag_file)
 
 if __name__ == "__main__":
 	main()

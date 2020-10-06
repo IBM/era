@@ -148,7 +148,7 @@ void process_data(char* data, int data_size)
 	char w_buffer[10];
 	unsigned xfer_bytes = n_xmit_out*sizeof(float);
 	snprintf(w_buffer, 9, "X%-6uX", xfer_bytes);
-	printf("\nXMIT Sending %s on XMIT port %u socket\n", w_buffer, XMIT_PORT);
+	DBGOUT(printf("\nXMIT Sending %s on XMIT port %u socket\n", w_buffer, XMIT_PORT));
 	send(xmit_sock, w_buffer, 8, 0);
 	DBGOUT(printf("     Send %u REAL values %u bytes on XMIT port %u socket\n", n_xmit_out, xfer_bytes, XMIT_PORT));
 	DBGOUT2(printf("XFER %4u : Dumping XMIT-PIPE REAL raw bytes\n", xmit_recv_count);
@@ -171,7 +171,7 @@ void process_data(char* data, int data_size)
 	float recvd_in_real[MAX_XMIT_OUTPUTS];
 	float recvd_in_imag[MAX_XMIT_OUTPUTS];
 
-	printf("\nTrying to Receive data on RECV port %u socket\n", RECV_PORT);
+	DBGOUT(printf("\nTrying to Receive data on RECV port %u socket\n", RECV_PORT));
 	int message_size = 8;
 	char * message_ptr = w_buffer;
 	int total_recvd = 0;
