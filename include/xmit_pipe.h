@@ -20,7 +20,33 @@
 
 #include "sdr_base.h"
 
-#define TIME
+#ifdef INT_TIME
+/* This is XMIT PIPE internal Timing information (gathering resources) */
+extern uint64_t x_pipe_sec;
+extern uint64_t x_pipe_usec;
+
+extern uint64_t x_genmacfr_sec;
+extern uint64_t x_genmacfr_usec;
+
+extern uint64_t x_domapwk_sec;
+extern uint64_t x_domapwk_usec;
+
+extern uint64_t x_phdrgen_sec;
+extern uint64_t x_phdrgen_usec;
+
+extern uint64_t x_ck2sym_sec;
+extern uint64_t x_ck2sym_usec;
+
+extern uint64_t x_ocaralloc_sec;
+extern uint64_t x_ocaralloc_usec;
+
+extern uint64_t x_fft_sec;
+extern uint64_t x_fft_usec;
+
+extern uint64_t x_ocycpref_sec;
+extern uint64_t x_ocycpref_usec;
+
+#endif
 
 void xmit_pipe_init();
 

@@ -35,7 +35,7 @@ float odometry[] = {0.0, 0.0, 0.0};
 char pr_map_char[256];
 
 // These variables capture "time" spent in various parts ofthe workload
-#ifndef SKIP_TIMING
+#ifdef INT_TIME
  struct timeval stop_prog, start_prog;
 
  struct timeval stop_proc_odo, start_proc_odo;
@@ -190,7 +190,7 @@ void process_data(char* data, int data_size)
 {
         DBGOUT(printf("Calling cloudToOccgrid...\n"));
 	int valread = 0;
-       #ifndef SKIP_TIMING
+       #ifdef INT_TIME
 	gettimeofday(&start_pd_cloud2grid, NULL);
        #endif	
 	unsigned char * grid = cloudToOccgrid((float*)data, data_size/sizeof(float),
@@ -200,7 +200,7 @@ void process_data(char* data, int data_size)
 		100,
 	        100, 100, 2.0,  // size_x, size_y, resolution
 		NO_INFORMATION);
-       #ifndef SKIP_TIMING
+       #ifdef INT_TIME
 	gettimeofday(&stop_pd_cloud2grid, NULL);
 	pd_cloud2grid_sec   += stop_pd_cloud2grid.tv_sec  - start_pd_cloud2grid.tv_sec;
 	pd_cloud2grid_usec  += stop_pd_cloud2grid.tv_usec - start_pd_cloud2grid.tv_usec;
@@ -225,11 +225,11 @@ void process_data(char* data, int data_size)
 	       printf("\n"));
 	
 	unsigned char cmp_data[MAX_COMPRESSED_DATA_SIZE];
-       #ifndef SKIP_TIMING
+       #ifdef INT_TIME
 	gettimeofday(&start_pd_lz4_cmp, NULL);
        #endif	
 	int n_cmp_bytes = LZ4_compress_default((char*)local_map, (char*)cmp_data, MAX_UNCOMPRESSED_DATA_SIZE, MAX_COMPRESSED_DATA_SIZE);
-       #ifndef SKIP_TIMING
+       #ifdef INT_TIME
 	gettimeofday(&stop_pd_lz4_cmp, NULL);
 	pd_lz4_cmp_sec   += stop_pd_lz4_cmp.tv_sec  - start_pd_lz4_cmp.tv_sec;
 	pd_lz4_cmp_usec  += stop_pd_lz4_cmp.tv_usec - start_pd_lz4_cmp.tv_usec;
@@ -242,11 +242,11 @@ void process_data(char* data, int data_size)
 	int n_xmit_out;
 	float xmit_out_real[MAX_XMIT_OUTPUTS];
 	float xmit_out_imag[MAX_XMIT_OUTPUTS];
-       #ifndef SKIP_TIMING
+       #ifdef INT_TIME
 	gettimeofday(&start_pd_xmit_pipe, NULL);
        #endif	
 	do_xmit_pipeline(n_cmp_bytes, cmp_data, &n_xmit_out, xmit_out_real, xmit_out_imag);
-       #ifndef SKIP_TIMING
+       #ifdef INT_TIME
 	gettimeofday(&stop_pd_xmit_pipe, NULL);
 	pd_xmit_pipe_sec   += stop_pd_xmit_pipe.tv_sec  - start_pd_xmit_pipe.tv_sec;
 	pd_xmit_pipe_usec  += stop_pd_xmit_pipe.tv_usec - start_pd_xmit_pipe.tv_usec;
@@ -257,7 +257,7 @@ void process_data(char* data, int data_size)
 	//  The n_xmit_out values of xmit_out_real and xmit_out_imag
 	// Connect to the Wifi-Socket and send the n_xmit_out
 	char w_buffer[10];
-       #ifndef SKIP_TIMING
+       #ifdef INT_TIME
 	gettimeofday(&start_pd_xmit_send, NULL);
        #endif	
 	unsigned xfer_bytes = n_xmit_out*sizeof(float);
@@ -278,7 +278,7 @@ void process_data(char* data, int data_size)
 		}
 	       printf("\n"));
 	send(xmit_sock, (char*)(xmit_out_imag), n_xmit_out*sizeof(float), 0);
-       #ifndef SKIP_TIMING
+       #ifdef INT_TIME
 	gettimeofday(&stop_pd_xmit_send, NULL);
 	pd_xmit_send_sec   += stop_pd_xmit_send.tv_sec  - start_pd_xmit_send.tv_sec;
 	pd_xmit_send_usec  += stop_pd_xmit_send.tv_usec - start_pd_xmit_send.tv_usec;
@@ -291,7 +291,7 @@ void process_data(char* data, int data_size)
 	float recvd_in_imag[MAX_XMIT_OUTPUTS];
 
 	DBGOUT(printf("\nTrying to Receive data on RECV port %u socket\n", RECV_PORT));
-       #ifndef SKIP_TIMING
+       #ifdef INT_TIME
 	gettimeofday(&start_pd_xmit_recv, NULL);
        #endif	
 	valread = read_all(recv_sock, w_buffer, 8);
@@ -347,7 +347,7 @@ void process_data(char* data, int data_size)
 		 printf("XFER %4u IMAG-byte %6u : %f\n", odo_count, i, recvd_in_imag[i]);
 	       }
 	       printf("\n"));
-       #ifndef SKIP_TIMING
+       #ifdef INT_TIME
 	gettimeofday(&stop_pd_xmit_recv, NULL);
 	pd_xmit_recv_sec   += stop_pd_xmit_recv.tv_sec  - start_pd_xmit_recv.tv_sec;
 	pd_xmit_recv_usec  += stop_pd_xmit_recv.tv_usec - start_pd_xmit_recv.tv_usec;
@@ -358,11 +358,11 @@ void process_data(char* data, int data_size)
 	int   recvd_msg_len;
 	unsigned char recvd_msg[1500]; // MAX size of original message in bytes
 	// Fake this with a "loopback" of the xmit message..
-       #ifndef SKIP_TIMING
+       #ifdef INT_TIME
 	gettimeofday(&start_pd_recv_pipe, NULL);
        #endif	
 	do_recv_pipeline(n_recvd_in, recvd_in_real, recvd_in_imag, &recvd_msg_len, recvd_msg);
-       #ifndef SKIP_TIMING
+       #ifdef INT_TIME
 	gettimeofday(&stop_pd_recv_pipe, NULL);
 	pd_recv_pipe_sec   += stop_pd_recv_pipe.tv_sec  - start_pd_recv_pipe.tv_sec;
 	pd_recv_pipe_usec  += stop_pd_recv_pipe.tv_usec - start_pd_recv_pipe.tv_usec;
@@ -372,11 +372,11 @@ void process_data(char* data, int data_size)
 	// Now we decompress the grid received via transmission...
 	DBGOUT(printf("Calling LZ4_decompress_default...\n"));
 	unsigned char uncmp_data[MAX_UNCOMPRESSED_DATA_SIZE];
-       #ifndef SKIP_TIMING
+       #ifdef INT_TIME
 	gettimeofday(&start_pd_lz4_uncmp, NULL);
        #endif	
 	int dec_bytes = LZ4_decompress_safe((char*)recvd_msg, (char*)uncmp_data, n_cmp_bytes, MAX_UNCOMPRESSED_DATA_SIZE);
-       #ifndef SKIP_TIMING
+       #ifdef INT_TIME
 	gettimeofday(&stop_pd_lz4_uncmp, NULL);
 	pd_lz4_uncmp_sec   += stop_pd_lz4_uncmp.tv_sec  - start_pd_lz4_uncmp.tv_sec;
 	pd_lz4_uncmp_usec  += stop_pd_lz4_uncmp.tv_usec - start_pd_lz4_uncmp.tv_usec;
@@ -403,7 +403,7 @@ void process_data(char* data, int data_size)
 	// Note: The direction in which this is called is slightly significant:
 	//  The first map is copied into the second map, in this case remote into local,
 	//  and the x_dim, et.c MUST correspond to that second map (here local)
-       #ifndef SKIP_TIMING
+       #ifdef INT_TIME
 	gettimeofday(&start_pd_combGrids, NULL);
        #endif	
 	combineGrids(remote_map->costmap_, local_map->costmap_,
@@ -411,7 +411,7 @@ void process_data(char* data, int data_size)
 		     local_map->av_x, local_map->av_y,
 		     local_map->x_dim, local_map->y_dim, local_map->cell_size,
 		     local_map->default_value);
-       #ifndef SKIP_TIMING
+       #ifdef INT_TIME
 	gettimeofday(&stop_pd_combGrids, NULL);
 	pd_combGrids_sec   += stop_pd_combGrids.tv_sec  - start_pd_combGrids.tv_sec;
 	pd_combGrids_usec  += stop_pd_combGrids.tv_usec - start_pd_combGrids.tv_usec;
@@ -572,7 +572,7 @@ int main(int argc, char *argv[])
 	  }
 	}
 
-       #ifndef SKIP_TIMING
+       #ifdef INT_TIME
 	gettimeofday(&start_prog, NULL);
        #endif
 	bool hit_eof = false;
@@ -592,7 +592,7 @@ int main(int argc, char *argv[])
 		}
 
 		if(buffer[0] == 'L' && buffer[9] == 'L') {
-                       #ifndef SKIP_TIMING
+                       #ifdef INT_TIME
 		         gettimeofday(&start_proc_lidar, NULL);
                        #endif
 			char * ptr;
@@ -615,13 +615,13 @@ int main(int argc, char *argv[])
                         }
 			DBGOUT(printf("Calling process_data for %d total bytes\n", total_bytes_read));
 			printf("Processing Lidar msg %4u data\n", lidar_count);
-                       #ifndef SKIP_TIMING
+                       #ifdef INT_TIME
 		         gettimeofday(&start_proc_data, NULL);
                        #endif
 			process_data(buffer, total_bytes_read);
 			DBGOUT(printf("Back from process_data for Lidar\n"); fflush(stdout));
 			lidar_count++;
-                       #ifndef SKIP_TIMING
+                       #ifdef INT_TIME
 		         gettimeofday(&stop_proc_lidar, NULL);
 			 proc_data_sec   += stop_proc_lidar.tv_sec  - start_proc_data.tv_sec;
 			 proc_data_usec  += stop_proc_lidar.tv_usec - start_proc_data.tv_usec;
@@ -630,7 +630,7 @@ int main(int argc, char *argv[])
                        #endif
 		}
 		else if(buffer[0] == 'O' && buffer[9] == 'O') {
-                       #ifndef SKIP_TIMING
+                       #ifdef INT_TIME
 		         gettimeofday(&start_proc_odo, NULL);
                        #endif
 			char * ptr;
@@ -659,7 +659,7 @@ int main(int argc, char *argv[])
 
 			printf("Odometry msg %4u: %.2f %.2f %.2f\n", odo_count, odometry[0], odometry[1], odometry[2]);
 			odo_count++;
-                       #ifndef SKIP_TIMING
+                       #ifdef INT_TIME
 		         gettimeofday(&stop_proc_odo, NULL);
 			 proc_odo_sec  += stop_proc_odo.tv_sec  - start_proc_odo.tv_sec;
 			 proc_odo_usec += stop_proc_odo.tv_usec - start_proc_odo.tv_usec;
@@ -688,37 +688,93 @@ int main(int argc, char *argv[])
 
 void dump_final_run_statistics()
 {
- #ifndef SKIP_TIMING
+  printf("\nFinal Run Statistics for %u total Lidar Time-Steps\n", lidar_count);
+
+  printf("Timing (in usec):\n");
+ #ifdef INT_TIME
   gettimeofday(&stop_prog, NULL);
   uint64_t total_exec = (uint64_t) (stop_prog.tv_sec - start_prog.tv_sec) * 1000000 + (uint64_t) (stop_prog.tv_usec - start_prog.tv_usec);
   uint64_t proc_odo   = (uint64_t) (proc_odo_sec)  * 1000000 + (uint64_t) (proc_odo_usec);
-  uint64_t proc_lidar   = (uint64_t) (proc_lidar_sec)  * 1000000 + (uint64_t) (proc_lidar_usec);
-  uint64_t proc_data   = (uint64_t) (proc_data_sec)  * 1000000 + (uint64_t) (proc_data_usec);
+  uint64_t proc_lidar = (uint64_t) (proc_lidar_sec)  * 1000000 + (uint64_t) (proc_lidar_usec);
+  uint64_t proc_data  = (uint64_t) (proc_data_sec)  * 1000000 + (uint64_t) (proc_data_usec);
 
-  uint64_t pd_cloud2grid   = (uint64_t) (pd_cloud2grid_sec)  * 1000000 + (uint64_t) (pd_cloud2grid_usec);
-  uint64_t pd_lz4_cmp   = (uint64_t) (pd_lz4_cmp_sec)  * 1000000 + (uint64_t) (pd_lz4_cmp_usec);
-  uint64_t pd_xmit_pipe   = (uint64_t) (pd_xmit_pipe_sec)  * 1000000 + (uint64_t) (pd_xmit_pipe_usec);
-  uint64_t pd_xmit_send   = (uint64_t) (pd_xmit_send_sec)  * 1000000 + (uint64_t) (pd_xmit_send_usec);
-  uint64_t pd_xmit_recv   = (uint64_t) (pd_xmit_recv_sec)  * 1000000 + (uint64_t) (pd_xmit_recv_usec);
-  uint64_t pd_recv_pipe   = (uint64_t) (pd_recv_pipe_sec)  * 1000000 + (uint64_t) (pd_recv_pipe_usec);
-  uint64_t pd_lz4_uncmp   = (uint64_t) (pd_lz4_uncmp_sec)  * 1000000 + (uint64_t) (pd_lz4_uncmp_usec);
-  uint64_t pd_combGrids   = (uint64_t) (pd_combGrids_sec)  * 1000000 + (uint64_t) (pd_combGrids_usec);
-#endif
+  uint64_t pd_cloud2grid = (uint64_t) (pd_cloud2grid_sec)  * 1000000 + (uint64_t) (pd_cloud2grid_usec);
+  uint64_t pd_lz4_cmp    = (uint64_t) (pd_lz4_cmp_sec)  * 1000000 + (uint64_t) (pd_lz4_cmp_usec);
+  uint64_t pd_xmit_pipe  = (uint64_t) (pd_xmit_pipe_sec)  * 1000000 + (uint64_t) (pd_xmit_pipe_usec);
+  uint64_t pd_xmit_send  = (uint64_t) (pd_xmit_send_sec)  * 1000000 + (uint64_t) (pd_xmit_send_usec);
+  uint64_t pd_xmit_recv  = (uint64_t) (pd_xmit_recv_sec)  * 1000000 + (uint64_t) (pd_xmit_recv_usec);
+  uint64_t pd_recv_pipe  = (uint64_t) (pd_recv_pipe_sec)  * 1000000 + (uint64_t) (pd_recv_pipe_usec);
+  uint64_t pd_lz4_uncmp  = (uint64_t) (pd_lz4_uncmp_sec)  * 1000000 + (uint64_t) (pd_lz4_uncmp_usec);
+  uint64_t pd_combGrids  = (uint64_t) (pd_combGrids_sec)  * 1000000 + (uint64_t) (pd_combGrids_usec);
 
-  printf("\nFinal Run Statistics for %u total Lidar Time-Steps\n", lidar_count);
-  printf("Timing (in usec):\n");
+  // This is the xmit_pipe.c breakdown
+  uint64_t x_pipe      = (uint64_t) (x_pipe_sec)  * 1000000 + (uint64_t) (x_pipe_usec);
+  uint64_t x_genmacfr  = (uint64_t) (x_genmacfr_sec)  * 1000000 + (uint64_t) (x_genmacfr_usec);
+  uint64_t x_domapwk   = (uint64_t) (x_domapwk_sec)  * 1000000 + (uint64_t) (x_domapwk_usec);
+  uint64_t x_phdrgen   = (uint64_t) (x_phdrgen_sec)  * 1000000 + (uint64_t) (x_phdrgen_usec);
+  uint64_t x_ck2sym    = (uint64_t) (x_ck2sym_sec)  * 1000000 + (uint64_t) (x_ck2sym_usec);
+  uint64_t x_ocaralloc = (uint64_t) (x_ocaralloc_sec)  * 1000000 + (uint64_t) (x_ocaralloc_usec);
+  uint64_t x_fft       = (uint64_t) (x_fft_sec)  * 1000000 + (uint64_t) (x_fft_usec);
+  uint64_t x_ocycpref  = (uint64_t) (x_ocycpref_sec)  * 1000000 + (uint64_t) (x_ocycpref_usec);
+
+  // This is the recv_pipe.c breakdown
+  uint64_t r_pipe     = (uint64_t) (r_pipe_sec)  * 1000000 + (uint64_t) (r_pipe_usec);
+  uint64_t r_cmpcnj   = (uint64_t) (r_cmpcnj_sec)  * 1000000 + (uint64_t) (r_cmpcnj_usec);
+  uint64_t r_cmpmpy   = (uint64_t) (r_cmpmpy_sec)  * 1000000 + (uint64_t) (r_cmpmpy_usec);
+  uint64_t r_firc     = (uint64_t) (r_firc_sec)  * 1000000 + (uint64_t) (r_firc_usec);
+  uint64_t r_cmpmag   = (uint64_t) (r_cmpmag_sec)  * 1000000 + (uint64_t) (r_cmpmag_usec);
+  uint64_t r_cmpmag2  = (uint64_t) (r_cmpmag2_sec)  * 1000000 + (uint64_t) (r_cmpmag2_usec);
+  uint64_t r_fir      = (uint64_t) (r_fir_sec)  * 1000000 + (uint64_t) (r_fir_usec);
+  uint64_t r_div      = (uint64_t) (r_div_sec)  * 1000000 + (uint64_t) (r_div_usec);
+  uint64_t r_sshort   = (uint64_t) (r_sshort_sec)  * 1000000 + (uint64_t) (r_sshort_usec);
+  uint64_t r_slong    = (uint64_t) (r_slong_sec)  * 1000000 + (uint64_t) (r_slong_usec);
+  uint64_t r_fft      = (uint64_t) (r_fft_sec)  * 1000000 + (uint64_t) (r_fft_usec);
+  uint64_t r_eqlz     = (uint64_t) (r_eqlz_sec)  * 1000000 + (uint64_t) (r_eqlz_usec);
+  uint64_t r_decsignl = (uint64_t) (r_decsignl_sec)  * 1000000 + (uint64_t) (r_decsignl_usec);
+  uint64_t r_descrmbl = (uint64_t) (r_descrmbl_sec)  * 1000000 + (uint64_t) (r_descrmbl_usec);
+  
   printf(" Total workload main-loop : %10lu usec\n", total_exec);
-  printf("   Total proc Odometry    :   %10lu usec\n", proc_odo);
-  printf("   Total proc Lidar       :   %10lu usec\n", proc_lidar);
-  printf("   Total proc Data        :   %10lu usec\n", proc_data);
-  printf("     Total pd cloud2grid  :     %10lu usec\n", pd_cloud2grid);
-  printf("     Total pd lz4_cmp     :     %10lu usec\n", pd_lz4_cmp);
-  printf("     Total pd xmit_pipe   :     %10lu usec\n", pd_xmit_pipe);
-  printf("     Total pd xmit_send   :     %10lu usec\n", pd_xmit_send);
-  printf("     Total pd xmit_recv   :     %10lu usec\n", pd_xmit_recv);
-  printf("     Total pd recv_pipe   :     %10lu usec\n", pd_recv_pipe);
-  printf("     Total pd lz4_uncmp   :     %10lu usec\n", pd_lz4_uncmp);
-  printf("     Total pd combGrids   :     %10lu usec\n", pd_combGrids);
-  //printf("     Total pd Z  :      %10lu usec\n", pd_Z);
+  printf("   Total proc Odometry      : %10lu usec\n", proc_odo);
+  printf("   Total proc Lidar         : %10lu usec\n", proc_lidar);
+  printf("   Total proc Data          : %10lu usec\n", proc_data);
+  printf("     Total pd cloud2grid      : %10lu usec\n", pd_cloud2grid);
+  printf("     Total pd lz4_cmp         : %10lu usec\n", pd_lz4_cmp);
+  printf("     Total pd xmit_pipe       : %10lu usec\n", pd_xmit_pipe);
+  printf("       X-Pipe Total Time        : %10lu usec\n", x_pipe);
+  printf("       X-Pipe GenMacFr Time     : %10lu usec\n", x_genmacfr);
+  printf("       X-Pipe doMapWk Time      : %10lu usec\n", x_domapwk);
+  printf("       X-Pipe PckHdrGen Time    : %10lu usec\n", x_phdrgen);
+  printf("       X-Pipe Chnk2Sym Time     : %10lu usec\n", x_ck2sym);
+  printf("       X-Pipe CarAlloc Time     : %10lu usec\n", x_ocaralloc);
+  printf("       X-Pipe Xm-FFT Time       : %10lu usec\n", x_fft);
+  printf("       X-Pipe CycPrefix Time    : %10lu usec\n", x_ocycpref);
+
+  printf("     Total pd xmit_send       : %10lu usec\n", pd_xmit_send);
+  printf("     Total pd xmit_recv       : %10lu usec\n", pd_xmit_recv);
+  printf("     Total pd recv_pipe       : %10lu usec\n", pd_recv_pipe);
+  printf("       R-Pipe Total Time      : %10lu usec\n", r_pipe);
+  printf("       R-Pipe CmplCnjg Time   : %10lu usec\n", r_cmpcnj);
+  printf("       R-Pipe CmplMult Time   : %10lu usec\n", r_cmpmpy);
+  printf("       R-Pipe FIRC Time       : %10lu usec\n", r_firc);
+  printf("       R-Pipe CmplMag Time    : %10lu usec\n", r_cmpmag);
+  printf("       R-Pipe CmplMag^2 Time  : %10lu usec\n", r_cmpmag2);
+  printf("       R-Pipe FIR Time        : %10lu usec\n", r_fir);
+  printf("       R-Pipe DIV Time        : %10lu usec\n", r_div);
+  printf("       R-Pipe SyncShort Time  : %10lu usec\n", r_sshort);
+  printf("       R-Pipe SyncLong Time   : %10lu usec\n", r_slong);
+  printf("       R-Pipe Rc-FFT Time     : %10lu usec\n", r_fft);
+  printf("       R-Pipe Equalize Time   : %10lu usec\n", r_eqlz);
+  printf("       R-Pipe DecSignal Time  : %10lu usec\n", r_decsignl);
+  printf("       R-Pipe DeScramble Time : %10lu usec\n", r_descrmbl);
+  printf("     Total pd lz4_uncmp       : %10lu usec\n", pd_lz4_uncmp);
+  printf("     Total pd combGrids       : %10lu usec\n", pd_combGrids);
+
+
+
+  printf("\n");
+
+ #else
+  printf(" NO Timing information on this run...\n");
+ #endif
   printf("\nDone with the run...\n");
 }
