@@ -50,6 +50,38 @@ char pr_map_char[256];
  uint64_t proc_data_sec  = 0LL;
  uint64_t proc_data_usec = 0LL;
 
+ struct timeval stop_pd_cloud2grid, start_pd_cloud2grid;
+ uint64_t pd_cloud2grid_sec  = 0LL;
+ uint64_t pd_cloud2grid_usec = 0LL;
+
+ struct timeval stop_pd_lz4_cmp, start_pd_lz4_cmp;
+ uint64_t pd_lz4_cmp_sec  = 0LL;
+ uint64_t pd_lz4_cmp_usec = 0LL;
+
+ struct timeval stop_pd_xmit_pipe, start_pd_xmit_pipe;
+ uint64_t pd_xmit_pipe_sec  = 0LL;
+ uint64_t pd_xmit_pipe_usec = 0LL;
+
+ struct timeval stop_pd_xmit_send, start_pd_xmit_send;
+ uint64_t pd_xmit_send_sec  = 0LL;
+ uint64_t pd_xmit_send_usec = 0LL;
+
+ struct timeval stop_pd_xmit_recv, start_pd_xmit_recv;
+ uint64_t pd_xmit_recv_sec  = 0LL;
+ uint64_t pd_xmit_recv_usec = 0LL;
+
+ struct timeval stop_pd_recv_pipe, start_pd_recv_pipe;
+ uint64_t pd_recv_pipe_sec  = 0LL;
+ uint64_t pd_recv_pipe_usec = 0LL;
+
+struct timeval stop_pd_lz4_uncmp, start_pd_lz4_uncmp;
+ uint64_t pd_lz4_uncmp_sec  = 0LL;
+ uint64_t pd_lz4_uncmp_usec = 0LL;
+
+ struct timeval stop_pd_combGrids, start_pd_combGrids;
+ uint64_t pd_combGrids_sec  = 0LL;
+ uint64_t pd_combGrids_usec = 0LL;
+
 #endif
 
 // Forward Declarations
@@ -158,7 +190,9 @@ void process_data(char* data, int data_size)
 {
         DBGOUT(printf("Calling cloudToOccgrid...\n"));
 	int valread = 0;
-	
+       #ifndef SKIP_TIMING
+	gettimeofday(&start_pd_cloud2grid, NULL);
+       #endif	
 	unsigned char * grid = cloudToOccgrid((float*)data, data_size/sizeof(float),
 		odometry[0],odometry[1],odometry[2],1.5,
 		false,
@@ -166,6 +200,11 @@ void process_data(char* data, int data_size)
 		100,
 	        100, 100, 2.0,  // size_x, size_y, resolution
 		NO_INFORMATION);
+       #ifndef SKIP_TIMING
+	gettimeofday(&stop_pd_cloud2grid, NULL);
+	pd_cloud2grid_sec   += stop_pd_cloud2grid.tv_sec  - start_pd_cloud2grid.tv_sec;
+	pd_cloud2grid_usec  += stop_pd_cloud2grid.tv_usec - start_pd_cloud2grid.tv_usec;
+       #endif
 
 	// Write the read-in image to a file
 	//write_array_to_file(grid, 100/2.0*100/2.0);
@@ -186,22 +225,41 @@ void process_data(char* data, int data_size)
 	       printf("\n"));
 	
 	unsigned char cmp_data[MAX_COMPRESSED_DATA_SIZE];
+       #ifndef SKIP_TIMING
+	gettimeofday(&start_pd_lz4_cmp, NULL);
+       #endif	
 	int n_cmp_bytes = LZ4_compress_default((char*)local_map, (char*)cmp_data, MAX_UNCOMPRESSED_DATA_SIZE, MAX_COMPRESSED_DATA_SIZE);
-	double c_ratio = 100*(1-((double)(n_cmp_bytes)/(double)(MAX_UNCOMPRESSED_DATA_SIZE)));
-	DBGOUT(printf("  Back from LZ4_compress_default: %lu bytes -> %u bytes for %5.2f%%\n", MAX_UNCOMPRESSED_DATA_SIZE, n_cmp_bytes, c_ratio));
+       #ifndef SKIP_TIMING
+	gettimeofday(&stop_pd_lz4_cmp, NULL);
+	pd_lz4_cmp_sec   += stop_pd_lz4_cmp.tv_sec  - start_pd_lz4_cmp.tv_sec;
+	pd_lz4_cmp_usec  += stop_pd_lz4_cmp.tv_usec - start_pd_lz4_cmp.tv_usec;
+       #endif
+	DBGOUT(double c_ratio = 100*(1-((double)(n_cmp_bytes)/(double)(MAX_UNCOMPRESSED_DATA_SIZE)));
+	       printf("  Back from LZ4_compress_default: %lu bytes -> %u bytes for %5.2f%%\n", MAX_UNCOMPRESSED_DATA_SIZE, n_cmp_bytes, c_ratio));
 
 	// Now we encode and transmit the grid...
 	DBGOUT(printf("Calling do_xmit_pipeline for %u compressed grid elements\n", n_cmp_bytes));
 	int n_xmit_out;
 	float xmit_out_real[MAX_XMIT_OUTPUTS];
 	float xmit_out_imag[MAX_XMIT_OUTPUTS];
+       #ifndef SKIP_TIMING
+	gettimeofday(&start_pd_xmit_pipe, NULL);
+       #endif	
 	do_xmit_pipeline(n_cmp_bytes, cmp_data, &n_xmit_out, xmit_out_real, xmit_out_imag);
+       #ifndef SKIP_TIMING
+	gettimeofday(&stop_pd_xmit_pipe, NULL);
+	pd_xmit_pipe_sec   += stop_pd_xmit_pipe.tv_sec  - start_pd_xmit_pipe.tv_sec;
+	pd_xmit_pipe_usec  += stop_pd_xmit_pipe.tv_usec - start_pd_xmit_pipe.tv_usec;
+       #endif
 	DBGOUT(printf("  Back from do_xmit_pipeline with %u xmit outputs...\n", n_xmit_out));
 
 	// This is now the content that should be sent out via IEEE 802.11p WiFi
 	//  The n_xmit_out values of xmit_out_real and xmit_out_imag
 	// Connect to the Wifi-Socket and send the n_xmit_out
 	char w_buffer[10];
+       #ifndef SKIP_TIMING
+	gettimeofday(&start_pd_xmit_send, NULL);
+       #endif	
 	unsigned xfer_bytes = n_xmit_out*sizeof(float);
 	snprintf(w_buffer, 9, "X%-6uX", xfer_bytes);
 	DBGOUT(printf("\nXMIT Sending %s on XMIT port %u socket\n", w_buffer, XMIT_PORT));
@@ -220,7 +278,12 @@ void process_data(char* data, int data_size)
 		}
 	       printf("\n"));
 	send(xmit_sock, (char*)(xmit_out_imag), n_xmit_out*sizeof(float), 0);
-	
+       #ifndef SKIP_TIMING
+	gettimeofday(&stop_pd_xmit_send, NULL);
+	pd_xmit_send_sec   += stop_pd_xmit_send.tv_sec  - start_pd_xmit_send.tv_sec;
+	pd_xmit_send_usec  += stop_pd_xmit_send.tv_usec - start_pd_xmit_send.tv_usec;
+       #endif
+
 	// Now we take in a recevied transmission with the other AV's map
 	// If we receive a transmission, the process to turn it back into the gridMap is:
 	int   n_recvd_in;
@@ -228,6 +291,9 @@ void process_data(char* data, int data_size)
 	float recvd_in_imag[MAX_XMIT_OUTPUTS];
 
 	DBGOUT(printf("\nTrying to Receive data on RECV port %u socket\n", RECV_PORT));
+       #ifndef SKIP_TIMING
+	gettimeofday(&start_pd_xmit_recv, NULL);
+       #endif	
 	valread = read_all(recv_sock, w_buffer, 8);
 	DBGOUT2(printf("  RECV got msg %s\n", w_buffer);
 		printf("  RECV msg psn %s\n", "01234567890"));
@@ -281,20 +347,40 @@ void process_data(char* data, int data_size)
 		 printf("XFER %4u IMAG-byte %6u : %f\n", odo_count, i, recvd_in_imag[i]);
 	       }
 	       printf("\n"));
-
+       #ifndef SKIP_TIMING
+	gettimeofday(&stop_pd_xmit_recv, NULL);
+	pd_xmit_recv_sec   += stop_pd_xmit_recv.tv_sec  - start_pd_xmit_recv.tv_sec;
+	pd_xmit_recv_usec  += stop_pd_xmit_recv.tv_usec - start_pd_xmit_recv.tv_usec;
+       #endif
 
 	// Now we have the tranmission input data to be decoded...
 	DBGOUT(printf("Calling do_recv_pipeline...\n"));
 	int   recvd_msg_len;
 	unsigned char recvd_msg[1500]; // MAX size of original message in bytes
 	// Fake this with a "loopback" of the xmit message..
+       #ifndef SKIP_TIMING
+	gettimeofday(&start_pd_recv_pipe, NULL);
+       #endif	
 	do_recv_pipeline(n_recvd_in, recvd_in_real, recvd_in_imag, &recvd_msg_len, recvd_msg);
+       #ifndef SKIP_TIMING
+	gettimeofday(&stop_pd_recv_pipe, NULL);
+	pd_recv_pipe_sec   += stop_pd_recv_pipe.tv_sec  - start_pd_recv_pipe.tv_sec;
+	pd_recv_pipe_usec  += stop_pd_recv_pipe.tv_usec - start_pd_recv_pipe.tv_usec;
+       #endif
 	//do_recv_pipeline(n_xmit_out, xmit_out_real, xmit_out_imag, &recvd_msg_len, recvd_msg);
 
 	// Now we decompress the grid received via transmission...
 	DBGOUT(printf("Calling LZ4_decompress_default...\n"));
 	unsigned char uncmp_data[MAX_UNCOMPRESSED_DATA_SIZE];
+       #ifndef SKIP_TIMING
+	gettimeofday(&start_pd_lz4_uncmp, NULL);
+       #endif	
 	int dec_bytes = LZ4_decompress_safe((char*)recvd_msg, (char*)uncmp_data, n_cmp_bytes, MAX_UNCOMPRESSED_DATA_SIZE);
+       #ifndef SKIP_TIMING
+	gettimeofday(&stop_pd_lz4_uncmp, NULL);
+	pd_lz4_uncmp_sec   += stop_pd_lz4_uncmp.tv_sec  - start_pd_lz4_uncmp.tv_sec;
+	pd_lz4_uncmp_usec  += stop_pd_lz4_uncmp.tv_usec - start_pd_lz4_uncmp.tv_usec;
+       #endif
 
 	Costmap2D* remote_map = (Costmap2D*)&(uncmp_data); // Convert "type" to Costmap2D
 	DBGOUT(printf("  Back from LZ4_decompress_safe with %u decompressed bytes\n", dec_bytes);
@@ -313,20 +399,23 @@ void process_data(char* data, int data_size)
 	// Then we should "Fuse" the received GridMap with our local one
 	//  We need to "peel out" the remote odometry data from somewhere (in the message?)
 	//unsigned char* combineGrids(unsigned char* grid1, unsigned char* grid2, double robot_x1, double robot_y1,
-	//unsigned char *fusedMap = combineGrids(local_map, recvd_msg,
-	//		                         odometry[0], odometry[1], // local_x,   local_y
-	//		                         remote_x,    remote_y,    // remotel_x, remotel_y
-	//                                       100, 100, 2.0,  // size_x, size_y, resolution
-	//                                       ?? ); // def_val -- unused?
 	DBGOUT(printf("\nCalling combineGrids...\n"));
 	// Note: The direction in which this is called is slightly significant:
 	//  The first map is copied into the second map, in this case remote into local,
 	//  and the x_dim, et.c MUST correspond to that second map (here local)
+       #ifndef SKIP_TIMING
+	gettimeofday(&start_pd_combGrids, NULL);
+       #endif	
 	combineGrids(remote_map->costmap_, local_map->costmap_,
 		     remote_map->av_x, remote_map->av_y,
 		     local_map->av_x, local_map->av_y,
 		     local_map->x_dim, local_map->y_dim, local_map->cell_size,
 		     local_map->default_value);
+       #ifndef SKIP_TIMING
+	gettimeofday(&stop_pd_combGrids, NULL);
+	pd_combGrids_sec   += stop_pd_combGrids.tv_sec  - start_pd_combGrids.tv_sec;
+	pd_combGrids_usec  += stop_pd_combGrids.tv_usec - start_pd_combGrids.tv_usec;
+       #endif
 	DBGOUT(printf("  Fused CostMAP : AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
 	       printf("                : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
 	       printf("  ");
@@ -605,13 +694,31 @@ void dump_final_run_statistics()
   uint64_t proc_odo   = (uint64_t) (proc_odo_sec)  * 1000000 + (uint64_t) (proc_odo_usec);
   uint64_t proc_lidar   = (uint64_t) (proc_lidar_sec)  * 1000000 + (uint64_t) (proc_lidar_usec);
   uint64_t proc_data   = (uint64_t) (proc_data_sec)  * 1000000 + (uint64_t) (proc_data_usec);
- #endif
+
+  uint64_t pd_cloud2grid   = (uint64_t) (pd_cloud2grid_sec)  * 1000000 + (uint64_t) (pd_cloud2grid_usec);
+  uint64_t pd_lz4_cmp   = (uint64_t) (pd_lz4_cmp_sec)  * 1000000 + (uint64_t) (pd_lz4_cmp_usec);
+  uint64_t pd_xmit_pipe   = (uint64_t) (pd_xmit_pipe_sec)  * 1000000 + (uint64_t) (pd_xmit_pipe_usec);
+  uint64_t pd_xmit_send   = (uint64_t) (pd_xmit_send_sec)  * 1000000 + (uint64_t) (pd_xmit_send_usec);
+  uint64_t pd_xmit_recv   = (uint64_t) (pd_xmit_recv_sec)  * 1000000 + (uint64_t) (pd_xmit_recv_usec);
+  uint64_t pd_recv_pipe   = (uint64_t) (pd_recv_pipe_sec)  * 1000000 + (uint64_t) (pd_recv_pipe_usec);
+  uint64_t pd_lz4_uncmp   = (uint64_t) (pd_lz4_uncmp_sec)  * 1000000 + (uint64_t) (pd_lz4_uncmp_usec);
+  uint64_t pd_combGrids   = (uint64_t) (pd_combGrids_sec)  * 1000000 + (uint64_t) (pd_combGrids_usec);
+#endif
 
   printf("\nFinal Run Statistics for %u total Lidar Time-Steps\n", lidar_count);
   printf("Timing (in usec):\n");
-  printf(" Total workload main-loop: %10lu usec\n", total_exec);
-  printf("   Total proc-Odometry   :   %10lu usec\n", proc_odo);
-  printf("   Total proc-Lidar      :   %10lu usec\n", proc_lidar);
-  printf("   Total proc-Data       :   %10lu usec\n", proc_data);
+  printf(" Total workload main-loop : %10lu usec\n", total_exec);
+  printf("   Total proc Odometry    :   %10lu usec\n", proc_odo);
+  printf("   Total proc Lidar       :   %10lu usec\n", proc_lidar);
+  printf("   Total proc Data        :   %10lu usec\n", proc_data);
+  printf("     Total pd cloud2grid  :     %10lu usec\n", pd_cloud2grid);
+  printf("     Total pd lz4_cmp     :     %10lu usec\n", pd_lz4_cmp);
+  printf("     Total pd xmit_pipe   :     %10lu usec\n", pd_xmit_pipe);
+  printf("     Total pd xmit_send   :     %10lu usec\n", pd_xmit_send);
+  printf("     Total pd xmit_recv   :     %10lu usec\n", pd_xmit_recv);
+  printf("     Total pd recv_pipe   :     %10lu usec\n", pd_recv_pipe);
+  printf("     Total pd lz4_uncmp   :     %10lu usec\n", pd_lz4_uncmp);
+  printf("     Total pd combGrids   :     %10lu usec\n", pd_combGrids);
+  //printf("     Total pd Z  :      %10lu usec\n", pd_Z);
   printf("\nDone with the run...\n");
 }
