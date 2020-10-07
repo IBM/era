@@ -21,6 +21,7 @@
 
 char bag_inet_addr_str[20];
 char wifi_inet_addr_str[20];
+unsigned  max_time_steps = ~1;
 
 int bag_sock = 0;
 int xmit_sock = 0;
@@ -32,12 +33,22 @@ float odometry[] = {0.0, 0.0, 0.0};
 
 char pr_map_char[256];
 
+// Forward Declarations
+void print_usage(char * pname);
+void dump_final_run_statistics();
+void INThandler(int dummy);
+void closeout_and_exit(int rval);
+
+
+
+// Functions, code, etc.
 void print_usage(char * pname) {
   printf("Usage: %s <OPTIONS>\n", pname);
   printf(" OPTIONS:\n");
   printf("    -h         : print this helpful usage info\n");
   printf("    -B <str>   : set the internet-address for the bagfile server to <str>\n");
   printf("    -W <str>   : set the internet-address for the WiFi server to <str>\n");
+  printf("    -s <Num>     : exit run after <Num> Lidar time-steps (msgs)\n");
 }
 
 void INThandler(int dummy)
@@ -49,8 +60,10 @@ void INThandler(int dummy)
   exit(-1);
 }
 
+
 void closeout_and_exit(int rval)
 {
+  dump_final_run_statistics();
   printf("closeout_and_exit -- Closing the connection and exiting %d\n", rval);
   close(bag_sock);
   close(xmit_sock);
@@ -114,7 +127,7 @@ int read_all(int sock, char* buffer, int xfer_in_bytes)
     total_recvd += valread;
     DBGOUT2(printf("        read %d bytes for %d total bytes of %d\n", valread, total_recvd, message_size));
     if (valread == 0) {
-      printf("  ZERO bytes -- END of TRANSFER?\n");
+      printf("  read_all got ZERO bytes -- END of TRANSFER?\n");
       return total_recvd;
     }
   }
@@ -201,10 +214,10 @@ void process_data(char* data, int data_size)
 		printf("  RECV msg psn %s\n", "01234567890"));
 	if (valread < 8) {
 	  if (valread == 0) {
-	    printf("  ZERO bytes -- END of TRANSFER?\n");
+	    printf("  RECV header got ZERO bytes -- END of TRANSFER?\n");
 	    closeout_and_exit(-1);
 	  } else {
-	    printf("  TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, 8);
+	    printf("  RECV header got TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, 8);
 	    closeout_and_exit(-1);
 	  }
 	}
@@ -220,10 +233,10 @@ void process_data(char* data, int data_size)
 	valread = read_all(recv_sock, (char*)recvd_in_real, xfer_in_bytes);
 	if (valread < xfer_in_bytes) {
 	  if (valread == 0) {
-	    printf("  ZERO bytes -- END of TRANSFER?\n");
+	    printf("  RECV REAL got ZERO bytes -- END of TRANSFER?\n");
 	    closeout_and_exit(-1);
 	  } else {
-	    printf("  TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, xfer_in_bytes);
+	    printf("  RECV REAL got TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, xfer_in_bytes);
 	    closeout_and_exit(-1);
 	  }
 	}
@@ -237,10 +250,10 @@ void process_data(char* data, int data_size)
 	valread = read_all(recv_sock, (char*)recvd_in_imag, xfer_in_bytes);
 	if (valread < xfer_in_bytes) {
 	  if (valread == 0) {
-	    printf("  ZERO bytes -- END of TRANSFER?\n");
+	    printf("  RECV IMAG got ZERO bytes -- END of TRANSFER?\n");
 	    closeout_and_exit(-1);
 	  } else {
-	    printf("  TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, xfer_in_bytes);
+	    printf("  RECV IMAG got TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, xfer_in_bytes);
 	    closeout_and_exit(-1);
 	  }
 	}
@@ -342,7 +355,7 @@ int main(int argc, char *argv[])
 	// string so that program can
 	// distinguish between '?' and ':'
 	int opt;
-	while((opt = getopt(argc, argv, ":hB:W:")) != -1) {
+	while((opt = getopt(argc, argv, ":hB:W:s:")) != -1) {
 		switch(opt) {
 		case 'h':
 			print_usage(argv[0]);
@@ -352,6 +365,10 @@ int main(int argc, char *argv[])
 			break;
 		case 'W':
 			snprintf(wifi_inet_addr_str, 20, "%s", optarg);
+			break;
+		case 's':
+		        max_time_steps = atoi(optarg);
+			DBGOUT(printf("Set maximum time steps to %u\n", max_time_steps));
 			break;
 
 		case ':':
@@ -363,6 +380,11 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (max_time_steps != ~1) {
+	  printf("Limiting to %u max time steps\n", max_time_steps);
+	} else {
+	  printf("Running the entire bag file.\n");
+	}
 
 	printf("Connecting to bag-server at IP %s PORT %u\n", bag_inet_addr_str, BAG_PORT);
 	// Open and connect to the BAG_SERVER 
@@ -443,7 +465,7 @@ int main(int argc, char *argv[])
 	}
 
 	bool hit_eof = false;
-	while (!hit_eof) {
+	while ((!hit_eof) && (lidar_count < max_time_steps)) {
 	        DBGOUT(printf("Calling read_all on the BAG socket...\n"); fflush(stdout));
 		//int valread = read(bag_sock , buffer, 10);
 		int valread = read_all(bag_sock, buffer, 10);
@@ -467,10 +489,10 @@ int main(int argc, char *argv[])
 			int total_bytes_read = read_all(bag_sock, buffer, message_size);
 			if (total_bytes_read < message_size) {
 			  if (total_bytes_read == 0) {
-			    printf("  ZERO bytes -- END of TRANSFER?\n");
+			    printf("  Lidar read got ZERO bytes -- END of TRANSFER?\n");
 			    closeout_and_exit(-1);
 			  } else {
-			    printf("  Lidar: TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", total_bytes_read, message_size);
+			    printf("  Lidar read got TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", total_bytes_read, message_size);
 			    closeout_and_exit(-1);
 			  }
 			}
@@ -497,10 +519,10 @@ int main(int argc, char *argv[])
 			DBGOUT(printf("read %d bytes\n", valread));
 			if (valread < message_size) {
 			  if (valread == 0) {
-			    printf("  ZERO bytes -- END of TRANSFER?\n");
+			    printf("  Odo read got ZERO bytes -- END of TRANSFER?\n");
 			    closeout_and_exit(-1);
 			  } else {
-			    printf("  TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, message_size);
+			    printf("  Odo read got TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, message_size);
 			    closeout_and_exit(-1);
 			  }
 			}
@@ -523,7 +545,19 @@ int main(int argc, char *argv[])
 
 	}
 
+	dump_final_run_statistics();
 	close(bag_sock);
 	close(xmit_sock);
 	close(recv_sock);
+}
+
+
+
+
+
+void dump_final_run_statistics()
+{
+  printf("\nFinal Run Statistics:\n");
+
+  printf("\nDone with the run...\n");
 }
