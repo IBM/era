@@ -464,13 +464,13 @@ int main(int argc, char *argv[])
 			DBGOUT(printf("Lidar: expecting message size: %d\n", message_size));
 			send(bag_sock, ack, 2, 0);
 
-			int total_bytes_read= read_all(bag_sock, buffer, message_size);
-			if (valread < message_size) {
-			  if (valread == 0) {
+			int total_bytes_read = read_all(bag_sock, buffer, message_size);
+			if (total_bytes_read < message_size) {
+			  if (total_bytes_read == 0) {
 			    printf("  ZERO bytes -- END of TRANSFER?\n");
 			    closeout_and_exit(-1);
 			  } else {
-			    printf("  TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, message_size);
+			    printf("  Lidar: TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", total_bytes_read, message_size);
 			    closeout_and_exit(-1);
 			  }
 			}
