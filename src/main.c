@@ -7,6 +7,7 @@
 #include <fcntl.h> // for open
 #include <unistd.h> // for close
 #include <arpa/inet.h> // for inet_addr
+#include <sys/time.h>
 
 #include "globals.h"
 #include "getopt.h"
@@ -32,6 +33,24 @@ char *ack = "OK";
 float odometry[] = {0.0, 0.0, 0.0};
 
 char pr_map_char[256];
+
+// These variables capture "time" spent in various parts ofthe workload
+#ifndef SKIP_TIMING
+ struct timeval stop_prog, start_prog;
+
+ struct timeval stop_proc_odo, start_proc_odo;
+ uint64_t proc_odo_sec  = 0LL;
+ uint64_t proc_odo_usec = 0LL;
+
+ struct timeval stop_proc_lidar, start_proc_lidar;
+ uint64_t proc_lidar_sec  = 0LL;
+ uint64_t proc_lidar_usec = 0LL;
+
+ struct timeval stop_proc_data, start_proc_data;
+ uint64_t proc_data_sec  = 0LL;
+ uint64_t proc_data_usec = 0LL;
+
+#endif
 
 // Forward Declarations
 void print_usage(char * pname);
@@ -464,6 +483,9 @@ int main(int argc, char *argv[])
 	  }
 	}
 
+       #ifndef SKIP_TIMING
+	gettimeofday(&start_prog, NULL);
+       #endif
 	bool hit_eof = false;
 	while ((!hit_eof) && (lidar_count < max_time_steps)) {
 	        DBGOUT(printf("Calling read_all on the BAG socket...\n"); fflush(stdout));
@@ -481,6 +503,9 @@ int main(int argc, char *argv[])
 		}
 
 		if(buffer[0] == 'L' && buffer[9] == 'L') {
+                       #ifndef SKIP_TIMING
+		         gettimeofday(&start_proc_lidar, NULL);
+                       #endif
 			char * ptr;
 			int message_size = strtol(buffer+1, &ptr, 10);
 			DBGOUT(printf("Lidar: expecting message size: %d\n", message_size));
@@ -501,12 +526,24 @@ int main(int argc, char *argv[])
                         }
 			DBGOUT(printf("Calling process_data for %d total bytes\n", total_bytes_read));
 			printf("Processing Lidar msg %4u data\n", lidar_count);
+                       #ifndef SKIP_TIMING
+		         gettimeofday(&start_proc_data, NULL);
+                       #endif
 			process_data(buffer, total_bytes_read);
-			DBGOUT(printf("Back from process_data for Lidar\n"));
-			fflush(stdout);
+			DBGOUT(printf("Back from process_data for Lidar\n"); fflush(stdout));
 			lidar_count++;
+                       #ifndef SKIP_TIMING
+		         gettimeofday(&stop_proc_lidar, NULL);
+			 proc_data_sec   += stop_proc_lidar.tv_sec  - start_proc_data.tv_sec;
+			 proc_data_usec  += stop_proc_lidar.tv_usec - start_proc_data.tv_usec;
+			 proc_lidar_sec  += stop_proc_lidar.tv_sec  - start_proc_lidar.tv_sec;
+			 proc_lidar_usec += stop_proc_lidar.tv_usec - start_proc_lidar.tv_usec;
+                       #endif
 		}
 		else if(buffer[0] == 'O' && buffer[9] == 'O') {
+                       #ifndef SKIP_TIMING
+		         gettimeofday(&start_proc_odo, NULL);
+                       #endif
 			char * ptr;
 			int message_size = strtol(buffer+1, &ptr, 10);
 			DBGOUT(printf("Odometry: expecting message size: %d\n", message_size));
@@ -533,6 +570,11 @@ int main(int argc, char *argv[])
 
 			printf("Odometry msg %4u: %.2f %.2f %.2f\n", odo_count, odometry[0], odometry[1], odometry[2]);
 			odo_count++;
+                       #ifndef SKIP_TIMING
+		         gettimeofday(&stop_proc_odo, NULL);
+			 proc_odo_sec  += stop_proc_odo.tv_sec  - start_proc_odo.tv_sec;
+			 proc_odo_usec += stop_proc_odo.tv_usec - start_proc_odo.tv_usec;
+                       #endif
 
 		} else {
 		  /*DBGOUT(printf("BUFFER : '");
@@ -557,7 +599,19 @@ int main(int argc, char *argv[])
 
 void dump_final_run_statistics()
 {
-  printf("\nFinal Run Statistics:\n");
+ #ifndef SKIP_TIMING
+  gettimeofday(&stop_prog, NULL);
+  uint64_t total_exec = (uint64_t) (stop_prog.tv_sec - start_prog.tv_sec) * 1000000 + (uint64_t) (stop_prog.tv_usec - start_prog.tv_usec);
+  uint64_t proc_odo   = (uint64_t) (proc_odo_sec)  * 1000000 + (uint64_t) (proc_odo_usec);
+  uint64_t proc_lidar   = (uint64_t) (proc_lidar_sec)  * 1000000 + (uint64_t) (proc_lidar_usec);
+  uint64_t proc_data   = (uint64_t) (proc_data_sec)  * 1000000 + (uint64_t) (proc_data_usec);
+ #endif
 
+  printf("\nFinal Run Statistics for %u total Lidar Time-Steps\n", lidar_count);
+  printf("Timing (in usec):\n");
+  printf(" Total workload main-loop: %10lu usec\n", total_exec);
+  printf("   Total proc-Odometry   :   %10lu usec\n", proc_odo);
+  printf("   Total proc-Lidar      :   %10lu usec\n", proc_lidar);
+  printf("   Total proc-Data       :   %10lu usec\n", proc_data);
   printf("\nDone with the run...\n");
 }
