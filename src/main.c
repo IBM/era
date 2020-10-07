@@ -101,10 +101,32 @@ void write_array_to_file(unsigned char * data, long size)
 
 #define MAX_XMIT_OUTPUTS  41800  // Really something like 41782 I think
 
+int read_all(int sock, char* buffer, int xfer_in_bytes)
+{
+  char * ptr;
+  int message_size = xfer_in_bytes;
+  char* message_ptr = buffer;
+  int total_recvd = 0;
+  while(total_recvd < message_size) {
+    unsigned rem_len = (message_size - total_recvd);
+    int valread = read(sock , message_ptr, rem_len);
+    message_ptr = message_ptr + valread;
+    total_recvd += valread;
+    DBGOUT2(printf("        read %d bytes for %d total bytes of %d\n", valread, total_recvd, message_size));
+    if (valread == 0) {
+      printf("  ZERO bytes -- END of TRANSFER?\n");
+      //closeout_and_exit(-1);
+    }
+  }
+  return total_recvd;
+}
+
 
 void process_data(char* data, int data_size)
 {
-  DBGOUT(printf("Calling cloudToOccgrid...\n"));
+        DBGOUT(printf("Calling cloudToOccgrid...\n"));
+	int valread = 0;
+	
 	unsigned char * grid = cloudToOccgrid((float*)data, data_size/sizeof(float),
 		odometry[0],odometry[1],odometry[2],1.5,
 		false,
@@ -174,16 +196,17 @@ void process_data(char* data, int data_size)
 	float recvd_in_imag[MAX_XMIT_OUTPUTS];
 
 	DBGOUT(printf("\nTrying to Receive data on RECV port %u socket\n", RECV_PORT));
-	int message_size = 8;
-	char * message_ptr = w_buffer;
-	int total_recvd = 0;
-	while(total_recvd < 8) {
-	  unsigned rem_len = (message_size - total_recvd);
-	  int read_max_bytes = rem_len; //(rem_len > 10000) ? 10000 : rem_len;
-	  int valread = read(recv_sock , message_ptr, read_max_bytes/*10000*/);
-	  message_ptr = message_ptr + valread;
-	  total_recvd += valread;
-	}
+	valread = read_all(recv_sock, w_buffer, 8);
+	/*	int message_size = 8;
+		char * message_ptr = w_buffer;
+		int total_recvd = 0;
+		while(total_recvd < 8) {
+		unsigned rem_len = (message_size - total_recvd);
+		int read_max_bytes = rem_len; //(rem_len > 10000) ? 10000 : rem_len;
+		int valread = read(recv_sock , message_ptr, read_max_bytes);
+		message_ptr = message_ptr + valread;
+		total_recvd += valread;
+		}*/
 	DBGOUT2(printf("  RECV got msg %s\n", w_buffer);
 		printf("  RECV msg psn %s\n", "01234567890"));
 	if(!(w_buffer[0] == 'X' && w_buffer[7] == 'X')) {
@@ -193,44 +216,48 @@ void process_data(char* data, int data_size)
 
 	char * ptr;
 	unsigned xfer_in_bytes = strtol(w_buffer+1, &ptr, 10);
-	message_size = xfer_in_bytes;
-	n_recvd_in = message_size / sizeof(float);
-	message_ptr = (char*)recvd_in_real;
-	total_recvd = 0;
+	n_recvd_in = xfer_in_bytes / sizeof(float);
+	/*message_size = xfer_in_bytes;
+	  message_ptr = (char*)recvd_in_real;
+	  total_recvd = 0; */
 	DBGOUT(printf("     Recv %u REAL values %u bytes from RECV port %u socket\n", n_recvd_in, xfer_in_bytes, RECV_PORT));
-	while(total_recvd < message_size) {
+	valread = read_all(recv_sock, (char*)recvd_in_real, xfer_in_bytes);
+	/*while(total_recvd < message_size) {
 	  unsigned rem_len = (message_size - total_recvd);
 	  int read_max_bytes = rem_len; //(rem_len > 10000) ? 10000 : rem_len;
-	  int valread = read(recv_sock , message_ptr, read_max_bytes/*10000*/);	  
+	  int valread = read(recv_sock , message_ptr, read_max_bytes);
 	  message_ptr = message_ptr + valread;
 	  total_recvd += valread;
 	  DBGOUT2(printf("        read %d bytes for %d total bytes of %d\n", valread, total_recvd, message_size));
-	  if (valread == 0) {
-	    printf("  ZERO bytes -- END of TRANSFER?\n");
-	    closeout_and_exit(-1);
-	  }
+	  }*/
+	if (valread == 0) {
+	  printf("  ZERO bytes -- END of TRANSFER?\n");
+	  closeout_and_exit(-1);
 	}
+
 	DBGOUT2(printf("XFER %4u : Dumping RECV-PIPE REAL raw bytes\n", xmit_recv_count);
 	       for (int i = 0; i < n_recvd_in; i++) {
 		 printf("XFER %4u REAL-byte %6u : %f\n", odo_count, i, recvd_in_real[i]);
 	       }
 	       printf("\n"));
 
-	//message_size = xfer_in_bytes;
-	message_ptr = (char*)recvd_in_imag;
-	total_recvd = 0;
+	/*//message_size = xfer_in_bytes;
+	  message_ptr = (char*)recvd_in_imag;
+	  total_recvd = 0;
+	*/
 	DBGOUT(printf("     Recv %u IMAG values %u bytes from RECV port %u socket\n", n_recvd_in, xfer_in_bytes, RECV_PORT));
-	while(total_recvd < message_size) {
+	valread = read_all(recv_sock, (char*)recvd_in_imag, xfer_in_bytes);
+	/*while(total_recvd < message_size) {
 	  unsigned rem_len = (message_size - total_recvd);
 	  int read_max_bytes = rem_len; //(rem_len > 10000) ? 10000 : rem_len;
-	  int valread = read(recv_sock , message_ptr, read_max_bytes/*10000*/);
+	  int valread = read(recv_sock , message_ptr, read_max_bytes);
 	  message_ptr = message_ptr + valread;
 	  total_recvd += valread;
 	  DBGOUT2(printf("        read %d bytes for %d total bytes of %d\n", valread, total_recvd, message_size));
-	  if (valread == 0) {
-	    printf("  ZERO bytes -- END of TRANSFER?\n");
-	    closeout_and_exit(-1);
-	  }
+	  }*/
+	if (valread == 0) {
+	  printf("  ZERO bytes -- END of TRANSFER?\n");
+	  closeout_and_exit(-1);
 	}
 	DBGOUT2(printf("XFER %4u : Dumping RECV-PIPE IMAG raw bytes\n", xmit_recv_count);
 	       for (int i = 0; i < n_recvd_in; i++) {
@@ -432,30 +459,32 @@ int main(int argc, char *argv[])
 
 	bool hit_eof = false;
 	while (!hit_eof) {
-	  DBGOUT(printf("Calling read on the BAG socket...\n"); fflush(stdout));
-		int valread = read(bag_sock , buffer, 10);
+	        DBGOUT(printf("Calling read_all on the BAG socket...\n"); fflush(stdout));
+		//int valread = read(bag_sock , buffer, 10);
+		int valread = read_all(bag_sock, buffer, 10);
 		DBGOUT(printf("Top: read %d bytes\n", valread));
 		if (valread == 0) {
 		  // This means EOF?
 		  hit_eof = true;
 		}
 
-		if(buffer[0] == 'L' && buffer[7] == 'L') {
+		if(buffer[0] == 'L' && buffer[9] == 'L') {
 			char * ptr;
 			int message_size = strtol(buffer+1, &ptr, 10);
 			DBGOUT(printf("Lidar: expecting message size: %d\n", message_size));
 			send(bag_sock, ack, 2, 0);
 
-			char * message_ptr = buffer;
+			int total_bytes_read= read_all(bag_sock, buffer, message_size);
+			/*char * message_ptr = buffer;
 			int total_bytes_read = 0;
 			while(total_bytes_read < message_size) {
 			        unsigned rem_len = (message_size - total_bytes_read);
 				int read_max_bytes = rem_len; //(rem_len > 10000) ? 10000 : rem_len;
-				valread = read(bag_sock , message_ptr, read_max_bytes/*10000*/);
+				valread = read(bag_sock , message_ptr, read_max_bytes);
 				message_ptr = message_ptr + valread;
 				total_bytes_read += valread;
 				DBGOUT(printf("read %d bytes for %d total bytes of %d\n", valread, total_bytes_read, message_size));
-			}
+			}*/
 			if (total_bytes_read > message_size) {
                           printf("NOTE: read more total bytes than expected: %u vs %u\n", total_bytes_read, message_size);
                         }
@@ -466,7 +495,7 @@ int main(int argc, char *argv[])
 			fflush(stdout);
 			lidar_count++;
 		}
-		else if(buffer[0] == 'O' && buffer[3] == 'O') {
+		else if(buffer[0] == 'O' && buffer[9] == 'O') {
 			char * ptr;
 			int message_size = strtol(buffer+1, &ptr, 10);
 			DBGOUT(printf("Odometry: expecting message size: %d\n", message_size));
@@ -474,9 +503,13 @@ int main(int argc, char *argv[])
 
 			int total_bytes_read = 0;
 
-			valread = read(bag_sock , buffer, 10000);
+			//valread = read(bag_sock , buffer, 10000);
+			valread = read_all(bag_sock , buffer, message_size);
 			DBGOUT(printf("read %d bytes\n", valread));
-
+			if (valread == 0) {
+			  printf("  ZERO bytes -- END of TRANSFER?\n");
+			  closeout_and_exit(-1);
+			}
 
 			odometry[0] = *((float*)(buffer));   //bytes_to_float(buffer);
 			odometry[1] = *((float*)(buffer+4)); //bytes_to_float(buffer+4);
