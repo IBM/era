@@ -115,7 +115,7 @@ int read_all(int sock, char* buffer, int xfer_in_bytes)
     DBGOUT2(printf("        read %d bytes for %d total bytes of %d\n", valread, total_recvd, message_size));
     if (valread == 0) {
       printf("  ZERO bytes -- END of TRANSFER?\n");
-      //closeout_and_exit(-1);
+      return total_recvd;
     }
   }
   return total_recvd;
@@ -197,18 +197,17 @@ void process_data(char* data, int data_size)
 
 	DBGOUT(printf("\nTrying to Receive data on RECV port %u socket\n", RECV_PORT));
 	valread = read_all(recv_sock, w_buffer, 8);
-	/*	int message_size = 8;
-		char * message_ptr = w_buffer;
-		int total_recvd = 0;
-		while(total_recvd < 8) {
-		unsigned rem_len = (message_size - total_recvd);
-		int read_max_bytes = rem_len; //(rem_len > 10000) ? 10000 : rem_len;
-		int valread = read(recv_sock , message_ptr, read_max_bytes);
-		message_ptr = message_ptr + valread;
-		total_recvd += valread;
-		}*/
 	DBGOUT2(printf("  RECV got msg %s\n", w_buffer);
 		printf("  RECV msg psn %s\n", "01234567890"));
+	if (valread < 8) {
+	  if (valread == 0) {
+	    printf("  ZERO bytes -- END of TRANSFER?\n");
+	    closeout_and_exit(-1);
+	  } else {
+	    printf("  TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, 8);
+	    closeout_and_exit(-1);
+	  }
+	}
 	if(!(w_buffer[0] == 'X' && w_buffer[7] == 'X')) {
 	  printf("ERROR: Unexpected message from WiFi...\n");
 	  closeout_and_exit(-3);
@@ -217,47 +216,33 @@ void process_data(char* data, int data_size)
 	char * ptr;
 	unsigned xfer_in_bytes = strtol(w_buffer+1, &ptr, 10);
 	n_recvd_in = xfer_in_bytes / sizeof(float);
-	/*message_size = xfer_in_bytes;
-	  message_ptr = (char*)recvd_in_real;
-	  total_recvd = 0; */
 	DBGOUT(printf("     Recv %u REAL values %u bytes from RECV port %u socket\n", n_recvd_in, xfer_in_bytes, RECV_PORT));
 	valread = read_all(recv_sock, (char*)recvd_in_real, xfer_in_bytes);
-	/*while(total_recvd < message_size) {
-	  unsigned rem_len = (message_size - total_recvd);
-	  int read_max_bytes = rem_len; //(rem_len > 10000) ? 10000 : rem_len;
-	  int valread = read(recv_sock , message_ptr, read_max_bytes);
-	  message_ptr = message_ptr + valread;
-	  total_recvd += valread;
-	  DBGOUT2(printf("        read %d bytes for %d total bytes of %d\n", valread, total_recvd, message_size));
-	  }*/
-	if (valread == 0) {
-	  printf("  ZERO bytes -- END of TRANSFER?\n");
-	  closeout_and_exit(-1);
+	if (valread < xfer_in_bytes) {
+	  if (valread == 0) {
+	    printf("  ZERO bytes -- END of TRANSFER?\n");
+	    closeout_and_exit(-1);
+	  } else {
+	    printf("  TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, xfer_in_bytes);
+	    closeout_and_exit(-1);
+	  }
 	}
-
 	DBGOUT2(printf("XFER %4u : Dumping RECV-PIPE REAL raw bytes\n", xmit_recv_count);
 	       for (int i = 0; i < n_recvd_in; i++) {
 		 printf("XFER %4u REAL-byte %6u : %f\n", odo_count, i, recvd_in_real[i]);
 	       }
 	       printf("\n"));
 
-	/*//message_size = xfer_in_bytes;
-	  message_ptr = (char*)recvd_in_imag;
-	  total_recvd = 0;
-	*/
 	DBGOUT(printf("     Recv %u IMAG values %u bytes from RECV port %u socket\n", n_recvd_in, xfer_in_bytes, RECV_PORT));
 	valread = read_all(recv_sock, (char*)recvd_in_imag, xfer_in_bytes);
-	/*while(total_recvd < message_size) {
-	  unsigned rem_len = (message_size - total_recvd);
-	  int read_max_bytes = rem_len; //(rem_len > 10000) ? 10000 : rem_len;
-	  int valread = read(recv_sock , message_ptr, read_max_bytes);
-	  message_ptr = message_ptr + valread;
-	  total_recvd += valread;
-	  DBGOUT2(printf("        read %d bytes for %d total bytes of %d\n", valread, total_recvd, message_size));
-	  }*/
-	if (valread == 0) {
-	  printf("  ZERO bytes -- END of TRANSFER?\n");
-	  closeout_and_exit(-1);
+	if (valread < xfer_in_bytes) {
+	  if (valread == 0) {
+	    printf("  ZERO bytes -- END of TRANSFER?\n");
+	    closeout_and_exit(-1);
+	  } else {
+	    printf("  TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, xfer_in_bytes);
+	    closeout_and_exit(-1);
+	  }
 	}
 	DBGOUT2(printf("XFER %4u : Dumping RECV-PIPE IMAG raw bytes\n", xmit_recv_count);
 	       for (int i = 0; i < n_recvd_in; i++) {
@@ -463,9 +448,14 @@ int main(int argc, char *argv[])
 		//int valread = read(bag_sock , buffer, 10);
 		int valread = read_all(bag_sock, buffer, 10);
 		DBGOUT(printf("Top: read %d bytes\n", valread));
-		if (valread == 0) {
-		  // This means EOF?
-		  hit_eof = true;
+		if (valread < 10) {
+		  if (valread == 0) {
+		    // Zero bytes out implies we hit EOF
+		    hit_eof = true;
+		  } else {
+		    printf("  TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, 10);
+		    closeout_and_exit(-1);
+		  }
 		}
 
 		if(buffer[0] == 'L' && buffer[9] == 'L') {
@@ -475,16 +465,15 @@ int main(int argc, char *argv[])
 			send(bag_sock, ack, 2, 0);
 
 			int total_bytes_read= read_all(bag_sock, buffer, message_size);
-			/*char * message_ptr = buffer;
-			int total_bytes_read = 0;
-			while(total_bytes_read < message_size) {
-			        unsigned rem_len = (message_size - total_bytes_read);
-				int read_max_bytes = rem_len; //(rem_len > 10000) ? 10000 : rem_len;
-				valread = read(bag_sock , message_ptr, read_max_bytes);
-				message_ptr = message_ptr + valread;
-				total_bytes_read += valread;
-				DBGOUT(printf("read %d bytes for %d total bytes of %d\n", valread, total_bytes_read, message_size));
-			}*/
+			if (valread < message_size) {
+			  if (valread == 0) {
+			    printf("  ZERO bytes -- END of TRANSFER?\n");
+			    closeout_and_exit(-1);
+			  } else {
+			    printf("  TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, message_size);
+			    closeout_and_exit(-1);
+			  }
+			}
 			if (total_bytes_read > message_size) {
                           printf("NOTE: read more total bytes than expected: %u vs %u\n", total_bytes_read, message_size);
                         }
@@ -506,9 +495,14 @@ int main(int argc, char *argv[])
 			//valread = read(bag_sock , buffer, 10000);
 			valread = read_all(bag_sock , buffer, message_size);
 			DBGOUT(printf("read %d bytes\n", valread));
-			if (valread == 0) {
-			  printf("  ZERO bytes -- END of TRANSFER?\n");
-			  closeout_and_exit(-1);
+			if (valread < message_size) {
+			  if (valread == 0) {
+			    printf("  ZERO bytes -- END of TRANSFER?\n");
+			    closeout_and_exit(-1);
+			  } else {
+			    printf("  TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, message_size);
+			    closeout_and_exit(-1);
+			  }
 			}
 
 			odometry[0] = *((float*)(buffer));   //bytes_to_float(buffer);
