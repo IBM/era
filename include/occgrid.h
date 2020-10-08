@@ -14,9 +14,12 @@
 #define FREE_SPACE          1
 #define LETHAL_OBSTACLE   255
 
+#define GRID_MAP_X_DIM     100
+#define GRID_MAP_Y_DIM     100
+#define GRID_MAP_RESLTN    2.0
 
-#define COST_MAP_X_DIM     50
-#define COST_MAP_Y_DIM     50
+#define COST_MAP_X_DIM     (GRID_MAP_X_DIM/(int)GRID_MAP_RESLTN)
+#define COST_MAP_Y_DIM     (GRID_MAP_Y_DIM/(int)GRID_MAP_RESLTN)
 #define COST_MAP_ENTRIES   (COST_MAP_X_DIM * COST_MAP_Y_DIM)
 
 //Define public structures
