@@ -209,13 +209,20 @@ void process_data(char* data, int data_size)
        #ifdef INT_TIME
 	gettimeofday(&start_pd_cloud2grid, NULL);
        #endif	
-	unsigned char * grid = cloudToOccgrid((float*)data, data_size/sizeof(float),
+  unsigned char * grid = cloudToOccgrid((float*)data, data_size/sizeof(float), // data, data_size
+					odometry[0],odometry[1],odometry[2],1.5, // AVx, AVy , AVz, AVw
+					false,  // rolling window
+					0.05, 2.05, // min, max obstacle height
+					100, // raytrace_range
+					GRID_MAP_X_DIM, GRID_MAP_Y_DIM, GRID_MAP_RESLTN,  // size_x, size_y, resolution
+					CMV_NO_INFORMATION);
+  /*unsigned char * grid = cloudToOccgrid((float*)data, data_size/sizeof(float),
 		odometry[0],odometry[1],odometry[2],1.5,
 		false,
 		0.05, 2.05,
 		100,
 	        100, 100, 2.0,  // size_x, size_y, resolution
-		NO_INFORMATION);
+		NO_INFORMATION); */
        #ifdef INT_TIME
 	gettimeofday(&stop_pd_cloud2grid, NULL);
 	pd_cloud2grid_sec   += stop_pd_cloud2grid.tv_sec  - start_pd_cloud2grid.tv_sec;
@@ -446,9 +453,9 @@ int main(int argc, char *argv[])
 	for (int i = 0; i < 256; i++) {
 	  pr_map_char[i] = '?';
 	}
-	pr_map_char[NO_INFORMATION]  = '.';
-	pr_map_char[FREE_SPACE]      = ' ';
-	pr_map_char[LETHAL_OBSTACLE] = 'X';
+	pr_map_char[CMV_NO_INFORMATION]  = '.';
+	pr_map_char[CMV_FREE_SPACE]      = ' ';
+	pr_map_char[CMV_LETHAL_OBSTACLE] = 'X';
 
 	// Use getot to read in run-time options
 	// put ':' in the starting of the

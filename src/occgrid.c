@@ -72,9 +72,9 @@ void addStaticObstacle(unsigned char* obstacle_type) {
 		    printf("ERROR : addStaticObstacle index too large at %d vs %d\n", index, COST_MAP_ENTRIES);
 		  });
                 if (i == (int) master_observation.master_origin.x || i == cell_x_dim - 1) {
-		  master_observation.master_costmap.costmap_[index] = LETHAL_OBSTACLE;
+		  master_observation.master_costmap.costmap_[index] = CMV_LETHAL_OBSTACLE;
 		} else if (j == (int) master_observation.master_origin.y || j == cell_y_dim - 1 ) {
-		  master_observation.master_costmap.costmap_[index] = LETHAL_OBSTACLE;
+		  master_observation.master_costmap.costmap_[index] = CMV_LETHAL_OBSTACLE;
 		}
             }
         }
@@ -394,7 +394,7 @@ void updateBounds(float* data, unsigned int data_size, double robot_x, double ro
 		printf("ERROR : updateBounds : index is too large at %d vs %d\n", index, COST_MAP_ENTRIES);
 	      });
             //printf("Index of Obstacle -> %d\n", index);
-            master_observation.master_costmap.costmap_[index] = LETHAL_OBSTACLE; //TODO: Test simple test case (char) 255 = '255' ?
+            master_observation.master_costmap.costmap_[index] = CMV_LETHAL_OBSTACLE; //TODO: Test simple test case (char) 255 = '255' ?
             touch(px, py, min_x, min_y, max_x, max_y);
         }
     }
@@ -557,7 +557,7 @@ void bresenham2D(unsigned int abs_da, unsigned int abs_db, int error_b, int offs
     //printf("\n\n abs_da, end -> %d, %d\n", abs_da, end);
     for (unsigned int i = 0; i < end; ++i)
     {
-        markCell(FREE_SPACE, offset);
+        markCell(CMV_FREE_SPACE, offset);
         offset += offset_a;
         error_b += abs_db;
         if ((unsigned int)error_b >= abs_da)
@@ -566,7 +566,7 @@ void bresenham2D(unsigned int abs_da, unsigned int abs_db, int error_b, int offs
             error_b -= abs_da;
         }
     }
-    markCell(FREE_SPACE, offset);
+    markCell(CMV_FREE_SPACE, offset);
 }
 
 void markCell(unsigned char value, unsigned int offset) {

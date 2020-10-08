@@ -10,9 +10,9 @@
 
 //Define Costmap values
 //  Note: Order is significant -- combineGrids takes a "MAX" value from the two maps
-#define NO_INFORMATION      0
-#define FREE_SPACE          1
-#define LETHAL_OBSTACLE   255
+#define CMV_NO_INFORMATION      0
+#define CMV_FREE_SPACE          1
+#define CMV_LETHAL_OBSTACLE   255
 
 #define GRID_MAP_X_DIM     100
 #define GRID_MAP_Y_DIM     100
