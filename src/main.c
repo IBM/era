@@ -216,13 +216,6 @@ void process_data(char* data, int data_size)
 					100, // raytrace_range
 					GRID_MAP_X_DIM, GRID_MAP_Y_DIM, GRID_MAP_RESLTN,  // size_x, size_y, resolution
 					CMV_NO_INFORMATION);
-  /*unsigned char * grid = cloudToOccgrid((float*)data, data_size/sizeof(float),
-		odometry[0],odometry[1],odometry[2],1.5,
-		false,
-		0.05, 2.05,
-		100,
-	        100, 100, 2.0,  // size_x, size_y, resolution
-		NO_INFORMATION); */
        #ifdef INT_TIME
 	gettimeofday(&stop_pd_cloud2grid, NULL);
 	pd_cloud2grid_sec   += stop_pd_cloud2grid.tv_sec  - start_pd_cloud2grid.tv_sec;
@@ -230,7 +223,7 @@ void process_data(char* data, int data_size)
        #endif
 
 	// Write the read-in image to a file
-	//write_array_to_file(grid, 100/2.0*100/2.0);
+	//write_array_to_file(grid, COST_MAP_ENTRIES);
 
 	// Now we compress the grid for transmission...
 	Costmap2D* local_map = &(master_observation.master_costmap);
@@ -428,7 +421,7 @@ void process_data(char* data, int data_size)
 	       print_ascii_costmap(local_map));
 
 	// Write the combined map to a file
-	write_array_to_file(local_map->costmap_, 100/2.0*100/2.0);
+	write_array_to_file(local_map->costmap_, COST_MAP_ENTRIES);
 	
 	DBGOUT(printf("Returning from process_data\n"));
 	fflush(stdout);
