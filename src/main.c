@@ -163,6 +163,19 @@ void write_array_to_file(unsigned char * data, long size)
   counter++;
 }
 
+void print_ascii_costmap(Costmap2D* cmap)
+{
+  printf("  ");
+  for (int ii = 0; ii < COST_MAP_X_DIM; ii++) {
+    for (int ij = 0; ij < COST_MAP_Y_DIM; ij++) {
+      int idx = COST_MAP_X_DIM*ii + ij;
+      printf("%c", pr_map_char[cmap->costmap_[idx]]);
+    }
+    printf("\n  ");
+  }
+  printf("\n");
+}
+
 #define MAX_UNCOMPRESSED_DATA_SIZE  sizeof(Costmap2D) // MAX_GRID_SIZE
 #define MAX_COMPRESSED_DATA_SIZE    MAX_UNCOMPRESSED_DATA_SIZE //(In case of no compression)?  
 
@@ -217,15 +230,7 @@ void process_data(char* data, int data_size)
 	DBGOUT(printf("Calling LZ4_compress_default...\n");
 	       printf("  Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
 	       printf("               : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
-	       printf("  ");
-	       for (int ii = 0; ii < 50; ii++) {
-		 for (int ij = 0; ij < 50; ij++) {
-		   int idx = 50*ii + ij;
-		   printf("%c", pr_map_char[local_map->costmap_[idx]]);
-		 }
-		 printf("\n  ");
-	       }
-	       printf("\n"));
+	 print_ascii_costmap(local_map));
 	
 	unsigned char cmp_data[MAX_COMPRESSED_DATA_SIZE];
        #ifdef INT_TIME
@@ -389,15 +394,7 @@ void process_data(char* data, int data_size)
 	DBGOUT(printf("  Back from LZ4_decompress_safe with %u decompressed bytes\n", dec_bytes);
 	       printf("  Remote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
 	       printf("                : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
-	       printf("  ");
-	       for (int ii = 0; ii < 50; ii++) {
-		 for (int ij = 0; ij < 50; ij++) {
-		   int idx = 50*ii + ij;
-		   printf("%c", pr_map_char[remote_map->costmap_[idx]]);
-		 }
-		 printf("\n  ");
-	       }
-	       printf("\n"));
+	       print_ascii_costmap(remote_map));
 	
 	// Then we should "Fuse" the received GridMap with our local one
 	//  We need to "peel out" the remote odometry data from somewhere (in the message?)
@@ -421,15 +418,7 @@ void process_data(char* data, int data_size)
        #endif
 	DBGOUT(printf("  Fused CostMAP : AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
 	       printf("                : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
-	       printf("  ");
-	       for (int ii = 0; ii < 50; ii++) {
-		 for (int ij = 0; ij < 50; ij++) {
-		   int idx = 50*ii + ij;
-		   printf("%c", pr_map_char[local_map->costmap_[idx]]);
-		 }
-		 printf("\n  ");
-	       }
-	       printf("\n"));
+	       print_ascii_costmap(local_map));
 
 	// Write the combined map to a file
 	write_array_to_file(local_map->costmap_, 100/2.0*100/2.0);
