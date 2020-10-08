@@ -1,8 +1,8 @@
 #ifndef GLOBALS_H_
 #define GLOBALS_H_
 
-//#define DBGOUT(x) x  // Uncomment for DEBUG messages
-#define DBGOUT(x)  // Uncomment for NO DEBUG messages
+#define DBGOUT(x) x  // Uncomment for DEBUG messages
+//#define DBGOUT(x)  // Uncomment for NO DEBUG messages
 
 //#define DBGOUT2(x) x  // Uncomment for DEBUG Level-2 (more detail) messages
 #define DBGOUT2(x)  // Uncomment for NO DEBUG Level-2 (more detail) messages

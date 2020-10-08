@@ -48,7 +48,7 @@ void printMap() {
     for (int i = 0; i < master_observation.master_costmap.y_dim / master_observation.master_resolution; i++) {
         for (int j = 0; j < master_observation.master_costmap.x_dim / master_observation.master_resolution; j++) {
             int index = i * master_observation.master_costmap.y_dim / master_observation.master_resolution + j;
-            printf("%4d", master_observation.master_costmap.costmap_[index]);
+            printf("%4d", master_observation.master_costmap.costmap[index]);
         }
         printf("\n\n");
     }
@@ -72,9 +72,9 @@ void addStaticObstacle(unsigned char* obstacle_type) {
 		    printf("ERROR : addStaticObstacle index too large at %d vs %d\n", index, COST_MAP_ENTRIES);
 		  });
                 if (i == (int) master_observation.master_origin.x || i == cell_x_dim - 1) {
-		  master_observation.master_costmap.costmap_[index] = CMV_LETHAL_OBSTACLE;
+		  master_observation.master_costmap.costmap[index] = CMV_LETHAL_OBSTACLE;
 		} else if (j == (int) master_observation.master_origin.y || j == cell_y_dim - 1 ) {
-		  master_observation.master_costmap.costmap_[index] = CMV_LETHAL_OBSTACLE;
+		  master_observation.master_costmap.costmap[index] = CMV_LETHAL_OBSTACLE;
 		}
             }
         }
@@ -113,7 +113,7 @@ void initCostmap(Observation* obsvtn,
 	    printf("ERROR : initCostMap : Max index is too large at %d vs %d\n", chkMaxIdx, COST_MAP_ENTRIES);
 	  });
     for (int i = 0; i < obsvtn->master_costmap.x_dim * obsvtn->master_costmap.y_dim / (obsvtn->master_resolution * obsvtn->master_resolution); i++) {
-        obsvtn->master_costmap.costmap_[i] = obsvtn->master_costmap.default_value;
+        obsvtn->master_costmap.costmap[i] = obsvtn->master_costmap.default_value;
     }
 
     DBGOUT(printf("Initialize Master Costmap ... DONE\n\n"));
@@ -203,7 +203,8 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
 unsigned char* cloudToOccgrid(float* data, unsigned int data_size,
 			      double robot_x, double robot_y, double robot_z, double robot_yaw,
 			      bool rolling_window,
-			      double min_obstacle_height, double max_obstacle_height, double raytrace_range,
+			      double min_obstacle_height, double max_obstacle_height,
+			      double raytrace_range,
 			      unsigned int x_dim, unsigned int y_dim, double resolution,
 			      unsigned char default_value) {
 
@@ -214,7 +215,7 @@ unsigned char* cloudToOccgrid(float* data, unsigned int data_size,
     updateMap(data, data_size, robot_x, robot_y, robot_z, robot_yaw);
 
     //printMap();
-    return master_observation.master_costmap.costmap_;
+    return master_observation.master_costmap.costmap;
 }
 
 void updateMap(float* data, unsigned int data_size,
@@ -292,7 +293,7 @@ void updateOrigin(double new_origin_x, double new_origin_y) {
     //printf("lower_left_y - cell_oy = start_y ... (%d) - (%d) = %d\n", lower_left_y, cell_oy, start_y);
 
     // copy the local window in the costmap to the local map
-    copyMapRegion(master_observation.master_costmap.costmap_, lower_left_x, lower_left_y,
+    copyMapRegion(master_observation.master_costmap.costmap, lower_left_x, lower_left_y,
                   master_observation.master_costmap.x_dim / master_observation.master_resolution,
 		  start_x, start_y,
                   master_observation.master_costmap.x_dim / master_observation.master_resolution,
@@ -300,7 +301,7 @@ void updateOrigin(double new_origin_x, double new_origin_y) {
 
 
     // now we want to copy the overlapping information back into the map, but in its new location
-    //copyMapRegion(local_map, 0, 0, cell_x_dim, master_observation.master_costmap.costmap_, start_x, start_y, master_observation.master_costmap.x_dim, cell_x_dim, cell_y_dim);
+    //copyMapRegion(local_map, 0, 0, cell_x_dim, master_observation.master_costmap.costmap, start_x, start_y, master_observation.master_costmap.x_dim, cell_x_dim, cell_y_dim);
 }
 
 //TODO: Modify such that it explicitly copies the data to the destination map
@@ -328,14 +329,14 @@ void copyMapRegion(unsigned char* source_map,
     // now, we'll copy the source map into the destination map
     for (unsigned int i = 0; i < region_y_dim; ++i){
         for (unsigned int j = 0; j < region_x_dim; j++) {
-            //printf("Source Map Value at Index <%d> = %d\n", sm_index, master_observation.master_costmap.costmap_[sm_index]);
+            //printf("Source Map Value at Index <%d> = %d\n", sm_index, master_observation.master_costmap.costmap[sm_index]);
 	  CHECK(if (dm_index >= COST_MAP_ENTRIES) {
 	      printf("ERROR : copyMapRegion : dm_index is too large at = %d vs %d\n", dm_index, COST_MAP_ENTRIES);
 	    }
 	    if (sm_index >= COST_MAP_ENTRIES) {
 	      printf("ERROR : copyMapRegion : sm_index is too large at = %d vs %d\n", sm_index, COST_MAP_ENTRIES);
 	    });
-            local_costmap[dm_index] = master_observation.master_costmap.costmap_[sm_index];
+            local_costmap[dm_index] = master_observation.master_costmap.costmap[sm_index];
             //printf("dm_index, sm_index = %d, %d\n", dm_index, sm_index);
             sm_index++;
             dm_index++;
@@ -354,7 +355,7 @@ void copyMapRegion(unsigned char* source_map,
 	    printf("ERROR : copyMapRegion : Max index is too large at %d vs %d\n", chkMaxIdx, COST_MAP_ENTRIES);
 	  });
     for (int i = 0; i < cell_x_dim * cell_y_dim; i++) {
-        master_observation.master_costmap.costmap_[i] = local_costmap[i];
+        master_observation.master_costmap.costmap[i] = local_costmap[i];
     }
 }
 
@@ -394,7 +395,7 @@ void updateBounds(float* data, unsigned int data_size, double robot_x, double ro
 		printf("ERROR : updateBounds : index is too large at %d vs %d\n", index, COST_MAP_ENTRIES);
 	      });
             //printf("Index of Obstacle -> %d\n", index);
-            master_observation.master_costmap.costmap_[index] = CMV_LETHAL_OBSTACLE; //TODO: Test simple test case (char) 255 = '255' ?
+            master_observation.master_costmap.costmap[index] = CMV_LETHAL_OBSTACLE; //TODO: Test simple test case (char) 255 = '255' ?
             touch(px, py, min_x, min_y, max_x, max_y);
         }
     }
@@ -494,7 +495,6 @@ bool worldToMap(double wx, double wy, double robot_x, double robot_y) {
     double wx_rel_origin = wx + robot_x;
     double wy_rel_origin = wy + robot_y;
     //printf("World To Map (Relative to Origin) = (%d, %d)\n", (int)((wx_rel_origin - master_observation.master_origin.x) / master_observation.master_resolution), (int)((wy_rel_origin - master_observation.master_origin.y) / master_observation.master_resolution));
-
     if (wx_rel_origin < master_observation.master_origin.x || wy_rel_origin < master_observation.master_origin.y) {
       DBGOUT(printf("Coordinates Out Of Bounds .... (wx, wy) = (%f, %f); (ox, oy) = (%f, %f)\n", wx, wy, master_observation.master_origin.x, master_observation.master_origin.y));
         return false;
@@ -574,7 +574,7 @@ void markCell(unsigned char value, unsigned int offset) {
   CHECK(if (offset >= COST_MAP_ENTRIES) {
       printf("ERROR : updateBounds : offset is too large at %d vs %d\n", offset, COST_MAP_ENTRIES);
     });
-    master_observation.master_costmap.costmap_[offset] = value;
+    master_observation.master_costmap.costmap[offset] = value;
 }
 
 void updateRaytraceBounds(double ox, double oy, double wx, double wy, double range,
@@ -592,3 +592,49 @@ void touch(double x, double y, double min_x, double min_y, double max_x, double 
     max_x = max(x, max_x);
     max_y = max(y, max_y);
 }
+
+
+
+char pr_map_char[256];
+
+void init_occgrid_state()
+{
+  // Set up the print-map-character array (to xlate map values to ASCII symbols)
+  for (int i = 0; i < 256; i++) {
+    pr_map_char[i] = '?';
+  }
+  pr_map_char[CMV_NO_INFORMATION]  = '.';
+  pr_map_char[CMV_FREE_SPACE]      = ' ';
+  pr_map_char[CMV_LETHAL_OBSTACLE] = 'X';
+}
+
+void print_ascii_costmap(Costmap2D* cmap)
+{
+  printf("  ");
+  unsigned h1 = 0;
+  unsigned h10 = 0;
+  for (int ii = 0; ii < COST_MAP_X_DIM; ii++) {
+    printf("%u", h10);
+    h1++;
+    if (h1 == 10) { h1 = 0; h10++; }
+    if (h10 == 10) { h10 = 0;}
+  }
+  printf("\n  ");
+  for (int ii = 0; ii < COST_MAP_X_DIM; ii++) {
+    printf("%u", ii%10);
+  }
+  printf("\n  ");
+  for (int ii = 0; ii < COST_MAP_X_DIM; ii++) {
+    printf("-");
+  }
+  printf("\n  ");
+  for (int ii = 0; ii < COST_MAP_X_DIM; ii++) {
+    for (int ij = 0; ij < COST_MAP_Y_DIM; ij++) {
+      int idx = COST_MAP_X_DIM*ii + ij;
+      printf("%c", pr_map_char[cmap->costmap[idx]]);
+    }
+    printf(" | %3u\n  ", ii);
+  }
+  printf("\n");
+}
+

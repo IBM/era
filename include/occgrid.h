@@ -18,6 +18,8 @@
 #define GRID_MAP_Y_DIM     100
 #define GRID_MAP_RESLTN    2.0
 
+#define RAYTR_RANGE        100
+
 #define COST_MAP_X_DIM     (GRID_MAP_X_DIM/(int)GRID_MAP_RESLTN)
 #define COST_MAP_Y_DIM     (GRID_MAP_Y_DIM/(int)GRID_MAP_RESLTN)
 #define COST_MAP_ENTRIES   (COST_MAP_X_DIM * COST_MAP_Y_DIM)
@@ -43,7 +45,7 @@ typedef struct Costmap2D_struct {
   unsigned int x_dim;
   unsigned int y_dim;
   unsigned char default_value;
-  unsigned char costmap_[COST_MAP_ENTRIES];
+  unsigned char costmap[COST_MAP_ENTRIES];
 } Costmap2D;
 
 typedef struct Observation {
@@ -110,5 +112,8 @@ void initCostmap(Observation* obsvtn,
 		 unsigned int size_x, unsigned int size_y, double resolution,
 		 unsigned char default_value,
 		 double robot_x, double robot_y, double robot_z);
+
+void init_occgrid_state(void);
+void print_ascii_costmap(Costmap2D* cmap);
 
 #endif // OCCGRID_H_

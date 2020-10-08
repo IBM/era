@@ -32,7 +32,6 @@ char *ack = "OK";
 
 float odometry[] = {0.0, 0.0, 0.0};
 
-char pr_map_char[256];
 
 // These variables capture "time" spent in various parts ofthe workload
 #ifdef INT_TIME
@@ -163,19 +162,6 @@ void write_array_to_file(unsigned char * data, long size)
   counter++;
 }
 
-void print_ascii_costmap(Costmap2D* cmap)
-{
-  printf("  ");
-  for (int ii = 0; ii < COST_MAP_X_DIM; ii++) {
-    for (int ij = 0; ij < COST_MAP_Y_DIM; ij++) {
-      int idx = COST_MAP_X_DIM*ii + ij;
-      printf("%c", pr_map_char[cmap->costmap_[idx]]);
-    }
-    printf("\n  ");
-  }
-  printf("\n");
-}
-
 #define MAX_UNCOMPRESSED_DATA_SIZE  sizeof(Costmap2D) // MAX_GRID_SIZE
 #define MAX_COMPRESSED_DATA_SIZE    MAX_UNCOMPRESSED_DATA_SIZE //(In case of no compression)?  
 
@@ -213,7 +199,7 @@ void process_data(char* data, int data_size)
 					odometry[0],odometry[1],odometry[2],1.5, // AVx, AVy , AVz, AVw
 					false,  // rolling window
 					0.05, 2.05, // min, max obstacle height
-					100, // raytrace_range
+					RAYTR_RANGE, // raytrace_range
 					GRID_MAP_X_DIM, GRID_MAP_Y_DIM, GRID_MAP_RESLTN,  // size_x, size_y, resolution
 					CMV_NO_INFORMATION);
        #ifdef INT_TIME
@@ -406,7 +392,7 @@ void process_data(char* data, int data_size)
        #ifdef INT_TIME
 	gettimeofday(&start_pd_combGrids, NULL);
        #endif	
-	combineGrids(remote_map->costmap_, local_map->costmap_,
+	combineGrids(remote_map->costmap, local_map->costmap,
 		     remote_map->av_x, remote_map->av_y,
 		     local_map->av_x, local_map->av_y,
 		     local_map->x_dim, local_map->y_dim, local_map->cell_size,
@@ -421,7 +407,7 @@ void process_data(char* data, int data_size)
 	       print_ascii_costmap(local_map));
 
 	// Write the combined map to a file
-	write_array_to_file(local_map->costmap_, COST_MAP_ENTRIES);
+	write_array_to_file(local_map->costmap, COST_MAP_ENTRIES);
 	
 	DBGOUT(printf("Returning from process_data\n"));
 	fflush(stdout);
@@ -437,20 +423,13 @@ int main(int argc, char *argv[])
 
 	snprintf(bag_inet_addr_str, 20, "127.0.0.1");
 	snprintf(wifi_inet_addr_str, 20, "127.0.0.1");
-	
+
+	init_occgrid_state(); // Initialize the occgrid functions, state, etc.
 	xmit_pipe_init(); // Initialize the IEEE SDR Transmit Pipeline
 	
 	signal(SIGINT, INThandler);
 
-	// Set up the print-map-character array (to xlate map values to ASCII symbols)
-	for (int i = 0; i < 256; i++) {
-	  pr_map_char[i] = '?';
-	}
-	pr_map_char[CMV_NO_INFORMATION]  = '.';
-	pr_map_char[CMV_FREE_SPACE]      = ' ';
-	pr_map_char[CMV_LETHAL_OBSTACLE] = 'X';
-
-	// Use getot to read in run-time options
+	// Use getopt to read in run-time options
 	// put ':' in the starting of the
 	// string so that program can
 	// distinguish between '?' and ':'
