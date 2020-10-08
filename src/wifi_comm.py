@@ -60,30 +60,30 @@ def main():
                 if not header :
                         print('... end of run on message %d.' % msg_count)
                         break
-		print('Wifi1 msg %d received %d bytes from port %d' % (msg_count, len(header), RPORT))
-                print('   msg: "%s"' % str(header))
+		#print('Wifi msg %d received %d bytes from port %d' % (msg_count, len(header), RPORT))
+                #print('   msg: "%s"' % str(header))
 
                 d_len = int(header[1:7])
-                print('    Therefore %d bytes for real/imag parts' % d_len)
+                #print('    Therefore %d bytes for real/imag parts' % d_len)
 		d_real = recvall(conn1, d_len) # conn1.recv(d_len)
                 if not d_real :
                         print('... end of run on d_real of message %d.' % msg_count)
                         break
-		print('Wifi1 msg %d received %d bytes from port %d' % (msg_count, len(d_real), RPORT))
+		#print('Wifi msg %d received %d bytes from port %d' % (msg_count, len(d_real), RPORT))
                 #print('   msg: "%s"' % str(d_real))
 
 		d_imag = recvall(conn1, d_len) # conn1.recv(d_len)
                 if not d_imag :
                         print('... end of run on d_imag of message %d.' % msg_count)
                         break
-		print('Wifi1 msg %d received %d bytes from port %d' % (msg_count, len(d_imag), RPORT))
+		#print('Wifi msg %d received %d bytes from port %d' % (msg_count, len(d_imag), RPORT))
                 #print('   msg: "%s"' % str(d_imag))
-
-		print('Wfi1-1 sending messages %d to port %d' % (msg_count, XPORT))
+                print('Wifi received all msg-set %d from port %d payload %d bytes' % (msg_count, RPORT, len(d_real)))
+		#print('Wfi sending messages %d to port %d' % (msg_count, XPORT))
                 conn2.sendall(header)
                 conn2.sendall(d_real)
                 conn2.sendall(d_imag)
-		print('Wfi1-1 sent all messages %d to port %d' %(msg_count, XPORT))
+		print('Wfi sent all messages %d to port %d' %(msg_count, XPORT))
                 msg_count += 1
 
 if __name__ == "__main__":
