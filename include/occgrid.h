@@ -14,9 +14,10 @@
 #define FREE_SPACE          1
 #define LETHAL_OBSTACLE   255
 
-#define GRID_MAP_MAX_X_DIM     50
-#define GRID_MAP_MAX_Y_DIM     50
-#define GRID_MAP_MAX_ENTRIES   (GRID_MAP_MAX_X_DIM * GRID_MAP_MAX_Y_DIM)
+
+#define COST_MAP_X_DIM     50
+#define COST_MAP_Y_DIM     50
+#define COST_MAP_ENTRIES   (COST_MAP_X_DIM * COST_MAP_Y_DIM)
 
 //Define public structures
 typedef struct geometry_msgs_Point {
@@ -39,7 +40,7 @@ typedef struct Costmap2D_struct {
   unsigned int x_dim;
   unsigned int y_dim;
   unsigned char default_value;
-  unsigned char costmap_[GRID_MAP_MAX_ENTRIES];
+  unsigned char costmap_[COST_MAP_ENTRIES];
 } Costmap2D;
 
 typedef struct Observation {

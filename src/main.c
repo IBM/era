@@ -163,7 +163,6 @@ void write_array_to_file(unsigned char * data, long size)
   counter++;
 }
 
-//#define MAX_GRID_SIZE   50 * 50  // Taken from size_x, size_y, resolution
 #define MAX_UNCOMPRESSED_DATA_SIZE  sizeof(Costmap2D) // MAX_GRID_SIZE
 #define MAX_COMPRESSED_DATA_SIZE    MAX_UNCOMPRESSED_DATA_SIZE //(In case of no compression)?  
 

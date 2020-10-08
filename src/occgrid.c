@@ -68,8 +68,8 @@ void addStaticObstacle(unsigned char* obstacle_type) {
         for (int i = 0; i < cell_x_dim; i++) {
             for (int j = 0; j < cell_y_dim; j++) {
                 int index = cell_x_dim * j + i;
-		CHECK(if (index >= GRID_MAP_MAX_ENTRIES) {
-		    printf("ERROR : addStaticObstacle index too large at %d vs %d\n", index, GRID_MAP_MAX_ENTRIES);
+		CHECK(if (index >= COST_MAP_ENTRIES) {
+		    printf("ERROR : addStaticObstacle index too large at %d vs %d\n", index, COST_MAP_ENTRIES);
 		  });
                 if (i == (int) master_observation.master_origin.x || i == cell_x_dim - 1) {
 		  master_observation.master_costmap.costmap_[index] = LETHAL_OBSTACLE;
@@ -109,8 +109,8 @@ void initCostmap(Observation* obsvtn,
     DBGOUT(printf("Master Origin -> <%f, %f, %f>\n", obsvtn->master_origin.x, obsvtn->master_origin.y, obsvtn->master_origin.z));
 
     CHECK(int chkMaxIdx = obsvtn->master_costmap.x_dim * obsvtn->master_costmap.y_dim / (obsvtn->master_resolution * obsvtn->master_resolution);
-	  if (chkMaxIdx > GRID_MAP_MAX_ENTRIES) {
-	    printf("ERROR : initCostMap : Max index is too large at %d vs %d\n", chkMaxIdx, GRID_MAP_MAX_ENTRIES);
+	  if (chkMaxIdx > COST_MAP_ENTRIES) {
+	    printf("ERROR : initCostMap : Max index is too large at %d vs %d\n", chkMaxIdx, COST_MAP_ENTRIES);
 	  });
     for (int i = 0; i < obsvtn->master_costmap.x_dim * obsvtn->master_costmap.y_dim / (obsvtn->master_resolution * obsvtn->master_resolution); i++) {
         obsvtn->master_costmap.costmap_[i] = obsvtn->master_costmap.default_value;
@@ -182,11 +182,11 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
                 g2_index = g2_index + cell_ox;
                 count = 0;
             }
-	    CHECK(if ((g2_index < 0) || (g2_index >= GRID_MAP_MAX_ENTRIES)) {
-		printf("ERROR : combineGrids g2_index too large at %d vs %d\n", g2_index, GRID_MAP_MAX_ENTRIES);
+	    CHECK(if ((g2_index < 0) || (g2_index >= COST_MAP_ENTRIES)) {
+		printf("ERROR : combineGrids g2_index too large at %d vs %d\n", g2_index, COST_MAP_ENTRIES);
 	      });
-	    CHECK(if ((g1_index < 0) || (g1_index >= GRID_MAP_MAX_ENTRIES)) {
-		printf("ERROR : combineGrids g1_index too large at %d vs %d\n", g1_index, GRID_MAP_MAX_ENTRIES);
+	    CHECK(if ((g1_index < 0) || (g1_index >= COST_MAP_ENTRIES)) {
+		printf("ERROR : combineGrids g1_index too large at %d vs %d\n", g1_index, COST_MAP_ENTRIES);
 	      });
 
             grid2[g2_index] = max(grid2[g2_index], grid1[g1_index]);
@@ -329,11 +329,11 @@ void copyMapRegion(unsigned char* source_map,
     for (unsigned int i = 0; i < region_y_dim; ++i){
         for (unsigned int j = 0; j < region_x_dim; j++) {
             //printf("Source Map Value at Index <%d> = %d\n", sm_index, master_observation.master_costmap.costmap_[sm_index]);
-	  CHECK(if (dm_index >= GRID_MAP_MAX_ENTRIES) {
-	      printf("ERROR : copyMapRegion : dm_index is too large at = %d vs %d\n", dm_index, GRID_MAP_MAX_ENTRIES);
+	  CHECK(if (dm_index >= COST_MAP_ENTRIES) {
+	      printf("ERROR : copyMapRegion : dm_index is too large at = %d vs %d\n", dm_index, COST_MAP_ENTRIES);
 	    }
-	    if (sm_index >= GRID_MAP_MAX_ENTRIES) {
-	      printf("ERROR : copyMapRegion : sm_index is too large at = %d vs %d\n", sm_index, GRID_MAP_MAX_ENTRIES);
+	    if (sm_index >= COST_MAP_ENTRIES) {
+	      printf("ERROR : copyMapRegion : sm_index is too large at = %d vs %d\n", sm_index, COST_MAP_ENTRIES);
 	    });
             local_costmap[dm_index] = master_observation.master_costmap.costmap_[sm_index];
             //printf("dm_index, sm_index = %d, %d\n", dm_index, sm_index);
@@ -350,8 +350,8 @@ void copyMapRegion(unsigned char* source_map,
     //printf("We made it!\n");
 
     CHECK(int chkMaxIdx = cell_x_dim * cell_y_dim;
-	  if (chkMaxIdx > GRID_MAP_MAX_ENTRIES) {
-	    printf("ERROR : copyMapRegion : Max index is too large at %d vs %d\n", chkMaxIdx, GRID_MAP_MAX_ENTRIES);
+	  if (chkMaxIdx > COST_MAP_ENTRIES) {
+	    printf("ERROR : copyMapRegion : Max index is too large at %d vs %d\n", chkMaxIdx, COST_MAP_ENTRIES);
 	  });
     for (int i = 0; i < cell_x_dim * cell_y_dim; i++) {
         master_observation.master_costmap.costmap_[i] = local_costmap[i];
@@ -390,8 +390,8 @@ void updateBounds(float* data, unsigned int data_size, double robot_x, double ro
             //printf("Map Coordinates (mx, my) = (%d, %d)\n", master_observation.map_coordinates.x, master_observation.map_coordinates.y);
 
             unsigned int index = getIndex(master_observation.map_coordinates.x, master_observation.map_coordinates.y);
-	    CHECK(if (index >= GRID_MAP_MAX_ENTRIES) {
-		printf("ERROR : updateBounds : index is too large at %d vs %d\n", index, GRID_MAP_MAX_ENTRIES);
+	    CHECK(if (index >= COST_MAP_ENTRIES) {
+		printf("ERROR : updateBounds : index is too large at %d vs %d\n", index, COST_MAP_ENTRIES);
 	      });
             //printf("Index of Obstacle -> %d\n", index);
             master_observation.master_costmap.costmap_[index] = LETHAL_OBSTACLE; //TODO: Test simple test case (char) 255 = '255' ?
@@ -571,8 +571,8 @@ void bresenham2D(unsigned int abs_da, unsigned int abs_db, int error_b, int offs
 
 void markCell(unsigned char value, unsigned int offset) {
     //printf("OFFSET -> %d\n", offset);
-  CHECK(if (offset >= GRID_MAP_MAX_ENTRIES) {
-      printf("ERROR : updateBounds : offset is too large at %d vs %d\n", offset, GRID_MAP_MAX_ENTRIES);
+  CHECK(if (offset >= COST_MAP_ENTRIES) {
+      printf("ERROR : updateBounds : offset is too large at %d vs %d\n", offset, COST_MAP_ENTRIES);
     });
     master_observation.master_costmap.costmap_[offset] = value;
 }
