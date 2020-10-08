@@ -42,6 +42,10 @@ char pr_map_char[256];
  uint64_t proc_odo_sec  = 0LL;
  uint64_t proc_odo_usec = 0LL;
 
+ struct timeval stop_proc_rdbag, start_proc_rdbag;
+ uint64_t proc_rdbag_sec  = 0LL;
+ uint64_t proc_rdbag_usec = 0LL;
+
  struct timeval stop_proc_lidar, start_proc_lidar;
  uint64_t proc_lidar_sec  = 0LL;
  uint64_t proc_lidar_usec = 0LL;
@@ -579,7 +583,15 @@ int main(int argc, char *argv[])
 	while ((!hit_eof) && (lidar_count < max_time_steps)) {
 	        DBGOUT(printf("Calling read_all on the BAG socket...\n"); fflush(stdout));
 		//int valread = read(bag_sock , buffer, 10);
+               #ifdef INT_TIME
+		gettimeofday(&start_proc_rdbag, NULL);
+               #endif
 		int valread = read_all(bag_sock, buffer, 10);
+               #ifdef INT_TIME
+		gettimeofday(&stop_proc_rdbag, NULL);
+		proc_rdbag_sec   += stop_proc_rdbag.tv_sec  - start_proc_rdbag.tv_sec;
+		proc_rdbag_usec  += stop_proc_rdbag.tv_usec - start_proc_rdbag.tv_usec;
+               #endif
 		DBGOUT(printf("Top: read %d bytes\n", valread));
 		if (valread < 10) {
 		  if (valread == 0) {
@@ -693,81 +705,82 @@ void dump_final_run_statistics()
   printf("Timing (in usec):\n");
  #ifdef INT_TIME
   gettimeofday(&stop_prog, NULL);
-  uint64_t total_exec = (uint64_t) (stop_prog.tv_sec - start_prog.tv_sec) * 1000000 + (uint64_t) (stop_prog.tv_usec - start_prog.tv_usec);
-  uint64_t proc_odo   = (uint64_t) (proc_odo_sec)  * 1000000 + (uint64_t) (proc_odo_usec);
-  uint64_t proc_lidar = (uint64_t) (proc_lidar_sec)  * 1000000 + (uint64_t) (proc_lidar_usec);
-  uint64_t proc_data  = (uint64_t) (proc_data_sec)  * 1000000 + (uint64_t) (proc_data_usec);
+  uint64_t total_exec = (uint64_t)(stop_prog.tv_sec - start_prog.tv_sec) * 1000000 + (uint64_t)(stop_prog.tv_usec - start_prog.tv_usec);
+  uint64_t proc_rdbag = (uint64_t)(proc_rdbag_sec)  * 1000000 + (uint64_t)(proc_rdbag_usec);
+  uint64_t proc_odo   = (uint64_t)(proc_odo_sec)  * 1000000 + (uint64_t)(proc_odo_usec);
+  uint64_t proc_lidar = (uint64_t)(proc_lidar_sec)  * 1000000 + (uint64_t)(proc_lidar_usec);
+  uint64_t proc_data  = (uint64_t)(proc_data_sec)  * 1000000 + (uint64_t)(proc_data_usec);
 
-  uint64_t pd_cloud2grid = (uint64_t) (pd_cloud2grid_sec)  * 1000000 + (uint64_t) (pd_cloud2grid_usec);
-  uint64_t pd_lz4_cmp    = (uint64_t) (pd_lz4_cmp_sec)  * 1000000 + (uint64_t) (pd_lz4_cmp_usec);
-  uint64_t pd_xmit_pipe  = (uint64_t) (pd_xmit_pipe_sec)  * 1000000 + (uint64_t) (pd_xmit_pipe_usec);
-  uint64_t pd_xmit_send  = (uint64_t) (pd_xmit_send_sec)  * 1000000 + (uint64_t) (pd_xmit_send_usec);
-  uint64_t pd_xmit_recv  = (uint64_t) (pd_xmit_recv_sec)  * 1000000 + (uint64_t) (pd_xmit_recv_usec);
-  uint64_t pd_recv_pipe  = (uint64_t) (pd_recv_pipe_sec)  * 1000000 + (uint64_t) (pd_recv_pipe_usec);
-  uint64_t pd_lz4_uncmp  = (uint64_t) (pd_lz4_uncmp_sec)  * 1000000 + (uint64_t) (pd_lz4_uncmp_usec);
-  uint64_t pd_combGrids  = (uint64_t) (pd_combGrids_sec)  * 1000000 + (uint64_t) (pd_combGrids_usec);
+  uint64_t pd_cloud2grid = (uint64_t)(pd_cloud2grid_sec)  * 1000000 + (uint64_t)(pd_cloud2grid_usec);
+  uint64_t pd_lz4_cmp    = (uint64_t)(pd_lz4_cmp_sec)  * 1000000 + (uint64_t)(pd_lz4_cmp_usec);
+  uint64_t pd_xmit_pipe  = (uint64_t)(pd_xmit_pipe_sec)  * 1000000 + (uint64_t)(pd_xmit_pipe_usec);
+  uint64_t pd_xmit_send  = (uint64_t)(pd_xmit_send_sec)  * 1000000 + (uint64_t)(pd_xmit_send_usec);
+  uint64_t pd_xmit_recv  = (uint64_t)(pd_xmit_recv_sec)  * 1000000 + (uint64_t)(pd_xmit_recv_usec);
+  uint64_t pd_recv_pipe  = (uint64_t)(pd_recv_pipe_sec)  * 1000000 + (uint64_t)(pd_recv_pipe_usec);
+  uint64_t pd_lz4_uncmp  = (uint64_t)(pd_lz4_uncmp_sec)  * 1000000 + (uint64_t)(pd_lz4_uncmp_usec);
+  uint64_t pd_combGrids  = (uint64_t)(pd_combGrids_sec)  * 1000000 + (uint64_t)(pd_combGrids_usec);
 
   // This is the xmit_pipe.c breakdown
-  uint64_t x_pipe      = (uint64_t) (x_pipe_sec)  * 1000000 + (uint64_t) (x_pipe_usec);
-  uint64_t x_genmacfr  = (uint64_t) (x_genmacfr_sec)  * 1000000 + (uint64_t) (x_genmacfr_usec);
-  uint64_t x_domapwk   = (uint64_t) (x_domapwk_sec)  * 1000000 + (uint64_t) (x_domapwk_usec);
-  uint64_t x_phdrgen   = (uint64_t) (x_phdrgen_sec)  * 1000000 + (uint64_t) (x_phdrgen_usec);
-  uint64_t x_ck2sym    = (uint64_t) (x_ck2sym_sec)  * 1000000 + (uint64_t) (x_ck2sym_usec);
-  uint64_t x_ocaralloc = (uint64_t) (x_ocaralloc_sec)  * 1000000 + (uint64_t) (x_ocaralloc_usec);
-  uint64_t x_fft       = (uint64_t) (x_fft_sec)  * 1000000 + (uint64_t) (x_fft_usec);
-  uint64_t x_ocycpref  = (uint64_t) (x_ocycpref_sec)  * 1000000 + (uint64_t) (x_ocycpref_usec);
+  uint64_t x_pipe      = (uint64_t)(x_pipe_sec)  * 1000000 + (uint64_t)(x_pipe_usec);
+  uint64_t x_genmacfr  = (uint64_t)(x_genmacfr_sec)  * 1000000 + (uint64_t)(x_genmacfr_usec);
+  uint64_t x_domapwk   = (uint64_t)(x_domapwk_sec)  * 1000000 + (uint64_t)(x_domapwk_usec);
+  uint64_t x_phdrgen   = (uint64_t)(x_phdrgen_sec)  * 1000000 + (uint64_t)(x_phdrgen_usec);
+  uint64_t x_ck2sym    = (uint64_t)(x_ck2sym_sec)  * 1000000 + (uint64_t)(x_ck2sym_usec);
+  uint64_t x_ocaralloc = (uint64_t)(x_ocaralloc_sec)  * 1000000 + (uint64_t)(x_ocaralloc_usec);
+  uint64_t x_fft       = (uint64_t)(x_fft_sec)  * 1000000 + (uint64_t)(x_fft_usec);
+  uint64_t x_ocycpref  = (uint64_t)(x_ocycpref_sec)  * 1000000 + (uint64_t)(x_ocycpref_usec);
 
   // This is the recv_pipe.c breakdown
-  uint64_t r_pipe     = (uint64_t) (r_pipe_sec)  * 1000000 + (uint64_t) (r_pipe_usec);
-  uint64_t r_cmpcnj   = (uint64_t) (r_cmpcnj_sec)  * 1000000 + (uint64_t) (r_cmpcnj_usec);
-  uint64_t r_cmpmpy   = (uint64_t) (r_cmpmpy_sec)  * 1000000 + (uint64_t) (r_cmpmpy_usec);
-  uint64_t r_firc     = (uint64_t) (r_firc_sec)  * 1000000 + (uint64_t) (r_firc_usec);
-  uint64_t r_cmpmag   = (uint64_t) (r_cmpmag_sec)  * 1000000 + (uint64_t) (r_cmpmag_usec);
-  uint64_t r_cmpmag2  = (uint64_t) (r_cmpmag2_sec)  * 1000000 + (uint64_t) (r_cmpmag2_usec);
-  uint64_t r_fir      = (uint64_t) (r_fir_sec)  * 1000000 + (uint64_t) (r_fir_usec);
-  uint64_t r_div      = (uint64_t) (r_div_sec)  * 1000000 + (uint64_t) (r_div_usec);
-  uint64_t r_sshort   = (uint64_t) (r_sshort_sec)  * 1000000 + (uint64_t) (r_sshort_usec);
-  uint64_t r_slong    = (uint64_t) (r_slong_sec)  * 1000000 + (uint64_t) (r_slong_usec);
-  uint64_t r_fft      = (uint64_t) (r_fft_sec)  * 1000000 + (uint64_t) (r_fft_usec);
-  uint64_t r_eqlz     = (uint64_t) (r_eqlz_sec)  * 1000000 + (uint64_t) (r_eqlz_usec);
-  uint64_t r_decsignl = (uint64_t) (r_decsignl_sec)  * 1000000 + (uint64_t) (r_decsignl_usec);
-  uint64_t r_descrmbl = (uint64_t) (r_descrmbl_sec)  * 1000000 + (uint64_t) (r_descrmbl_usec);
+  uint64_t r_pipe     = (uint64_t)(r_pipe_sec)  * 1000000 + (uint64_t)(r_pipe_usec);
+  uint64_t r_cmpcnj   = (uint64_t)(r_cmpcnj_sec)  * 1000000 + (uint64_t)(r_cmpcnj_usec);
+  uint64_t r_cmpmpy   = (uint64_t)(r_cmpmpy_sec)  * 1000000 + (uint64_t)(r_cmpmpy_usec);
+  uint64_t r_firc     = (uint64_t)(r_firc_sec)  * 1000000 + (uint64_t)(r_firc_usec);
+  uint64_t r_cmpmag   = (uint64_t)(r_cmpmag_sec)  * 1000000 + (uint64_t)(r_cmpmag_usec);
+  uint64_t r_cmpmag2  = (uint64_t)(r_cmpmag2_sec)  * 1000000 + (uint64_t)(r_cmpmag2_usec);
+  uint64_t r_fir      = (uint64_t)(r_fir_sec)  * 1000000 + (uint64_t)(r_fir_usec);
+  uint64_t r_div      = (uint64_t)(r_div_sec)  * 1000000 + (uint64_t)(r_div_usec);
+  uint64_t r_sshort   = (uint64_t)(r_sshort_sec)  * 1000000 + (uint64_t)(r_sshort_usec);
+  uint64_t r_slong    = (uint64_t)(r_slong_sec)  * 1000000 + (uint64_t)(r_slong_usec);
+  uint64_t r_fft      = (uint64_t)(r_fft_sec)  * 1000000 + (uint64_t)(r_fft_usec);
+  uint64_t r_eqlz     = (uint64_t)(r_eqlz_sec)  * 1000000 + (uint64_t)(r_eqlz_usec);
+  uint64_t r_decsignl = (uint64_t)(r_decsignl_sec)  * 1000000 + (uint64_t)(r_decsignl_usec);
+  uint64_t r_descrmbl = (uint64_t)(r_descrmbl_sec)  * 1000000 + (uint64_t)(r_descrmbl_usec);
   
   printf(" Total workload main-loop : %10lu usec\n", total_exec);
+  printf("   Total proc Read-Bag      : %10lu usec\n", proc_rdbag);
   printf("   Total proc Odometry      : %10lu usec\n", proc_odo);
   printf("   Total proc Lidar         : %10lu usec\n", proc_lidar);
-  printf("   Total proc Data          : %10lu usec\n", proc_data);
-  printf("     Total pd cloud2grid      : %10lu usec\n", pd_cloud2grid);
-  printf("     Total pd lz4_cmp         : %10lu usec\n", pd_lz4_cmp);
-  printf("     Total pd xmit_pipe       : %10lu usec\n", pd_xmit_pipe);
-  printf("       X-Pipe Total Time        : %10lu usec\n", x_pipe);
-  printf("       X-Pipe GenMacFr Time     : %10lu usec\n", x_genmacfr);
-  printf("       X-Pipe doMapWk Time      : %10lu usec\n", x_domapwk);
-  printf("       X-Pipe PckHdrGen Time    : %10lu usec\n", x_phdrgen);
-  printf("       X-Pipe Chnk2Sym Time     : %10lu usec\n", x_ck2sym);
-  printf("       X-Pipe CarAlloc Time     : %10lu usec\n", x_ocaralloc);
-  printf("       X-Pipe Xm-FFT Time       : %10lu usec\n", x_fft);
-  printf("       X-Pipe CycPrefix Time    : %10lu usec\n", x_ocycpref);
-
-  printf("     Total pd xmit_send       : %10lu usec\n", pd_xmit_send);
-  printf("     Total pd xmit_recv       : %10lu usec\n", pd_xmit_recv);
-  printf("     Total pd recv_pipe       : %10lu usec\n", pd_recv_pipe);
-  printf("       R-Pipe Total Time      : %10lu usec\n", r_pipe);
-  printf("       R-Pipe CmplCnjg Time   : %10lu usec\n", r_cmpcnj);
-  printf("       R-Pipe CmplMult Time   : %10lu usec\n", r_cmpmpy);
-  printf("       R-Pipe FIRC Time       : %10lu usec\n", r_firc);
-  printf("       R-Pipe CmplMag Time    : %10lu usec\n", r_cmpmag);
-  printf("       R-Pipe CmplMag^2 Time  : %10lu usec\n", r_cmpmag2);
-  printf("       R-Pipe FIR Time        : %10lu usec\n", r_fir);
-  printf("       R-Pipe DIV Time        : %10lu usec\n", r_div);
-  printf("       R-Pipe SyncShort Time  : %10lu usec\n", r_sshort);
-  printf("       R-Pipe SyncLong Time   : %10lu usec\n", r_slong);
-  printf("       R-Pipe Rc-FFT Time     : %10lu usec\n", r_fft);
-  printf("       R-Pipe Equalize Time   : %10lu usec\n", r_eqlz);
-  printf("       R-Pipe DecSignal Time  : %10lu usec\n", r_decsignl);
-  printf("       R-Pipe DeScramble Time : %10lu usec\n", r_descrmbl);
-  printf("     Total pd lz4_uncmp       : %10lu usec\n", pd_lz4_uncmp);
-  printf("     Total pd combGrids       : %10lu usec\n", pd_combGrids);
+  printf("     Total proc Data          : %10lu usec\n", proc_data);
+  printf("       Total pd cloud2grid      : %10lu usec\n", pd_cloud2grid);
+  printf("       Total pd lz4_cmp         : %10lu usec\n", pd_lz4_cmp);
+  printf("       Total pd xmit_pipe       : %10lu usec\n", pd_xmit_pipe);
+  printf("         X-Pipe Total Time        : %10lu usec\n", x_pipe);
+  printf("         X-Pipe GenMacFr Time     : %10lu usec\n", x_genmacfr);
+  printf("         X-Pipe doMapWk Time      : %10lu usec\n", x_domapwk);
+  printf("         X-Pipe PckHdrGen Time    : %10lu usec\n", x_phdrgen);
+  printf("         X-Pipe Chnk2Sym Time     : %10lu usec\n", x_ck2sym);
+  printf("         X-Pipe CarAlloc Time     : %10lu usec\n", x_ocaralloc);
+  printf("         X-Pipe Xm-FFT Time       : %10lu usec\n", x_fft);
+  printf("         X-Pipe CycPrefix Time    : %10lu usec\n", x_ocycpref);
+  printf("       Total pd xmit_send       : %10lu usec\n", pd_xmit_send);
+  printf("       Total pd xmit_recv       : %10lu usec\n", pd_xmit_recv);
+  printf("       Total pd recv_pipe       : %10lu usec\n", pd_recv_pipe);
+  printf("         R-Pipe Total Time      : %10lu usec\n", r_pipe);
+  printf("         R-Pipe CmplCnjg Time   : %10lu usec\n", r_cmpcnj);
+  printf("         R-Pipe CmplMult Time   : %10lu usec\n", r_cmpmpy);
+  printf("         R-Pipe FIRC Time       : %10lu usec\n", r_firc);
+  printf("         R-Pipe CmplMag Time    : %10lu usec\n", r_cmpmag);
+  printf("         R-Pipe CmplMag^2 Time  : %10lu usec\n", r_cmpmag2);
+  printf("         R-Pipe FIR Time        : %10lu usec\n", r_fir);
+  printf("         R-Pipe DIV Time        : %10lu usec\n", r_div);
+  printf("         R-Pipe SyncShort Time  : %10lu usec\n", r_sshort);
+  printf("         R-Pipe SyncLong Time   : %10lu usec\n", r_slong);
+  printf("         R-Pipe Rc-FFT Time     : %10lu usec\n", r_fft);
+  printf("         R-Pipe Equalize Time   : %10lu usec\n", r_eqlz);
+  printf("         R-Pipe DecSignal Time  : %10lu usec\n", r_decsignl);
+  printf("         R-Pipe DeScramble Time : %10lu usec\n", r_descrmbl);
+  printf("       Total pd lz4_uncmp       : %10lu usec\n", pd_lz4_uncmp);
+  printf("       Total pd combGrids       : %10lu usec\n", pd_combGrids);
 
 
 
