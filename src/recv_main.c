@@ -104,6 +104,30 @@ int main(int argc, char *argv[])
   printf("Running for %u time steps\n", max_time_steps);
   printf("RECV message is taken from file %s\n", recv_in_fname);
 
+  // Read in the encoded message data
+  FILE *inF = fopen(recv_in_fname, "r");
+  if (!inF) {
+    printf("Error: unable to open receiver-pipeline input encoded message file %s\n", recv_in_fname);
+    exit(-1);
+  }
+
+  // Read in the encoded message data
+  // Read the length and number of encoded complex values
+  if (fscanf(inF, "%u %d\n", &xmit_msg_len, &xmit_num_out) != 2) {
+    printf("ERROR reading the encoded msg length and number of complex values\n");
+    fclose(inF);
+    exit(-2);
+  }    
+  DEBUG(printf("  The message is %u bytes and %u complex encoded values\n", xmit_msg_len, xmit_num_out));
+  for (int i = 0; i < xmit_num_out; i++) {
+    if (fscanf(inF, "%f %f", &xmit_out_real[i], &xmit_out_imag[i]) != 2) {
+      printf("ERROR reading the complex input %d values\n", i);
+      fclose(inF);
+      exit(-2);
+    }
+  }
+  fclose(inF);
+
   /* Kernels initialization */
   printf("Initializing the Receive pipeline...\n");
   recv_pipe_init();
