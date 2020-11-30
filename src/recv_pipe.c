@@ -86,15 +86,17 @@ uint64_t r_zz_usec = 0LL;
 #endif
 
 
-fx_pt delay16_out[DELAY_16_MAX_OUT_SIZE];
-fx_pt cmpx_conj_out[CMP_CONJ_MAX_SIZE];
-fx_pt cmpx_mult_out[CMP_MULT_MAX_SIZE];
-fx_pt correlation_complex[FIRC_MAVG48_MAX_SIZE]; // (firc mov_avg48 output
+fx_pt  delay16_out[DELAY_16_MAX_OUT_SIZE];
+fx_pt  cmpx_conj_out[CMP_CONJ_MAX_SIZE];
+fx_pt  firc_input[CMP_MULT_MAX_SIZE + COMPLEX_COEFF_LENGTH]; // holds cmpx_mult_out but pre-pads with zeros
+fx_pt* cmpx_mult_out = &(firc_input[COMPLEX_COEFF_LENGTH]);
+fx_pt  correlation_complex[FIRC_MAVG48_MAX_SIZE]; // (firc mov_avg48 output
 //fx_pt correlation_complex_m48[MOV_AVG48_MAX_SIZE]; // (mov_avg48 output
   
-fx_pt1 correlation[CMP2MAG_MAX_SIZE]; // complex_to_mangitude outpu
-fx_pt1 signal_power[CMP2MAGSQ_MAX_SIZE];
-fx_pt1 avg_signal_power[FIR_MAVG64_MAX_SIZE]; // fir moving-average-64
+fx_pt1  correlation[CMP2MAG_MAX_SIZE]; // complex_to_mangitude outpu
+fx_pt1  fir_input[CMP2MAGSQ_MAX_SIZE + COEFF_LENGTH]; // holds signal_power but pre-pads with zeros
+fx_pt1* signal_power = &(fir_input[COEFF_LENGTH]);
+fx_pt1  avg_signal_power[FIR_MAVG64_MAX_SIZE]; // fir moving-average-64
 //fx_pt1 avg_signal_power_m64[MOV_AVG64_MAX_SIZE]; // moving-average64
   
 fx_pt1 the_correlation[DIVIDE_MAX_SIZE];
@@ -118,7 +120,13 @@ void compute(unsigned num_inputs, fx_pt *inbuff, uint8_t *outbuff);
  ********************************************************************************/
 void
 recv_pipe_init() {
-  ; // Apparently nothing we need to do here?
+  // Initialize the pre-pended zero segments for fir_input and firc_input
+  for (int i = 0; i < COEFF_LENGTH; i++) {
+    fir_input[i] = 0;
+  }
+  for (int i = 0; i < COMPLEX_COEFF_LENGTH; i++) {
+    firc_input[i] = 0;
+  }
 }
 
 
@@ -256,7 +264,8 @@ void compute(unsigned num_inputs, fx_pt *input_data, uint8_t *out_msg) {
   r_cmpmpy_sec  += r_firc_start.tv_sec  - r_cmpmpy_start.tv_sec;
   r_cmpmpy_usec += r_firc_start.tv_usec - r_cmpmpy_start.tv_usec;
  #endif
-  firc(correlation_complex, cmpx_mult_out);
+  //firc(correlation_complex, cmpx_mult_out);
+  ffirc(correlation_complex, cmpx_mult_out);
   DEBUG(for (int ti = 0; ti < num_cmpcorr_vals; ti++) {
       printf("  MV_AVG48 %5u : CORR_CMP %12.8f %12.8f : MULT_OUT %12.8f %12.8f\n", ti, crealf(correlation_complex[ti]), cimagf(correlation_complex[ti]), crealf(cmpx_mult_out[ti]), cimagf(cmpx_mult_out[ti]));
     });
@@ -301,7 +310,8 @@ void compute(unsigned num_inputs, fx_pt *input_data, uint8_t *out_msg) {
   r_cmpmag2_sec  += r_fir_start.tv_sec  - r_cmpmag2_start.tv_sec;
   r_cmpmag2_usec += r_fir_start.tv_usec - r_cmpmag2_start.tv_usec;
  #endif
-  fir(avg_signal_power, signal_power, coeff_mvgAvg);
+  //fir(avg_signal_power, signal_power, coeff_mvgAvg);
+  ffir(avg_signal_power, signal_power);
   DEBUG(for (unsigned ti = 0; ti < num_mavg48_vals; ti++) {
     printf(" TOP_FIR_OUT %5u : SIGN_PWR-AVG %12.8f : SIGN_PWR %12.8f\n", ti, avg_signal_power[ti], signal_power[ti]);
     });

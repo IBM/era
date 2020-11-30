@@ -6,7 +6,10 @@
 #include "sync_short.h" // Pick up some #defines
 #include "fir.h"
 
-
+// This is the original implementation of the FIR filter
+//  Note that it takes in the coefficient inputs, but this version never uses them (Mply is commented out)
+//   This implementation seems to be pretty inefficient (since it does NOT use the coefficients, i.e. uses "1" coefficients)
+//    It uses a sum loop over the M componenets for every input; we can improve (see ffir below).
 void fir(fx_pt1 output[FIR_MAVG64_MAX_SIZE], fx_pt1 input_sample[FIR_MAVG64_MAX_SIZE], const fx_pt1 coefficient[COEFF_LENGTH])
 {
   static fx_pt1_ext buffer[COEFF_LENGTH];
@@ -48,8 +51,22 @@ void fir(fx_pt1 output[FIR_MAVG64_MAX_SIZE], fx_pt1 input_sample[FIR_MAVG64_MAX_
 
 } //end function
 
+// This is an equivalent, "Fast" firc which reduces the computation time
+//  This requires a "static" set of M initial "zero" values prepended to the input sample data
+//  We use a trick similar to the "delay" computations (where we manipulate the input data storage)
+void ffir(fx_pt1 output[FIR_MAVG64_MAX_SIZE], fx_pt1 input_sample[FIR_MAVG64_MAX_SIZE]) //, const fx_pt1 coefficient[COEFF_LENGTH])
+{
+  fx_pt curr_sum = 0; // First 64 are always "0"
+  /* loop_filter_data: */
+  for (unsigned n = COEFF_LENGTH; n < (FIR_MAVG64_MAX_SIZE + COEFF_LENGTH); n++) {
+    curr_sum= (fx_pt)(curr_sum - input_sample[n-COEFF_LENGTH] + input_sample[n]);
+    output[n] = curr_sum;
+  } //end for every sample
+} //end function
 
 
+// This is the original implementation, and seems quite inefficient
+//   It uses an inner loop to add the M values once for each input...
 void firc(fx_pt output[FIRC_MAVG48_MAX_SIZE], fx_pt input_sample[FIRC_MAVG48_MAX_SIZE])
 {
   static fx_pt_ext buffer[COMPLEX_COEFF_LENGTH];
@@ -84,6 +101,20 @@ void firc(fx_pt output[FIRC_MAVG48_MAX_SIZE], fx_pt input_sample[FIRC_MAVG48_MAX
     
   } //end for every sample
   
+} //end function
+
+
+// This is an equivalent, "Fast" firc which reduces the computation time
+//  This requires a "static" set of M initial "zero" values prepended to the input sample data
+//  We use a trick similar to the "delay" computations (where we manipulate the input data storage)
+void ffirc(fx_pt output[FIRC_MAVG48_MAX_SIZE], fx_pt input_sample[FIRC_MAVG48_MAX_SIZE])
+{
+  fx_pt curr_sum = 0; // First 64 are always "0"
+  /* loop_filter_data: */
+  for (unsigned n = COMPLEX_COEFF_LENGTH; n < (FIRC_MAVG48_MAX_SIZE + COMPLEX_COEFF_LENGTH); n++) {
+    curr_sum= (fx_pt)(curr_sum - input_sample[n-COMPLEX_COEFF_LENGTH] + input_sample[n]);
+    output[n] = curr_sum;
+  } //end for every sample
 } //end function
 
 
@@ -157,7 +188,7 @@ void firG(fx_pt output[SYNC_LENGTH], fx_pt input_sample[SYNC_LENGTH + COEFF_LENG
 	});
     }
     output[n] = (fx_pt)t_output_t;
-      DEBUG(printf("FIRG_OUT %5u : IN %15.8f %12.8f : OUT %12.8f %12.8f\n", n, crealf(input_sample[n]), cimagf(input_sample[n]), crealf(output[n]), cimagf(output[n])));
+    DEBUG(printf("FIRG_OUT %5u : IN %15.8f %12.8f : OUT %12.8f %12.8f\n", n, crealf(input_sample[n]), cimagf(input_sample[n]), crealf(output[n]), cimagf(output[n])));
   } //end for every sample
 
 } //end function
