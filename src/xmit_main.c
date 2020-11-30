@@ -23,8 +23,11 @@
 #include <unistd.h>
 #include <getopt.h>
 
+#include "globals.h"
+#include "getopt.h"
 #include "debug.h"
-#include "kernels_api.h"
+
+#include "xmit_pipe.h"  // IEEE 802.11p WiFi SDR Transmit Pipeline
 
 #define TIME
 
@@ -149,11 +152,8 @@ int main(int argc, char *argv[])
   }
   
   /* Kernels initialization */
-  printf("Initializing the XMIT kernel...\n");
-  if (!init_xmit_kernel()) {
-    printf("Error: the computer vision kernel couldn't be initialized properly.\n");
-    return 1;
-  }
+  printf("Initializing the XMIT pipeline\n");
+  xmit_pipe_init(); // Initialize the IEEE SDR Transmit Pipeline
 
   /*** MAIN LOOP -- iterates until all the traces are fully consumed ***/
  #ifdef TIME
@@ -182,7 +182,7 @@ int main(int argc, char *argv[])
    #ifdef TIME
     gettimeofday(&start_exec_xmit, NULL);
    #endif
-    execute_xmit_kernel(xmit_msg_len, xmit_msg, &xmit_num_out, xmit_out_real, xmit_out_imag);
+    do_xmit_pipeline(xmit_msg_len, xmit_msg, &xmit_num_out, xmit_out_real, xmit_out_imag);
    #ifdef TIME
     gettimeofday(&stop_exec_xmit, NULL);
     exec_xmit_sec  += stop_exec_xmit.tv_sec  - start_exec_xmit.tv_sec;
@@ -201,7 +201,7 @@ int main(int argc, char *argv[])
       FILE *outF = fopen(out_fname, "w");
       if (!outF) {
 	printf("Error: unable to open output encoded message file %s\n", out_fname);
-	return error;
+	exit(-1);
       }
       fprintf(outF, "%u %u\n", xmit_msg_len, xmit_num_out);
       for (int i = 0; i < xmit_num_out; i++) {
@@ -209,24 +209,13 @@ int main(int argc, char *argv[])
       }
       fclose(outF);
     }
-
-    /* // POST-EXECUTE each kernels to gather stats, etc. */
-    /* post_execute_xmit_kernel(xmit_tr_label, label); */
-    /* post_execute_rad_kernel(rdentry_p->index, rdict_dist, distance); */
-    /* for (int mi = 0; mi < num_vit_msgs; mi++) { */
-    /*   post_execute_vit_kernel(vdentry_p->msg_id, message); */
-    /* } */
   }
 
  #ifdef TIME
   gettimeofday(&stop, NULL);
  #endif
 
-  
-  /* All the traces have been fully consumed. Quitting... */
-  closeout_xmit_kernel();
-
-  #ifdef TIME
+ #ifdef TIME
   {
     uint64_t total_exec = (uint64_t) (stop.tv_sec - start.tv_sec) * 1000000 + (uint64_t) (stop.tv_usec - start.tv_usec);
     uint64_t exec_xmit    = (uint64_t) (exec_xmit_sec)  * 1000000 + (uint64_t) (exec_xmit_usec);

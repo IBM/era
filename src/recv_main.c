@@ -23,8 +23,11 @@
 #include <unistd.h>
 #include <getopt.h>
 
+#include "globals.h"
+#include "getopt.h"
 #include "debug.h"
-#include "kernels_api.h"
+
+#include "recv_pipe.h"  // IEEE 802.11p WiFi SDR Transmit Pipeline
 
 #define TIME
 
@@ -102,12 +105,9 @@ int main(int argc, char *argv[])
   printf("RECV message is taken from file %s\n", recv_in_fname);
 
   /* Kernels initialization */
-  printf("Initializing the Receive kernel...\n");
-  if (!init_recv_kernel()) {
-    printf("Error: the receive kernel couldn't be initialized properly.\n");
-    return 1;
-  }
-
+  printf("Initializing the Receive pipeline...\n");
+  recv_pipe_init();
+  
   /*** MAIN LOOP -- iterates until all the traces are fully consumed ***/
  #ifdef TIME
   struct timeval stop, start;
@@ -125,13 +125,13 @@ int main(int argc, char *argv[])
   for (time_step = 0; time_step < max_time_steps; time_step++) {
     DEBUG(printf("Time Step %u\n", time_step));
 
-    /* The receive kernel does a receive of one message */
+    /* The receive pipeline does a receive of one message */
     int  recv_msg_len;
     char recv_msg[MAX_MESSAGE_LEN];
    #ifdef TIME
     gettimeofday(&start_exec_recv, NULL);
    #endif
-    execute_recv_kernel(xmit_msg_len, xmit_num_out, xmit_out_real, xmit_out_imag, &recv_msg_len, recv_msg);    
+    do_recv_pipeline(xmit_num_out, xmit_out_real, xmit_out_imag, &recv_msg_len, recv_msg);    
    #ifdef TIME
     gettimeofday(&stop_exec_recv, NULL);
     exec_recv_sec  += stop_exec_recv.tv_sec  - start_exec_recv.tv_sec;
@@ -141,19 +141,11 @@ int main(int argc, char *argv[])
     if (show_main_output) {
       printf("Iteration %u : RECV_MSG:\n'%s'\n", time_step, recv_msg);
     }
-    /* // POST-EXECUTE each kernels to gather stats, etc. */
-    /* post_execute_rad_kernel(rdentry_p->index, rdict_dist, distance); */
-    /* for (int mi = 0; mi < num_vit_msgs; mi++) { */
-    /*   post_execute_vit_kernel(vdentry_p->msg_id, message); */
-    /* } */
   }
 
  #ifdef TIME
   gettimeofday(&stop, NULL);
  #endif
-
-  /* All the traces have been fully consumed. Quitting... */
-  closeout_recv_kernel();
 
   #ifdef TIME
   {

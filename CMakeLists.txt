@@ -36,8 +36,13 @@ include_directories(include)
 add_executable(era1 src/main.c src/occgrid.c src/lz4.c src/complex_ops.c src/crc.c src/delay.c src/fft.c src/fir.c src/gr_equalizer.c src/ofdm.c src/recv_pipe.c src/sdr_descrabler.c src/sdr_viterbi.c src/simple_dft.c src/sync_long.c src/sync_short.c src/xmit_pipe.c)
 add_executable(era2 src/main.c src/occgrid.c src/lz4.c src/complex_ops.c src/crc.c src/delay.c src/fft.c src/fir.c src/gr_equalizer.c src/ofdm.c src/recv_pipe.c src/sdr_descrabler.c src/sdr_viterbi.c src/simple_dft.c src/sync_long.c src/sync_short.c src/xmit_pipe.c)
 
+add_executable(do_recv_pipe src/recv_main.c src/complex_ops.c src/delay.c src/fft.c src/fir.c src/gr_equalizer.c src/ofdm.c src/recv_pipe.c src/sdr_descrabler.c src/sdr_viterbi.c src/sync_long.c src/sync_short.c)
+add_executable(do_xmit_pipe src/xmit_main.c src/crc.c src/fft.c src/xmit_pipe.c)
+
 target_compile_definitions(era1 PRIVATE INT_TIME)
 target_compile_definitions(era2 PRIVATE INT_TIME)
+target_compile_definitions(do_recv_pipe PRIVATE INT_TIME)
+target_compile_definitions(do_xmit_pipe PRIVATE INT_TIME)
 
 target_compile_definitions(era1 PRIVATE BAG_PORT=5556)
 target_compile_definitions(era2 PRIVATE BAG_PORT=5557)
@@ -56,3 +61,6 @@ target_compile_definitions(era2 PRIVATE IMAGE_FN="gridimage_era2_")
 
 target_link_libraries(era1 LINK_PUBLIC m)
 target_link_libraries(era2 LINK_PUBLIC m)
+
+target_link_libraries(do_recv_pipe LINK_PUBLIC m)
+target_link_libraries(do_xmit_pipe LINK_PUBLIC m)
