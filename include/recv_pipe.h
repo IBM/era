@@ -19,6 +19,7 @@
 #define _RECV_PIPE_H
 
 #include "sdr_base.h"
+#include "ofdm.h"
 
 #ifdef INT_TIME
 /* This is RECV PIPE internal Timing information (gathering resources) */

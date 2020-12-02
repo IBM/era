@@ -712,6 +712,12 @@ void dump_final_run_statistics()
   uint64_t r_eqlz     = (uint64_t)(r_eqlz_sec)  * 1000000 + (uint64_t)(r_eqlz_usec);
   uint64_t r_decsignl = (uint64_t)(r_decsignl_sec)  * 1000000 + (uint64_t)(r_decsignl_usec);
   uint64_t r_descrmbl = (uint64_t)(r_descrmbl_sec)  * 1000000 + (uint64_t)(r_descrmbl_usec);
+
+  // This is the ofdm.c decode-signal breakdown
+  uint64_t rdec_total    = (uint64_t)(rdec_total_sec)  * 1000000 + (uint64_t)(rdec_total_usec);
+  uint64_t rdec_map_bitr = (uint64_t)(rdec_map_bitr_sec)  * 1000000 + (uint64_t)(rdec_map_bitr_usec);
+  uint64_t rdec_get_bits = (uint64_t)(rdec_get_bits_sec)  * 1000000 + (uint64_t)(rdec_get_bits_usec);
+  uint64_t rdec_dec_call = (uint64_t)(rdec_dec_call_sec)  * 1000000 + (uint64_t)(rdec_dec_call_usec);
   
   printf(" Total workload main-loop : %10lu usec\n", total_exec);
   printf("   Total proc Read-Bag      : %10lu usec\n", proc_rdbag);
@@ -745,6 +751,10 @@ void dump_final_run_statistics()
   printf("         R-Pipe Rc-FFT Time     : %10lu usec\n", r_fft);
   printf("         R-Pipe Equalize Time   : %10lu usec\n", r_eqlz);
   printf("         R-Pipe DecSignal Time  : %10lu usec\n", r_decsignl);
+  printf("           R-Dec Total Time     : %10lu usec\n", rdec_total);
+  printf("           R-Dec Map-BitR Time  : %10lu usec\n", rdec_map_bitr);
+  printf("           R-Dec Get-Bits Time  : %10lu usec\n", rdec_get_bits);
+  printf("           R-Dec Decode Call    : %10lu usec\n", rdec_dec_call);
   printf("         R-Pipe DeScramble Time : %10lu usec\n", r_descrmbl);
   printf("       Total pd lz4_uncmp       : %10lu usec\n", pd_lz4_uncmp);
   printf("       Total pd combGrids       : %10lu usec\n", pd_combGrids);

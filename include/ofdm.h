@@ -6,8 +6,8 @@
 
 #ifdef INT_TIME
 /* This is RECV-DECODE (SIGNAL) internal Timing information (gathering resources) */
-extern uint64_t rdec_sec;
-extern uint64_t rdec_usec;
+extern uint64_t rdec_total_sec;
+extern uint64_t rdec_total_usec;
 
 extern uint64_t rdec_map_bitr_sec;
 extern uint64_t rdec_map_bitr_usec;
