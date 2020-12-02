@@ -1,0 +1,187 @@
+CPU ?= ariane
+ARCH ?= riscv
+ifdef DO_CROSS_COMPILATION
+CROSS_COMPILE ?= riscv64-unknown-linux-gnu-
+endif
+
+ifdef COMPILE_TO_ESP
+ESP_ROOT ?= ../../esp
+ESP_DRIVERS ?= $(ESP_ROOT)/soft/$(CPU)/drivers
+endif
+
+CC = gcc -std=c99
+
+
+INCDIR ?=
+INCDIR += -I./include
+ifdef COMPILE_TO_ESP
+INCDIR += -I$(ESP_DRIVERS)/include
+endif
+
+CFLAGS ?= -O2
+CFLAGS += $(INCDIR)
+CFLAGS += -DINT_TIME
+ifdef COMPILE_TO_ESP
+CFLAGS += -DCOMPILE_TO_ESP
+endif
+#  -- ALWAYS use this one! --   ifdef CONFIG_ESP_INTERFACE
+CFLAGS += -DUSE_ESP_INTERFACE
+#   endif
+
+ 
+ifdef CONFIG_FFT_EN
+CFLAGS += -DHW_FFT
+CFLAGS += -DUSE_FFT_FX=$(CONFIG_FFT_FX)
+endif
+ifdef CONFIG_FFT_BITREV
+CFLAGS += -DHW_FFT_BITREV
+endif
+ifdef CONFIG_VITERBI_EN
+CFLAGS += -DHW_VIT
+endif
+ifdef CONFIG_KERAS_CV_BYPASS
+CFLAGS += -DBYPASS_KERAS_CV_CODE
+endif
+
+ifdef CONFIG_VERBOSE
+CFLAGS += -DVERBOSE
+endif
+
+ifdef CONFIG_GDB
+CFLAGS += -g
+endif
+
+LDLIBS ?=
+ifdef COMPILE_TO_ESP
+LDLIBS += -L$(ESP_DRIVERS)/contig_alloc
+LDLIBS += -L$(ESP_DRIVERS)/test
+LDLIBS += -L$(ESP_DRIVERS)/libesp
+endif
+
+LDFLAGS ?=
+LDFLAGS += -lm
+LDFLAGS += -lpthread
+ifdef COMPILE_TO_ESP
+LDFLAGS += -lrt
+LDFLAGS += -lesp
+LDFLAGS += -ltest
+LDFLAGS += -lcontig
+endif
+
+SRC_T1 = src/main.c src/occgrid.c src/lz4.c src/complex_ops.c src/crc.c src/delay.c src/fft.c src/fir.c src/gr_equalizer.c src/ofdm.c src/recv_pipe.c src/sdr_descrambler.c src/sdr_viterbi.c  src/sync_long.c src/sync_short.c src/xmit_pipe.c
+SRC_T2 = $(SRC_T1)
+SRC_T3 = src/recv_main.c src/complex_ops.c src/delay.c src/fft.c src/fir.c src/gr_equalizer.c src/ofdm.c src/recv_pipe.c src/sdr_descrambler.c src/sdr_viterbi.c src/sync_long.c src/sync_short.c
+SRC_T4 = src/xmit_main.c src/crc.c src/fft.c src/xmit_pipe.c
+
+#SRC_T = $(foreach f, $(wildcard src/*.c), $(shell basename $(f)))
+SRC_D = $(wildcard src/*.c)
+HDR_T = $(wildcard include/*.h)
+#TSRC_T1 = $(foreach f, $(SRC_T1), $(shell basename $(f)))
+#OBJ_T1 = $(TSRC_T1:%.c=obj_t1/%.o)
+OBJ_T1 = $(SRC_T1:src/%.c=obj_t1/%.o)
+OBJ_T2 = $(SRC_T2:src/%.c=obj_t2/%.o)
+OBJ_T3 = $(SRC_T3:src/%.c=obj_t3/%.o)
+OBJ_T4 = $(SRC_T4:src/%.c=obj_t4/%.o)
+
+VPATH = ./src
+
+TARGET_ERA1=era1
+TARGET_ERA2=era2
+TARGET_RECV=do_recv_pipe
+TARGET_XMIT=do_xmit_pipe
+
+all: obj_t1 obj_t2 obj_t3 obj_t4 $(TARGET_ERA1) $(TARGET_ERA2) $(TARGET_RECV) $(TARGET_XMIT)
+
+obj_t1/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DIMAGE_FN='"gridimage_era1_"' -DBAG_PORT=5556 -DXMIT_PORT=5558 -DRECV_PORT=5559 -c $< -o $@
+
+obj_t2/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DIMAGE_FN='"gridimage_era2_"' -DBAG_PORT=5557 -DXMIT_PORT=5560 -DRECV_PORT=5561 -c $< -o $@
+
+obj_t3/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@
+
+obj_t4/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_T1): $(HDR_T)
+
+
+$(OBJ_T2): $(HDR_T)
+
+
+$(OBJ_T3): $(HDR_T)
+
+
+$(OBJ_T4): $(HDR_T)
+
+
+$(TARGET_ERA1): obj_t1 $(TARGET_ERA1).exe
+	echo "Done building $@"
+
+$(TARGET_ERA2): obj_t2 $(TARGET_ERA2).exe
+	echo "Done building $@"
+
+$(TARGET_RECV): obj_t3 $(TARGET_RECV).exe
+	echo "Done building $@"
+
+$(TARGET_XMIT): obj_t4 $(TARGET_XMIT).exe
+	echo "Done building $@"
+
+$(TARGET_ERA1).exe: $(OBJ_T1)
+ifdef COMPILE_TO_ESP
+	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
+	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
+	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/libesp
+endif
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
+
+$(TARGET_ERA2).exe: $(OBJ_T2)
+ifdef COMPILE_TO_ESP
+	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
+	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
+	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/libesp
+endif
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
+
+$(TARGET_RECV).exe: $(OBJ_T3)
+ifdef COMPILE_TO_ESP
+	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
+	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
+	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/libesp
+endif
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
+
+$(TARGET_XMIT).exe: $(OBJ_T4)
+ifdef COMPILE_TO_ESP
+	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
+	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
+	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/libesp
+endif
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
+
+clean:
+	$(RM) $(OBJ_T1) $(OBJ_T2) $(OBJ_T3) $(OBJ_T4) $(TARGET_ERA1) $(TARGET_ERA2) $(TARGET_RECV) $(TARGET_XMIT)
+	$(RM) -r obj_t1 obj_t2 obj_t3 obj_t4
+
+clobber: clean
+
+
+obj_t1:
+	mkdir $@
+
+obj_t2:
+	mkdir $@
+
+obj_t3:
+	mkdir $@
+
+obj_t4:
+	mkdir $@
+
+.PHONY: all clean
+
+
+#depend:;	makedepend -fMakefile -- $(CFLAGS) -- $(SRC_D)
+# DO NOT DELETE THIS LINE -- make depend depends on it.
+
