@@ -414,6 +414,9 @@ void process_data(char* data, int data_size)
   fflush(stdout);
 }
 
+#ifdef HW_VIT
+ extern void init_VT_HW_ACCEL();
+#endif
 
 int main(int argc, char *argv[])
 {
@@ -425,9 +428,12 @@ int main(int argc, char *argv[])
   snprintf(bag_inet_addr_str, 20, "127.0.0.1");
   snprintf(wifi_inet_addr_str, 20, "127.0.0.1");
 
+ #ifdef HW_VIT
+  init_VT_HW_ACCEL();
+ #endif
   init_occgrid_state(); // Initialize the occgrid functions, state, etc.
   xmit_pipe_init(); // Initialize the IEEE SDR Transmit Pipeline
-	
+
   signal(SIGINT, INThandler);
 
   // Use getopt to read in run-time options

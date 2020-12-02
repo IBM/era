@@ -46,6 +46,8 @@ uint64_t rdec_dec_call_sec  = 0LL;
 uint64_t rdec_dec_call_usec = 0LL;
 #endif
 
+
+
 void decode_signal( unsigned num_inputs, fx_pt constellation[DECODE_IN_SIZE_MAX], unsigned* num_outputs, uint8_t * output_data ) // hls::stream< ap_uint<1> > &output_data  )
 {
   // JDW : REPLACING ALL of this with our viterbi_flat

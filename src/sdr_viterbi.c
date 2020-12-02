@@ -47,7 +47,7 @@
  #include <unistd.h>
 
  #include "contig.h"
-#endif
+#endif //HW_VIT
 
 #include "sdr_base.h"
 #include "sdr_viterbi.h"
@@ -66,7 +66,7 @@ extern const size_t out_vitHW_size;
 extern struct vitdodec_access vitHW_desc;
 
 #include "mini-era.h"
-#endif
+#endif // HW_VIT
 
 #ifdef INT_TIME
 struct timeval dodec_stop, dodec_start;
@@ -187,6 +187,72 @@ uint8_t* depuncture(uint8_t *in) {
 
 
 #ifdef HW_VIT
+// These are Viterbi Harware Accelerator Variables, etc.
+char    vitAccelName = "/dev/vitdodec.0"; //, "/dev/vitdodec.1", "/dev/vitdodec.2", "/dev/vitdodec.3", "/dev/vitdodec.4", "/dev/vitdodec.5"};
+int vitHW_fd;
+contig_handle_t vitHW_mem;
+vitHW_token_t *vitHW_lmem;   // Pointer to local view of contig memory
+vitHW_token_t *vitHW_li_mem; // Pointer to input memory block
+vitHW_token_t *vitHW_lo_mem; // Pointer to output memory block
+size_t vitHW_in_len;
+size_t vitHW_out_len;
+size_t vitHW_in_size;
+size_t vitHW_out_size;
+size_t vitHW_out_offset;
+size_t vitHW_size;
+
+struct vitdodec_access vitHW_desc;
+
+
+static void init_vit_parameters()
+{
+  size_t vitHW_in_words_adj;
+  size_t vitHW_out_words_adj;
+  //printf("Doing init_vit_parameters\n");
+  if (DMA_WORD_PER_BEAT(sizeof(vitHW_token_t)) == 0) {
+    vitHW_in_words_adj  = 24852;
+    vitHW_out_words_adj = 18585;
+  } else {
+    vitHW_in_words_adj  = round_up(24852, DMA_WORD_PER_BEAT(sizeof(vitHW_token_t)));
+    vitHW_out_words_adj = round_up(18585, DMA_WORD_PER_BEAT(sizeof(vitHW_token_t)));
+  }
+  vitHW_in_len = vitHW_in_words_adj;
+  vitHW_out_len =  vitHW_out_words_adj;
+  vitHW_in_size = vitHW_in_len * sizeof(vitHW_token_t);
+  vitHW_out_size = vitHW_out_len * sizeof(vitHW_token_t);
+  vitHW_out_offset = vitHW_in_len;
+  vitHW_size = (vitHW_out_offset * sizeof(vitHW_token_t)) + vitHW_out_size;
+}
+
+
+void init_VIT_HW_ACCEL()
+{
+  // This initializes the Viterbi Accelerator Pool
+  DEBUG(printf("Init Viterbi parameters on acclerator\n"));
+  init_vit_parameters();
+  printf(" Accelerator %u opening Vit-Do-Decode device %s\n", vitAccelName);
+  vitHW_fd = open(vitAccelName, O_RDWR, 0);
+  if(vitHW_fd < 0) {
+    fprintf(stderr, "Error: cannot open %s", vitAccelName);
+    cleanup_and_exit(EXIT_FAILURE);
+  }
+
+  vitHW_lmem = contig_alloc(vitHW_size, &(vitHW_mem));
+  if (vitHW_lmem == NULL) {
+    fprintf(stderr, "Error: cannot allocate %zu contig bytes", vitHW_size);
+    cleanup_and_exit(EXIT_FAILURE);
+  }
+  vitHW_li_mem = &(vitHW_lmem[0]);
+  vitHW_lo_mem = &(vitHW_lmem[vitHW_out_offset]);
+  printf(" Set vitHW_li_mem = %p  AND vitHW_lo_mem = %p\n", vitHW_li_mem, vitHW_lo_mem);
+
+  vitHW_desc.esp.run = true;
+  vitHW_desc.esp.coherence = ACC_COH_NONE;
+  vitHW_desc.esp.p2p_store = 0;
+  vitHW_desc.esp.p2p_nsrcs = 0;
+  vitHW_desc.esp.contig = contig_to_khandle(vitHW_mem);
+}
+
 static void do_sdr_decoding_hw(int *fd, struct vitdodec_access *desc)
 {
   if (ioctl(*fd, VITDODEC_IOC_ACCESS, *desc)) {
@@ -194,7 +260,7 @@ static void do_sdr_decoding_hw(int *fd, struct vitdodec_access *desc)
     exit(EXIT_FAILURE);
   }
 }
-#endif
+#endif // HW_VIT
 
 /* This is the main "do_sdr_decoding" function; takes the necessary inputs
  * from the decode call (above) and does the decoding, outputing the decoded result.
