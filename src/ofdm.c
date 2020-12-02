@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <sys/time.h>
 
 /* #ifndef DEBUG_MODE */
 /*  #define DEBUG_MODE */
@@ -26,9 +27,28 @@ extern int d_frame_encoding;
 extern int d_frame_symbols;
 extern int d_frame_mod;
 
+#ifdef INT_TIME
+/* This is RECV-DECODE (SIGNAL) internal Timing information (gathering resources) */
+struct timeval rdec_total_stop, rdec_total_start;
+uint64_t rdec_total_sec  = 0LL;
+uint64_t rdec_total_usec = 0LL;
+
+struct timeval rdec_map_bitr_stop, rdec_map_bitr_start;
+uint64_t rdec_map_bitr_sec  = 0LL;
+uint64_t rdec_map_bitr_usec = 0LL;
+
+struct timeval rdec_get_bits_stop, rdec_get_bits_start;
+uint64_t rdec_get_bits_sec  = 0LL;
+uint64_t rdec_get_bits_usec = 0LL;
+
+struct timeval rdec_dec_call_stop, rdec_dec_call_start;
+uint64_t rdec_dec_call_sec  = 0LL;
+uint64_t rdec_dec_call_usec = 0LL;
+#endif
+
 void decode_signal( unsigned num_inputs, fx_pt constellation[DECODE_IN_SIZE_MAX], unsigned* num_outputs, uint8_t * output_data ) // hls::stream< ap_uint<1> > &output_data  )
 {
-  // JDW : REPLACING ALL of this with our viterbi (library) version...
+  // JDW : REPLACING ALL of this with our viterbi_flat
   // ap_uint<1> bit_r[CHUNK];
   // ap_uint<1> bit[CHUNK];
   unsigned num_sym = num_inputs/48;
@@ -36,6 +56,9 @@ void decode_signal( unsigned num_inputs, fx_pt constellation[DECODE_IN_SIZE_MAX]
   uint8_t bit[DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES]; // This is oversize becuase decode uses extra space (?)
 
   DEBUG(printf("In the decode_signal routine with num_inputs = %u\n", num_inputs));
+ #ifdef INT_TIME
+  gettimeofday(&rdec_total_start, NULL);
+ #endif
   // map to the nearest one
   for(unsigned i = 0; i < num_inputs /*DECODE_IN_SIZE_MAX*/;i++) {
     if( crealf(constellation[i]) > 0 ) {
@@ -45,6 +68,11 @@ void decode_signal( unsigned num_inputs, fx_pt constellation[DECODE_IN_SIZE_MAX]
     }
     DEBUG(printf(" OFDM_BIT_R %5u : CONS %12.8f %12.8f : BIT_R %u\n", i, crealf(constellation[i]), cimagf(constellation[i]), bit_r[i]));
   }
+ #ifdef INT_TIME
+  gettimeofday(&rdec_map_bitr_stop, NULL);
+  rdec_map_bitr_sec  += rdec_map_bitr_stop.tv_sec  - rdec_total_start.tv_sec;
+  rdec_map_bitr_usec += rdec_map_bitr_stop.tv_usec - rdec_total_start.tv_usec;
+ #endif
 
   DEBUG(printf("     at the interleaving...\n"));
   // interleaving
@@ -65,7 +93,12 @@ void decode_signal( unsigned num_inputs, fx_pt constellation[DECODE_IN_SIZE_MAX]
   for (int ti = 0; ti < OFDM_PAD_ENTRIES; ti++) {
     bit[48*num_sym + ti] = 0;
   }
-  
+ #ifdef INT_TIME
+  gettimeofday(&rdec_get_bits_stop, NULL);
+  rdec_get_bits_sec  += rdec_get_bits_stop.tv_sec  - rdec_map_bitr_stop.tv_sec;
+  rdec_get_bits_usec += rdec_get_bits_stop.tv_usec - rdec_map_bitr_stop.tv_usec;
+ #endif
+
   DEBUG(printf("     at the call to our decode...\n"));
   unsigned num_out_bits = num_inputs/2; // for BPSK_1_2
   {
@@ -91,6 +124,15 @@ void decode_signal( unsigned num_inputs, fx_pt constellation[DECODE_IN_SIZE_MAX]
     // end of decode (viterbi) function, but result bits need to be "descrambled"
     *num_outputs = num_out_bits;
   }
+ #ifdef INT_TIME
+  gettimeofday(&rdec_dec_call_stop, NULL);
+  rdec_dec_call_sec  += rdec_dec_call_stop.tv_sec  - rdec_get_bits_stop.tv_sec;
+  rdec_dec_call_usec += rdec_dec_call_stop.tv_usec - rdec_get_bits_stop.tv_usec;
+
+  rdec_total_sec  += rdec_dec_call_stop.tv_sec  - rdec_get_bits_stop.tv_sec;
+  rdec_total_usec += rdec_dec_call_stop.tv_usec - rdec_get_bits_stop.tv_usec;
+ #endif
+
   DEBUG(printf("  done and leaving ofdm.c\n"));
 }
 
