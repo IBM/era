@@ -99,7 +99,12 @@ int main(int argc, char *argv[])
   for(; optind < argc; optind++){
     printf("extra arguments: %s\n", argv[optind]);
   }
-
+ #ifdef USE_ESP_INTERFACE
+  printf("Using the ESP_INTERFACE\n");
+ #endif
+ #ifdef HW_VIT
+  printf("Using the Viterbi Hardware Accelerator\n");
+ #endif
   printf("Set show_recv_output = %u\n", show_recv_output);
   printf("Running for %u time steps\n", max_time_steps);
   printf("RECV message is taken from file %s\n", recv_in_fname);
