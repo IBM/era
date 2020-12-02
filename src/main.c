@@ -87,6 +87,13 @@ uint64_t pd_combGrids_usec = 0LL;
 
 #endif
 
+int counter = 0;
+
+unsigned odo_count = 0;
+unsigned lidar_count = 0;
+unsigned xmit_recv_count = 0;
+
+
 // Forward Declarations
 void print_usage(char * pname);
 void dump_final_run_statistics();
@@ -115,13 +122,32 @@ void INThandler(int dummy)
 }
 
 
+#ifdef HW_VIT
+ extern void init_VIT_HW_ACCEL();
+ extern void free_VIT_HW_RESOURCES();
+#endif
+
+
+// This cleans up the state before exit
 void closeout_and_exit(int rval)
 {
-  dump_final_run_statistics();
+  if (lidar_count > 0) {
+    dump_final_run_statistics();
+  }
   printf("closeout_and_exit -- Closing the connection and exiting %d\n", rval);
-  close(bag_sock);
-  close(xmit_sock);
-  close(recv_sock);
+  if (bag_sock != 0) {
+    close(bag_sock);
+  }
+  if (xmit_sock != 0) {
+    close(xmit_sock);
+  }
+  if (recv_sock != 0) {
+    close(recv_sock);
+  }
+
+ #ifdef HW_VIT
+  free_VIT_HW_RESOURCES();
+ #endif // HW_VIT
   exit(rval);
 }
 
@@ -135,12 +161,6 @@ void closeout_and_exit(int rval)
    return f;
    }
 */
-
-int counter = 0;
-
-unsigned odo_count = 0;
-unsigned lidar_count = 0;
-unsigned xmit_recv_count = 0;
 
 void write_array_to_file(unsigned char * data, long size)
 {
@@ -414,10 +434,6 @@ void process_data(char* data, int data_size)
   fflush(stdout);
 }
 
-#ifdef HW_VIT
- extern void init_VT_HW_ACCEL();
-#endif
-
 int main(int argc, char *argv[])
 {
   struct sockaddr_in bag_servaddr;
@@ -429,7 +445,7 @@ int main(int argc, char *argv[])
   snprintf(wifi_inet_addr_str, 20, "127.0.0.1");
 
  #ifdef HW_VIT
-  init_VT_HW_ACCEL();
+  init_VIT_HW_ACCEL();
  #endif
   init_occgrid_state(); // Initialize the occgrid functions, state, etc.
   xmit_pipe_init(); // Initialize the IEEE SDR Transmit Pipeline

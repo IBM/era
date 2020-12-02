@@ -48,7 +48,12 @@ bool show_main_output = true;
 bool do_add_pre_pad = false;
 bool show_recv_output = true;
 
-  
+#ifdef HW_VIT
+ extern void init_VIT_HW_ACCEL();
+ extern void free_VIT_HW_RESOURCES();
+#endif
+
+
 void print_usage(char * pname) {
   printf("Usage: %s <OPTIONS>\n", pname);
   printf(" OPTIONS:\n");
@@ -60,9 +65,22 @@ void print_usage(char * pname) {
 }
 
 
+// This cleans up the state before exit
+void closeout_and_exit(int rval)
+{
+ #ifdef HW_VIT
+  free_VIT_HW_RESOURCES();
+ #endif // HW_VIT
+  exit(rval);
+}
+
 int main(int argc, char *argv[])
 {
   int opt;
+
+ #ifdef HW_VIT
+  init_VIT_HW_ACCEL();
+ #endif
 
   // put ':' in the starting of the
   // string so that program can
