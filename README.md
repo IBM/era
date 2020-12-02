@@ -46,6 +46,8 @@ two ERA executables:
  - era1 : the ```hero1``` executable, that reads and reacts to the hero1 bagfile contents
  - era2 : the ```hero2``` executable, that reads and reacts to the hero2 bagfile contents
 
+The bag file can be downloaded at: https://ibm.box.com/s/2ji8jljguz3wgyovaxfs4m6v9vyjtwfk
+
 ## Execution
 
 To execute the Demo-ERA program requires six simultaneous processes:
