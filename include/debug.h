@@ -6,7 +6,6 @@
  #ifdef DEBUG_MODE
   #define DEBUG(X) X
   #define DEBUG2(X)
-  #define VERBOSE_MODE
  #else 
   #define DEBUG(X)
   #define DEBUG2(X)

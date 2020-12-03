@@ -10,6 +10,7 @@
 #include <sys/time.h>
 
 #include "globals.h"
+#include "debug.h"
 #include "getopt.h"
 
 #include "occgrid.h"    // Occupancy Grid Map Create/Fuse
@@ -428,8 +429,9 @@ void process_data(char* data, int data_size)
 	 print_ascii_costmap(local_map));
 
   // Write the combined map to a file
+ #ifdef WRITE_FUSED_MAPS
   write_array_to_file(local_map->costmap, COST_MAP_ENTRIES);
-	
+ #endif
   DBGOUT(printf("Returning from process_data\n"));
   fflush(stdout);
 }
@@ -445,6 +447,7 @@ int main(int argc, char *argv[])
   snprintf(wifi_inet_addr_str, 20, "127.0.0.1");
 
  #ifdef HW_VIT
+  DEBUG(printf("Calling init_VIT_HW_ACCEL...\n"));
   init_VIT_HW_ACCEL();
  #endif
   init_occgrid_state(); // Initialize the occgrid functions, state, etc.
@@ -689,7 +692,7 @@ int main(int argc, char *argv[])
 
 void dump_final_run_statistics()
 {
-  printf("\nFinal Run Statistics for %u total Lidar Time-Steps\n", lidar_count);
+  printf("\nFinal Run Stats, %u Lidar Steps, %u by %u grid, res %lf ray_r %u\n", lidar_count, GRID_MAP_X_DIM, GRID_MAP_Y_DIM, GRID_MAP_RESLTN, RAYTR_RANGE);
 
   printf("Timing (in usec):\n");
  #ifdef INT_TIME

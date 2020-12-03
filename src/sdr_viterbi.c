@@ -234,15 +234,15 @@ static void init_vit_parameters()
 void init_VIT_HW_ACCEL()
 {
   // This initializes the Viterbi Accelerator Pool
-  DEBUG(printf("Init Viterbi parameters on acclerator\n"));
+  DEBUG(printf("Calling init_vit_parameters\n"));
   init_vit_parameters();
-  printf(" Accelerator %u opening Vit-Do-Decode device %s\n", vitAccelName);
+  printf(" Opening Vit-Do-Decode device %s\n", vitAccelName);
   vitHW_fd = open(vitAccelName, O_RDWR, 0);
   if(vitHW_fd < 0) {
     fprintf(stderr, "Error: cannot open %s", vitAccelName);
     closeout_and_exit(EXIT_FAILURE);
   }
-
+  DEBUG(printf(" Allocating vitHW_mem...\n"));
   vitHW_lmem = contig_alloc(vitHW_size, &(vitHW_mem));
   if (vitHW_lmem == NULL) {
     fprintf(stderr, "Error: cannot allocate %zu contig bytes", vitHW_size);
