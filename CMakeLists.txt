@@ -61,8 +61,11 @@ target_compile_definitions(era2 PRIVATE RECV_PORT=5561)
 target_compile_definitions(era1 PRIVATE IMAGE_FN="gridimage_era1_")
 target_compile_definitions(era2 PRIVATE IMAGE_FN="gridimage_era2_")
 
-#target_link_libraries(era1 LINK_PUBLIC occgrid lz4 sdr m)
-#target_link_libraries(era2 LINK_PUBLIC occgrid lz4 sdr m)
+# Enable this if you want intermediate files of the fused gridmaps 
+#target_compile_definitions(era1 PRIVATE WRITE_FUSED_MAPS)
+#target_compile_definitions(era2 PRIVATE WRITE_FUSED_MAPS)
+
+
 
 target_link_libraries(era1 LINK_PUBLIC m)
 target_link_libraries(era2 LINK_PUBLIC m)
