@@ -65,7 +65,23 @@ target_compile_definitions(era2 PRIVATE IMAGE_FN="gridimage_era2_")
 #target_compile_definitions(era1 PRIVATE WRITE_FUSED_MAPS)
 #target_compile_definitions(era2 PRIVATE WRITE_FUSED_MAPS)
 
+# Enable this for detailed run-time debug information
+#target_compile_definitions(era1 PRIVATE DEBUG_MODE)
+#target_compile_definitions(era2 PRIVATE DEBUG_MODE)
+#target_compile_definitions(do_recv_pipe PRIVATE DEBUG_MODE)
+#target_compile_definitions(do_xmit_pipe PRIVATE DEBUG_MODE)
 
+# Enable this for some thread debug information
+#target_compile_definitions(era1 PRIVATE DEBUG_THREADS)
+#target_compile_definitions(era2 PRIVATE DEBUG_THREADS)
+#target_compile_definitions(do_recv_pipe PRIVATE DEBUG_THREADS)
+#target_compile_definitions(do_xmit_pipe PRIVATE DEBUG_THREADS)
+
+# Enable this for some thread debug information
+#target_compile_definitions(era1 PRIVATE SUPER_VERBOSE)
+#target_compile_definitions(era2 PRIVATE SUPER_VERBOSE)
+#target_compile_definitions(do_recv_pipe PRIVATE SUPER_VERBOSE)
+#target_compile_definitions(do_xmit_pipe PRIVATE SUPER_VERBOSE)
 
 target_link_libraries(era1 LINK_PUBLIC m)
 target_link_libraries(era2 LINK_PUBLIC m)
