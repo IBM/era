@@ -70,17 +70,25 @@ struct timeval stop_pd_xmit_send, start_pd_xmit_send;
 uint64_t pd_xmit_send_sec  = 0LL;
 uint64_t pd_xmit_send_usec = 0LL;
 
-struct timeval stop_pd_xmit_send2, start_pd_xmit_send2;
-uint64_t pd_xmit_send2_sec  = 0LL;
-uint64_t pd_xmit_send2_usec = 0LL;
+struct timeval stop_pd_xmit_send_rl, start_pd_xmit_send_rl;
+uint64_t pd_xmit_send_rl_sec  = 0LL;
+uint64_t pd_xmit_send_rl_usec = 0LL;
+
+struct timeval stop_pd_xmit_send_im, start_pd_xmit_send_im;
+uint64_t pd_xmit_send_im_sec  = 0LL;
+uint64_t pd_xmit_send_im_usec = 0LL;
 
 struct timeval stop_pd_xmit_recv, start_pd_xmit_recv;
 uint64_t pd_xmit_recv_sec  = 0LL;
 uint64_t pd_xmit_recv_usec = 0LL;
 
-struct timeval stop_pd_xmit_recv2, start_pd_xmit_recv2;
-uint64_t pd_xmit_recv2_sec  = 0LL;
-uint64_t pd_xmit_recv2_usec = 0LL;
+struct timeval stop_pd_xmit_recv_rl, start_pd_xmit_recv_rl;
+uint64_t pd_xmit_recv_rl_sec  = 0LL;
+uint64_t pd_xmit_recv_rl_usec = 0LL;
+
+struct timeval stop_pd_xmit_recv_im, start_pd_xmit_recv_im;
+uint64_t pd_xmit_recv_im_sec  = 0LL;
+uint64_t pd_xmit_recv_im_usec = 0LL;
 
 struct timeval stop_pd_recv_pipe, start_pd_recv_pipe;
 uint64_t pd_recv_pipe_sec  = 0LL;
@@ -295,7 +303,7 @@ void process_data(char* data, int data_size)
 	  }
 	  printf("\n"));
  #ifdef INT_TIME
-  gettimeofday(&start_pd_xmit_send2, NULL);
+  gettimeofday(&start_pd_xmit_send_rl, NULL);
  #endif	
   send(xmit_sock, (char*)(xmit_out_real), n_xmit_out*sizeof(float), 0);
   DBGOUT(printf("     Send %u IMAG values %u bytes on XMIT port %u socket\n", n_xmit_out, xfer_bytes, XMIT_PORT));
@@ -304,13 +312,18 @@ void process_data(char* data, int data_size)
 	    printf("XFER %4u IMAG-byte %6u : %f\n", xmit_recv_count, i, xmit_out_imag[i]);
 	  }
 	  printf("\n"));
+ #ifdef INT_TIME
+  gettimeofday(&stop_pd_xmit_send_rl, NULL);
+ #endif
   send(xmit_sock, (char*)(xmit_out_imag), n_xmit_out*sizeof(float), 0);
  #ifdef INT_TIME
   gettimeofday(&stop_pd_xmit_send, NULL);
   pd_xmit_send_sec   += stop_pd_xmit_send.tv_sec  - start_pd_xmit_send.tv_sec;
   pd_xmit_send_usec  += stop_pd_xmit_send.tv_usec - start_pd_xmit_send.tv_usec;
-  pd_xmit_send2_sec   += stop_pd_xmit_send.tv_sec  - start_pd_xmit_send2.tv_sec;
-  pd_xmit_send2_usec  += stop_pd_xmit_send.tv_usec - start_pd_xmit_send2.tv_usec;
+  pd_xmit_send_rl_sec   += stop_pd_xmit_send_rl.tv_sec  - start_pd_xmit_send_rl.tv_sec;
+  pd_xmit_send_rl_usec  += stop_pd_xmit_send_rl.tv_usec - start_pd_xmit_send_rl.tv_usec;
+  pd_xmit_send_im_sec   += stop_pd_xmit_send.tv_sec  - stop_pd_xmit_send_rl.tv_sec;
+  pd_xmit_send_im_usec  += stop_pd_xmit_send.tv_usec - stop_pd_xmit_send_rl.tv_usec;
  #endif
 
   // Now we take in a recevied transmission with the other AV's map
@@ -345,7 +358,7 @@ void process_data(char* data, int data_size)
   n_recvd_in = xfer_in_bytes / sizeof(float);
   DBGOUT(printf("     Recv %u REAL values %u bytes from RECV port %u socket\n", n_recvd_in, xfer_in_bytes, RECV_PORT));
  #ifdef INT_TIME
-  gettimeofday(&start_pd_xmit_recv2, NULL);
+  gettimeofday(&start_pd_xmit_recv_rl, NULL);
  #endif	
   valread = read_all(recv_sock, (char*)recvd_in_real, xfer_in_bytes);
   if (valread < xfer_in_bytes) {
@@ -363,6 +376,9 @@ void process_data(char* data, int data_size)
 	  }
 	  printf("\n"));
 
+ #ifdef INT_TIME
+  gettimeofday(&stop_pd_xmit_recv_rl, NULL);
+ #endif
   DBGOUT(printf("     Recv %u IMAG values %u bytes from RECV port %u socket\n", n_recvd_in, xfer_in_bytes, RECV_PORT));
   valread = read_all(recv_sock, (char*)recvd_in_imag, xfer_in_bytes);
   if (valread < xfer_in_bytes) {
@@ -383,8 +399,10 @@ void process_data(char* data, int data_size)
   gettimeofday(&stop_pd_xmit_recv, NULL);
   pd_xmit_recv_sec   += stop_pd_xmit_recv.tv_sec  - start_pd_xmit_recv.tv_sec;
   pd_xmit_recv_usec  += stop_pd_xmit_recv.tv_usec - start_pd_xmit_recv.tv_usec;
-  pd_xmit_recv2_sec   += stop_pd_xmit_recv.tv_sec  - start_pd_xmit_recv2.tv_sec;
-  pd_xmit_recv2_usec  += stop_pd_xmit_recv.tv_usec - start_pd_xmit_recv2.tv_usec;
+  pd_xmit_recv_rl_sec   += stop_pd_xmit_recv_rl.tv_sec  - start_pd_xmit_recv_rl.tv_sec;
+  pd_xmit_recv_rl_usec  += stop_pd_xmit_recv_rl.tv_usec - start_pd_xmit_recv_rl.tv_usec;
+  pd_xmit_recv_im_sec   += stop_pd_xmit_recv.tv_sec  - stop_pd_xmit_recv_rl.tv_sec;
+  pd_xmit_recv_im_usec  += stop_pd_xmit_recv.tv_usec - stop_pd_xmit_recv_rl.tv_usec;
  #endif
 
   // Now we have the tranmission input data to be decoded...
@@ -725,9 +743,11 @@ void dump_final_run_statistics()
   uint64_t pd_lz4_cmp    = (uint64_t)(pd_lz4_cmp_sec)  * 1000000 + (uint64_t)(pd_lz4_cmp_usec);
   uint64_t pd_xmit_pipe  = (uint64_t)(pd_xmit_pipe_sec)  * 1000000 + (uint64_t)(pd_xmit_pipe_usec);
   uint64_t pd_xmit_send  = (uint64_t)(pd_xmit_send_sec)  * 1000000 + (uint64_t)(pd_xmit_send_usec);
-  uint64_t pd_xmit_send2 = (uint64_t)(pd_xmit_send2_sec) * 1000000 + (uint64_t)(pd_xmit_send2_usec);
+  uint64_t pd_xmit_send_rl = (uint64_t)(pd_xmit_send_rl_sec) * 1000000 + (uint64_t)(pd_xmit_send_rl_usec);
+  uint64_t pd_xmit_send_im = (uint64_t)(pd_xmit_send_im_sec) * 1000000 + (uint64_t)(pd_xmit_send_im_usec);
   uint64_t pd_xmit_recv  = (uint64_t)(pd_xmit_recv_sec)  * 1000000 + (uint64_t)(pd_xmit_recv_usec);
-  uint64_t pd_xmit_recv2 = (uint64_t)(pd_xmit_recv2_sec) * 1000000 + (uint64_t)(pd_xmit_recv2_usec);
+  uint64_t pd_xmit_recv_rl = (uint64_t)(pd_xmit_recv_rl_sec) * 1000000 + (uint64_t)(pd_xmit_recv_rl_usec);
+  uint64_t pd_xmit_recv_im = (uint64_t)(pd_xmit_recv_im_sec) * 1000000 + (uint64_t)(pd_xmit_recv_im_usec);
   uint64_t pd_recv_pipe  = (uint64_t)(pd_recv_pipe_sec)  * 1000000 + (uint64_t)(pd_recv_pipe_usec);
   uint64_t pd_lz4_uncmp  = (uint64_t)(pd_lz4_uncmp_sec)  * 1000000 + (uint64_t)(pd_lz4_uncmp_usec);
   uint64_t pd_combGrids  = (uint64_t)(pd_combGrids_sec)  * 1000000 + (uint64_t)(pd_combGrids_usec);
@@ -781,9 +801,11 @@ void dump_final_run_statistics()
   printf("         X-Pipe Xm-FFT Time       : %10lu usec\n", x_fft);
   printf("         X-Pipe CycPrefix Time    : %10lu usec\n", x_ocycpref);
   printf("       Total pd xmit_send       : %10lu usec\n", pd_xmit_send);
-  printf("         Total pd xmit_send_bdy   : %10lu usec\n", pd_xmit_send2);
+  printf("         Total pd xmit_send_rl    : %10lu usec\n", pd_xmit_send_rl);
+  printf("         Total pd xmit_send_im    : %10lu usec\n", pd_xmit_send_im);
   printf("       Total pd xmit_recv       : %10lu usec\n", pd_xmit_recv);
-  printf("         Total pd xmit_recv_bdy   : %10lu usec\n", pd_xmit_recv2);
+  printf("         Total pd xmit_recv_rl    : %10lu usec\n", pd_xmit_recv_rl);
+  printf("         Total pd xmit_recv_im    : %10lu usec\n", pd_xmit_recv_im);
   printf("       Total pd recv_pipe       : %10lu usec\n", pd_recv_pipe);
   printf("         R-Pipe Total Time      : %10lu usec\n", r_pipe);
   printf("         R-Pipe CmplCnjg Time   : %10lu usec\n", r_cmpcnj);
