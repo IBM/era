@@ -233,7 +233,7 @@ void process_data(char* data, int data_size)
   gettimeofday(&start_pd_cloud2grid, NULL);
  #endif	
   unsigned char * grid = cloudToOccgrid((float*)data, data_size/sizeof(float), // data, data_size
-					odometry[0], odometry[1], odometry[2], 1.5, // AVx, AVy , AVz, AVw
+					odometry[0],odometry[1],odometry[2],1.5, // AVx, AVy , AVz, AVw
 					false,  // rolling window
 					0.05, 2.05, // min, max obstacle height
 					RAYTR_RANGE, // raytrace_range

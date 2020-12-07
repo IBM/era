@@ -110,7 +110,7 @@ void initCostmap(Observation* obsvtn,
 
   CHECK(int chkMaxIdx = obsvtn->master_costmap.x_dim * obsvtn->master_costmap.y_dim / (obsvtn->master_resolution * obsvtn->master_resolution);
 	if (chkMaxIdx > COST_MAP_ENTRIES) {
-	  printf("ERROR : initCostmap : Max index is too large at %d vs %d\n", chkMaxIdx, COST_MAP_ENTRIES);
+	  printf("ERROR : initCostMap : Max index is too large at %d vs %d\n", chkMaxIdx, COST_MAP_ENTRIES);
 	});
   for (int i = 0; i < obsvtn->master_costmap.x_dim * obsvtn->master_costmap.y_dim / (obsvtn->master_resolution * obsvtn->master_resolution); i++) {
     obsvtn->master_costmap.costmap[i] = CMV_NO_INFORMATION; // obsvtn->master_costmap.default_value;

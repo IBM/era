@@ -5,8 +5,8 @@
 #include <string.h>
 #include <math.h>
 
-#ifndef OCCGRID_H_
-#define OCCGRID_H_
+#ifndef OCCGRID_H
+#define OCCGRID_H
 
 //Define Costmap values
 //  Note: Order is significant -- combineGrids takes a "MAX" value from the two maps
@@ -123,4 +123,4 @@ void initCostmap(Observation* obsvtn,
 void init_occgrid_state(void);
 void print_ascii_costmap(Costmap2D* cmap);
 
-#endif // OCCGRID_H_
+#endif // OCCGRID_H
