@@ -233,12 +233,12 @@ void process_data(char* data, int data_size)
   gettimeofday(&start_pd_cloud2grid, NULL);
  #endif	
   unsigned char * grid = cloudToOccgrid((float*)data, data_size/sizeof(float), // data, data_size
-					odometry[0],odometry[1],odometry[2],1.5, // AVx, AVy , AVz, AVw
+					odometry[0], odometry[1], odometry[2], 1.5, // AVx, AVy , AVz, AVw
 					false,  // rolling window
 					0.05, 2.05, // min, max obstacle height
 					RAYTR_RANGE, // raytrace_range
-					GRID_MAP_X_DIM, GRID_MAP_Y_DIM, GRID_MAP_RESLTN,  // size_x, size_y, resolution
-					CMV_NO_INFORMATION);
+					GRID_MAP_X_DIM, GRID_MAP_Y_DIM, GRID_MAP_RESLTN  // size_x, size_y, resolution
+					/*,CMV_NO_INFORMATION*/);
  #ifdef INT_TIME
   gettimeofday(&stop_pd_cloud2grid, NULL);
   pd_cloud2grid_sec   += stop_pd_cloud2grid.tv_sec  - start_pd_cloud2grid.tv_sec;
@@ -453,8 +453,8 @@ void process_data(char* data, int data_size)
   combineGrids(remote_map->costmap, local_map->costmap,
 	       remote_map->av_x, remote_map->av_y,
 	       local_map->av_x, local_map->av_y,
-	       local_map->x_dim, local_map->y_dim, local_map->cell_size,
-	       local_map->default_value);
+	       local_map->x_dim, local_map->y_dim, local_map->cell_size
+	       /*,local_map->default_value*/);
  #ifdef INT_TIME
   gettimeofday(&stop_pd_combGrids, NULL);
   pd_combGrids_sec   += stop_pd_combGrids.tv_sec  - start_pd_combGrids.tv_sec;

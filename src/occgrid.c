@@ -84,18 +84,18 @@ void addStaticObstacle(unsigned char* obstacle_type) {
 
 void initCostmap(Observation* obsvtn,
 		 bool rolling_window, double min_obstacle_height, double max_obstacle_height, double raytrace_range, unsigned int x_dim,
-                 unsigned int y_dim, double resolution, unsigned char default_value, double robot_x, double robot_y, double robot_z) {
+                 unsigned int y_dim, double resolution, /*unsigned char default_value,*/ double robot_x, double robot_y, double robot_z) {
   DBGOUT(printf("Initialize Master Costmap\n"));
 
-  obsvtn->rolling_window_ = rolling_window; //TODO:
-  obsvtn->min_obstacle_height_ = min_obstacle_height; //TODO:
-  obsvtn->max_obstacle_height_ = max_obstacle_height; //TODO:
-  obsvtn->raytrace_range_ = raytrace_range; //TODO:
+  obsvtn->rolling_window = rolling_window; //TODO:
+  obsvtn->min_obstacle_height = min_obstacle_height; //TODO:
+  obsvtn->max_obstacle_height = max_obstacle_height; //TODO:
+  obsvtn->raytrace_range = raytrace_range; //TODO:
 
   obsvtn->master_costmap.cell_size = resolution;
   obsvtn->master_costmap.x_dim = x_dim;
   obsvtn->master_costmap.y_dim = y_dim;
-  obsvtn->master_costmap.default_value = default_value;
+  obsvtn->master_costmap.default_value = CMV_NO_INFORMATION; // default_value;
 
   obsvtn->master_costmap.av_x = robot_x;
   obsvtn->master_costmap.av_y = robot_y;
@@ -110,10 +110,10 @@ void initCostmap(Observation* obsvtn,
 
   CHECK(int chkMaxIdx = obsvtn->master_costmap.x_dim * obsvtn->master_costmap.y_dim / (obsvtn->master_resolution * obsvtn->master_resolution);
 	if (chkMaxIdx > COST_MAP_ENTRIES) {
-	  printf("ERROR : initCostMap : Max index is too large at %d vs %d\n", chkMaxIdx, COST_MAP_ENTRIES);
+	  printf("ERROR : initCostmap : Max index is too large at %d vs %d\n", chkMaxIdx, COST_MAP_ENTRIES);
 	});
   for (int i = 0; i < obsvtn->master_costmap.x_dim * obsvtn->master_costmap.y_dim / (obsvtn->master_resolution * obsvtn->master_resolution); i++) {
-    obsvtn->master_costmap.costmap[i] = obsvtn->master_costmap.default_value;
+    obsvtn->master_costmap.costmap[i] = CMV_NO_INFORMATION; // obsvtn->master_costmap.default_value;
   }
 
   DBGOUT(printf("Initialize Master Costmap ... DONE\n\n"));
@@ -128,8 +128,8 @@ void initCostmap(Observation* obsvtn,
 void combineGrids(unsigned char* grid1, unsigned char* grid2,
 		  double robot_x1, double robot_y1,
 		  double robot_x2, double robot_y2,
-		  unsigned int x_dim, unsigned int y_dim, double resolution,
-		  char def_val )
+		  unsigned int x_dim, unsigned int y_dim, double resolution
+		  /*,char def_val*/ )
 {
   DBGOUT(printf("in combineGrids: x1 = %.1f x2 = %.1f  y1 = %.1f y2 = %.1f\n", robot_x1, robot_x2, robot_y1, robot_y2));
   //grid1 is previous map, grid2 is current map
@@ -205,10 +205,10 @@ unsigned char* cloudToOccgrid(float* data, unsigned int data_size,
 			      bool rolling_window,
 			      double min_obstacle_height, double max_obstacle_height,
 			      double raytrace_range,
-			      unsigned int x_dim, unsigned int y_dim, double resolution,
-			      unsigned char default_value) {
+			      unsigned int x_dim, unsigned int y_dim, double resolution/*,
+			      unsigned char default_value*/ ) {
   DBGOUT(printf("In cloudToOccgrid with Odometry %.1f %.1f %.f1\n", robot_x, robot_y, robot_z));
-  initCostmap(&master_observation, rolling_window, min_obstacle_height, max_obstacle_height, raytrace_range, x_dim, y_dim, resolution, default_value, robot_x, robot_y, robot_z);
+  initCostmap(&master_observation, rolling_window, min_obstacle_height, max_obstacle_height, raytrace_range, x_dim, y_dim, resolution, /*default_value,*/ robot_x, robot_y, robot_z);
 
   //printf("(1) Number of elements : %d ... ", data_size);
   //printf("First Coordinate = <%f, %f>\n", *data, *(data+1));
@@ -220,7 +220,7 @@ unsigned char* cloudToOccgrid(float* data, unsigned int data_size,
 
 void updateMap(float* data, unsigned int data_size,
 	       double robot_x, double robot_y, double robot_z, double robot_yaw) {
-  if (master_observation.rolling_window_) {
+  if (master_observation.rolling_window) {
     //printf("\nUpdating Map .... \n");
     //printf("   robot_x = %f, robot_y = %f, robot_yaw = %f \n", robot_x, robot_y, robot_yaw);
     //printf("   Master Origin = (%f, %f)\n", master_observation.master_origin.x, master_observation.master_origin.y);
@@ -322,7 +322,7 @@ void copyMapRegion(unsigned char* source_map,
   //printf("\n Copying Map... \nRegion Size of Map -> <%d, %d>\n", region_x_dim, region_y_dim);
   char local_costmap [cell_x_dim * cell_y_dim];
   for (int i = 0; i < cell_x_dim * cell_y_dim; i++) {
-    local_costmap[i] = master_observation.master_costmap.default_value;
+    local_costmap[i] = CMV_NO_INFORMATION; // master_observation.master_costmap.default_value;
     //printf("%d, ", local_costmap[i]);
   }
 
@@ -372,7 +372,7 @@ void updateBounds(float* data, unsigned int data_size, double robot_x, double ro
   //Iterate through cloud to register obstacles within costmap
   for(unsigned int i = 0; i < data_size; i = i + 3) { //TODO: Test if sizeof(points) works correctly
     //Only consider points within height boundaries
-    if (data[i + 2] <= master_observation.max_obstacle_height_ && data[i + 2] >= master_observation.min_obstacle_height_) {
+    if (data[i + 2] <= master_observation.max_obstacle_height && data[i + 2] >= master_observation.min_obstacle_height) {
       double px = (double) *(data + i);
       double py = (double) *(data + i + 1);
       double pz = (double) *(data + i + 2);
@@ -480,13 +480,13 @@ void raytraceFreespace(float* data, unsigned int data_size, double min_x, double
     x1 = master_observation.map_coordinates.x;
     y1 = master_observation.map_coordinates.y;
 
-    unsigned int cell_raytrace_range = cellDistance(master_observation.raytrace_range_);
+    unsigned int cell_raytrace_range = cellDistance(master_observation.raytrace_range);
     //printf(">>> Cell Raytrace Range -> %d\n", cell_raytrace_range);
 
     // and finally... we can execute our trace to clear obstacles along that line
     raytraceLine(x0, y0, x1, y1, cell_raytrace_range);
 
-    updateRaytraceBounds(ox, oy, wx, wy, master_observation.raytrace_range_, min_x, min_y, max_x, max_y);
+    updateRaytraceBounds(ox, oy, wx, wy, master_observation.raytrace_range, min_x, min_y, max_x, max_y);
   }
 }
 
@@ -606,6 +606,39 @@ void init_occgrid_state()
   pr_map_char[CMV_NO_INFORMATION]  = '.';
   pr_map_char[CMV_FREE_SPACE]      = ' ';
   pr_map_char[CMV_LETHAL_OBSTACLE] = 'X';
+
+  int error = 0;
+  if (WORLD_GRID_X_DIM < GRID_MAP_X_DIM) {
+    printf("ERROR : WORLD_GRID_X_DIM = %u  < %u = GRID_MAP_X_DIM\n", WORLD_GRID_X_DIM, GRID_MAP_X_DIM);
+    error++;
+  }
+  if (WORLD_GRID_Y_DIM < GRID_MAP_Y_DIM) {
+    printf("ERROR : WORLD_GRID_Y_DIM = %u  < %u = GRID_MAP_Y_DIM\n", WORLD_GRID_Y_DIM, GRID_MAP_Y_DIM);
+    error++;
+  }
+  int pop_x_count = 0;
+  int pop_y_count = 0;
+  for (int ii = 0; ii < 32; ii++) {
+    if (((WORLD_MAP_X_DIM >> ii)&0x1) == 1) {
+      pop_x_count++;
+    }
+    if (((WORLD_MAP_X_DIM >> ii)&0x1) == 1) {
+      pop_y_count++;
+    }
+  }
+  if (pop_x_count > 1) {
+    printf("ERROR : WORLD_GRID_X_DIM id %u - must be power-of-2 >= 2\n", WORLD_GRID_X_DIM);
+    error++;
+  }
+  if (pop_y_count > 1) {
+    printf("ERROR : WORLD_GRID_Y_DIM id %u - must be power-of-2 >= 2\n", WORLD_GRID_Y_DIM);
+    error++;
+  }
+  // Initialize thge entire world-map to the default value.
+  for (int i = 0; i < WORLD_MAP_ENTRIES; i++) {
+    master_observation.master_costmap.costmap[i] = CMV_NO_INFORMATION; // master_observation.master_costmap.default_value;
+  }
+
 }
 
 void print_ascii_costmap(Costmap2D* cmap)
