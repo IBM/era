@@ -113,12 +113,15 @@ void printMap();
 
 void addStaticObstacle(unsigned char* obstacle_type);
 
-void initCostmap(Observation* obsvtn,
-		 bool rolling_window,
-		 double min_obstacle_height, double max_obstacle_height, double raytrace_range,
+void initCostmap(Costmap2D* theMap,
 		 unsigned int size_x, unsigned int size_y, double resolution,
-		 /*unsigned char default_value,*/
 		 double robot_x, double robot_y, double robot_z);
+
+void initObservation(Observation* obsvtn,
+		     bool rolling_window,
+		     double min_obstacle_height, double max_obstacle_height, double raytrace_range,
+		     unsigned int size_x, unsigned int size_y, double resolution,
+		     double robot_x, double robot_y, double robot_z);
 
 void init_occgrid_state(void);
 void print_ascii_costmap(Costmap2D* cmap);
