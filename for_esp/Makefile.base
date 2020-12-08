@@ -43,8 +43,20 @@ ifdef CONFIG_KERAS_CV_BYPASS
 CFLAGS += -DBYPASS_KERAS_CV_CODE
 endif
 
+ifdef SHOW_FUSE
+CFLAGS += -DWRITE_FUSED_MAPS
+endif
+
+ifdef CONFIG_DEBUG
+CFLAGS += -DDEBUG_MODE
+endif
+
 ifdef CONFIG_VERBOSE
-CFLAGS += -DVERBOSE
+CFLAGS += -DVERBOSE_MODE
+endif
+
+ifdef CONFIG_ASCII_MAP
+CFLAGS += -DWRITE_ASCII_MAP
 endif
 
 ifdef CONFIG_GDB
@@ -93,10 +105,10 @@ TARGET_XMIT=do_xmit_pipe
 all: obj_t1 obj_t2 obj_t3 obj_t4 $(TARGET_ERA1) $(TARGET_ERA2) $(TARGET_RECV) $(TARGET_XMIT)
 
 obj_t1/%.o: %.c
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DIMAGE_FN='"gridimage_era1_"' -DBAG_PORT=5556 -DXMIT_PORT=5558 -DRECV_PORT=5559 -c $< -o $@
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DASCII_FN='"asciimap_era1_"' -DIMAGE_FN='"gridimage_era1_"' -DBAG_PORT=5556 -DXMIT_PORT=5558 -DRECV_PORT=5559 -DCAR_PORT=5562 -c $< -o $@
 
 obj_t2/%.o: %.c
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DIMAGE_FN='"gridimage_era2_"' -DBAG_PORT=5557 -DXMIT_PORT=5560 -DRECV_PORT=5561 -c $< -o $@
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DASCII_FN='"asciimap_era2_"' -DIMAGE_FN='"gridimage_era2_"' -DBAG_PORT=5557 -DXMIT_PORT=5560 -DRECV_PORT=5561 -DCAR_PORT=5563 -c $< -o $@
 
 obj_t3/%.o: %.c
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@
