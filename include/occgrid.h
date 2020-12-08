@@ -20,9 +20,16 @@
 
 #define RAYTR_RANGE        100
 
+#define WORLD_GRID_X_DIM    1024
+#define WORLD_GRID_Y_DIM    1024
+
 #define COST_MAP_X_DIM     (GRID_MAP_X_DIM/(int)GRID_MAP_RESLTN)
 #define COST_MAP_Y_DIM     (GRID_MAP_Y_DIM/(int)GRID_MAP_RESLTN)
 #define COST_MAP_ENTRIES   (COST_MAP_X_DIM * COST_MAP_Y_DIM)
+
+#define WORLD_MAP_X_DIM    (WORLD_GRID_X_DIM/(int)GRID_MAP_RESLTN)
+#define WORLD_MAP_Y_DIM    (WORLD_GRID_Y_DIM/(int)GRID_MAP_RESLTN)
+#define WORLD_MAP_ENTRIES  (WORLD_MAP_X_DIM * WORLD_MAP_Y_DIM)
 
 //Define public structures
 typedef struct geometry_msgs_Point {
@@ -65,11 +72,11 @@ extern bool rotating_window;
 
 //Define functions
 void combineGrids(unsigned char* grid1, unsigned char* grid2, double robot_x1, double robot_y1,
-                            double robot_x2, double robot_y2, unsigned int cell_size_x, unsigned int cell_size_y, double resolution, char def_val);
+		  double robot_x2, double robot_y2, unsigned int cell_size_x, unsigned int cell_size_y, double resolution/*, char def_val*/);
 
 unsigned char* cloudToOccgrid(float* data, unsigned int data_size, double robot_x, double robot_y, double robot_z, double robot_yaw, bool rolling_window,
                               double min_obstacle_height, double max_obstacle_height, double raytrace_range, unsigned int size_x,
-                              unsigned int size_y, double resolution, unsigned char default_value);
+                              unsigned int size_y, double resolution/*, unsigned char default_value*/);
 
 void updateMap(float* data, unsigned int data_size, double robot_x, double robot_y, double robot_z, double robot_yaw);
 
@@ -110,10 +117,11 @@ void initCostmap(Observation* obsvtn,
 		 bool rolling_window,
 		 double min_obstacle_height, double max_obstacle_height, double raytrace_range,
 		 unsigned int size_x, unsigned int size_y, double resolution,
-		 unsigned char default_value,
+		 /*unsigned char default_value,*/
 		 double robot_x, double robot_y, double robot_z);
 
 void init_occgrid_state(void);
-void print_ascii_costmap(Costmap2D* cmap);
+
+void print_ascii_costmap(FILE* fptr, Costmap2D* cmap);
 
 #endif // OCCGRID_H_
