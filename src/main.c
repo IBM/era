@@ -266,7 +266,15 @@ void process_data(char* data, int data_size)
 	 printf("  Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
 	 printf("               : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
 	 print_ascii_costmap(stdout, local_map));
-	
+ #ifdef WRITE_ASCII_MAP
+  char ascii_file_name[32];
+  snprintf(ascii_file_name, sizeof(char)*32, "%s%04d.txt", IMAGE_FN, ascii_counter);
+  FILE *ascii_fp = fopen(ascii_file_name, "w");
+  fprintf(ascii_fp, "Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
+  fprintf(ascii_fp, "             : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
+  print_ascii_costmap(ascii_fp, local_map);
+ #endif
+
   unsigned char cmp_data[MAX_COMPRESSED_DATA_SIZE];
  #ifdef INT_TIME
   gettimeofday(&start_pd_lz4_cmp, NULL);
@@ -451,7 +459,11 @@ void process_data(char* data, int data_size)
 	 printf("  Remote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
 	 printf("                : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
 	 print_ascii_costmap(stdout, remote_map));
-	
+ #ifdef WRITE_ASCII_MAP
+  fprintf(ascii_fp, "\n\nRemote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
+  fprintf(ascii_fp, "              : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
+  print_ascii_costmap(ascii_fp, remote_map);
+ #endif	
   // Then we should "Fuse" the received GridMap with our local one
   //  We need to "peel out" the remote odometry data from somewhere (in the message?)
   //unsigned char* combineGrids(unsigned char* grid1, unsigned char* grid2, double robot_x1, double robot_y1,
@@ -477,16 +489,11 @@ void process_data(char* data, int data_size)
 	print_ascii_costmap(stdout, local_map));
 	  
  #ifdef WRITE_ASCII_MAP
-  {
-    char file_name[32];
-    snprintf(file_name,sizeof(char)*32, "%s%04d.txt", IMAGE_FN, ascii_counter);
-    FILE *fp = fopen(file_name, "w");
-    fprintf(fp, "  Fused CostMAP : AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
-    fprintf(fp, "                : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
-    print_ascii_costmap(fp, local_map);
-    fclose(fp);
-    ascii_counter++;
-  }
+  fprintf(ascii_fp, "\n\nFused CostMAP : AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
+  fprintf(ascii_fp, "              : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
+  print_ascii_costmap(ascii_fp, local_map);
+  fclose(ascii_fp);
+  ascii_counter++;
  #endif
   // Write the combined map to a file
  #ifdef WRITE_FUSED_MAPS
