@@ -5,8 +5,8 @@
 #include <string.h>
 #include <math.h>
 
-#ifndef OCCGRID_H_
-#define OCCGRID_H_
+#ifndef OCCGRID_H
+#define OCCGRID_H
 
 //Define Costmap values
 //  Note: Order is significant -- combineGrids takes a "MAX" value from the two maps
@@ -56,12 +56,12 @@ typedef struct Costmap2D_struct {
 } Costmap2D;
 
 typedef struct Observation {
-    bool  rolling_window_;
+    bool  rolling_window;
     Point master_origin;
     float master_resolution;
-    double max_obstacle_height_;
-    double min_obstacle_height_;
-    double raytrace_range_;
+    double max_obstacle_height;
+    double min_obstacle_height;
+    double raytrace_range;
     MapLocation map_coordinates;
     Costmap2D master_costmap;
 } Observation;
@@ -105,7 +105,7 @@ void markCell(unsigned char value, unsigned int offset);
 void updateRaytraceBounds(double ox, double oy, double wx, double wy, double range,
                           double min_x, double min_y, double max_x, double max_y);
 
-void touch(double x, double y, double min_x, double min_y, double max_x, double max_y);
+//void touch(double x, double y, double min_x, double min_y, double max_x, double max_y);
 
 unsigned int getIndex(unsigned int x, unsigned int y);
 
@@ -124,4 +124,4 @@ void init_occgrid_state(void);
 
 void print_ascii_costmap(FILE* fptr, Costmap2D* cmap);
 
-#endif // OCCGRID_H_
+#endif // OCCGRID_H

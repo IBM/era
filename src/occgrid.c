@@ -27,15 +27,12 @@ int sign (int x) {
   return x > 0 ? 1.0 : -1.0;
 }
 
-#if(0)
-double getSizeInMetersX() {
-  return (master_observation.master_costmap.x_dim - 1 + 0.5) * master_observation.master_resolution;
+void touch(double x, double y, double* min_x, double* min_y, double* max_x, double* max_y) {
+  *min_x = min(x, *min_x);
+  *min_y = min(y, *min_y);
+  *max_x = max(x, *max_x);
+  *max_y = max(y, *max_y);
 }
-
-double getSizeInMetersY() {
-  return (master_observation.master_costmap.y_dim - 1 + 0.5) * master_observation.master_resolution;
-}
-#endif
 
 unsigned int getIndex(unsigned int i, unsigned int j) {
   //printf("x_dim * j + i = %d * %d + %d = %d", master_observation.master_costmap.x_dim, j, i, master_observation.master_costmap.x_dim * j + i);
@@ -87,10 +84,10 @@ void initCostmap(Observation* obsvtn,
                  unsigned int y_dim, double resolution, /*unsigned char default_value,*/ double robot_x, double robot_y, double robot_z) {
   DBGOUT(printf("Initialize Master Costmap\n"));
 
-  obsvtn->rolling_window_ = rolling_window; //TODO:
-  obsvtn->min_obstacle_height_ = min_obstacle_height; //TODO:
-  obsvtn->max_obstacle_height_ = max_obstacle_height; //TODO:
-  obsvtn->raytrace_range_ = raytrace_range; //TODO:
+  obsvtn->rolling_window = rolling_window; //TODO:
+  obsvtn->min_obstacle_height = min_obstacle_height; //TODO:
+  obsvtn->max_obstacle_height = max_obstacle_height; //TODO:
+  obsvtn->raytrace_range = raytrace_range; //TODO:
 
   obsvtn->master_costmap.cell_size = resolution;
   obsvtn->master_costmap.x_dim = x_dim;
@@ -220,7 +217,7 @@ unsigned char* cloudToOccgrid(float* data, unsigned int data_size,
 
 void updateMap(float* data, unsigned int data_size,
 	       double robot_x, double robot_y, double robot_z, double robot_yaw) {
-  if (master_observation.rolling_window_) {
+  if (master_observation.rolling_window) {
     //printf("\nUpdating Map .... \n");
     //printf("   robot_x = %f, robot_y = %f, robot_yaw = %f \n", robot_x, robot_y, robot_yaw);
     //printf("   Master Origin = (%f, %f)\n", master_observation.master_origin.x, master_observation.master_origin.y);
@@ -372,7 +369,7 @@ void updateBounds(float* data, unsigned int data_size, double robot_x, double ro
   //Iterate through cloud to register obstacles within costmap
   for(unsigned int i = 0; i < data_size; i = i + 3) { //TODO: Test if sizeof(points) works correctly
     //Only consider points within height boundaries
-    if (data[i + 2] <= master_observation.max_obstacle_height_ && data[i + 2] >= master_observation.min_obstacle_height_) {
+    if (data[i + 2] <= master_observation.max_obstacle_height && data[i + 2] >= master_observation.min_obstacle_height) {
       double px = (double) *(data + i);
       double py = (double) *(data + i + 1);
       double pz = (double) *(data + i + 2);
@@ -396,7 +393,9 @@ void updateBounds(float* data, unsigned int data_size, double robot_x, double ro
 	});
       //printf("Index of Obstacle -> %d\n", index);
       master_observation.master_costmap.costmap[index] = CMV_LETHAL_OBSTACLE; //TODO: Test simple test case (char) 255 = '255' ?
-      touch(px, py, min_x, min_y, max_x, max_y);
+      //printf("updateBounds: pre-touch  : min x %lf y %lf  max x %lf y %lf\n", min_x, min_y, max_x, max_y);
+      touch(px, py, &min_x, &min_y, &max_x, &max_y);
+      //printf("updateBounds: post-touch : min x %lf y %lf  max x %lf y %lf\n", min_x, min_y, max_x, max_y);
     }
   }
 }
@@ -430,7 +429,9 @@ void raytraceFreespace(float* data, unsigned int data_size, double min_x, double
   double map_end_y = master_observation.master_origin.y + master_observation.master_costmap.y_dim * master_observation.master_resolution;
   //printf(">>> End of Map Coordinates -> <%f, %f>\n", map_end_x, map_end_y);
 
-  touch(ox, oy, min_x, min_y, max_x, max_y);
+  //printf("rayTraceFreespace: pre-touch  : min x %lf y %lf  max x %lf y %lf\n", min_x, min_y, max_x, max_y);
+  touch(ox, oy, &min_x, &min_y, &max_x, &max_y);
+  //printf("rayTraceFreespace: post-touch : min x %lf y %lf  max x %lf y %lf\n", min_x, min_y, max_x, max_y);
 
   for (int i = 0; i < data_size; i = i + 3) {
     double wx = (double) *(data + i);
@@ -480,13 +481,13 @@ void raytraceFreespace(float* data, unsigned int data_size, double min_x, double
     x1 = master_observation.map_coordinates.x;
     y1 = master_observation.map_coordinates.y;
 
-    unsigned int cell_raytrace_range = cellDistance(master_observation.raytrace_range_);
+    unsigned int cell_raytrace_range = cellDistance(master_observation.raytrace_range);
     //printf(">>> Cell Raytrace Range -> %d\n", cell_raytrace_range);
 
     // and finally... we can execute our trace to clear obstacles along that line
     raytraceLine(x0, y0, x1, y1, cell_raytrace_range);
 
-    updateRaytraceBounds(ox, oy, wx, wy, master_observation.raytrace_range_, min_x, min_y, max_x, max_y);
+    updateRaytraceBounds(ox, oy, wx, wy, master_observation.raytrace_range, min_x, min_y, max_x, max_y);
   }
 }
 
@@ -583,15 +584,11 @@ void updateRaytraceBounds(double ox, double oy, double wx, double wy, double ran
   double full_distance = hypot(dx, dy);
   double scale = min(1.0, range / full_distance);
   double ex = ox + dx * scale, ey = oy + dy * scale;
-  touch(ex, ey, min_x, min_y, max_x, max_y);
+  //printf("updateRaytraceBounds: pre-touch  : min x %lf y %lf  max x %lf y %lf\n", min_x, min_y, max_x, max_y);
+  touch(ex, ey, &min_x, &min_y, &max_x, &max_y);
+  //printf("updateRaytraceBounds: post-touch : min x %lf y %lf  max x %lf y %lf\n", min_x, min_y, max_x, max_y);
 }
 
-void touch(double x, double y, double min_x, double min_y, double max_x, double max_y) {
-  min_x = min(x, min_x);
-  min_y = min(y, min_y);
-  max_x = max(x, max_x);
-  max_y = max(y, max_y);
-}
 
 
 
