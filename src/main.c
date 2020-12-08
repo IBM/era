@@ -552,7 +552,7 @@ int main(int argc, char *argv[])
   // string so that program can
   // distinguish between '?' and ':'
   int opt;
-  while((opt = getopt(argc, argv, ":hB:W:s:")) != -1) {
+  while((opt = getopt(argc, argv, ":hB:W:C:s:")) != -1) {
     switch(opt) {
     case 'h':
       print_usage(argv[0]);
