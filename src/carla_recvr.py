@@ -26,10 +26,10 @@ def write_output_file(FNAME, O_type, O_count, d_data):
                 ofnm = ofnm + '0'
         ofnm = ofnm + str(O_count) + '.txt'
         with open(ofnm, 'w') as FILE:
-                FILE.write('Fused CostMAP ' + str(O_count))
+                FILE.write('Fused CostMAP ' + str(O_count) + '\n')
                 if (O_type == 0) :
                         for c in d_data :
-                                FILE.write(str(c))
+                                FILE.write(str(c) + '\n')
                 #elif (O_type == 1) :
                 #else:
 
