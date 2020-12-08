@@ -268,7 +268,7 @@ void process_data(char* data, int data_size)
 	 print_ascii_costmap(stdout, local_map));
  #ifdef WRITE_ASCII_MAP
   char ascii_file_name[32];
-  snprintf(ascii_file_name, sizeof(char)*32, "%s%04d.txt", IMAGE_FN, ascii_counter);
+  snprintf(ascii_file_name, sizeof(char)*32, "%s%04d.txt", ASCII_FN, ascii_counter);
   FILE *ascii_fp = fopen(ascii_file_name, "w");
   fprintf(ascii_fp, "Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
   fprintf(ascii_fp, "             : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);

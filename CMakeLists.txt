@@ -64,6 +64,9 @@ target_compile_definitions(era2 PRIVATE CAR_PORT=5563)
 target_compile_definitions(era1 PRIVATE IMAGE_FN="gridimage_era1_")
 target_compile_definitions(era2 PRIVATE IMAGE_FN="gridimage_era2_")
 
+target_compile_definitions(era1 PRIVATE ASCII_FN="asciimap_era1_")
+target_compile_definitions(era2 PRIVATE ASCII_FN="asciimap_era2_")
+
 # Enable this if you want intermediate files of the fused gridmaps 
 #target_compile_definitions(era1 PRIVATE WRITE_FUSED_MAPS)
 #target_compile_definitions(era2 PRIVATE WRITE_FUSED_MAPS)
