@@ -5,8 +5,8 @@
 #include <string.h>
 #include <math.h>
 
-#ifndef OCCGRID_H
-#define OCCGRID_H
+#ifndef OCCGRID_H_
+#define OCCGRID_H_
 
 //Define Costmap values
 //  Note: Order is significant -- combineGrids takes a "MAX" value from the two maps
@@ -56,12 +56,12 @@ typedef struct Costmap2D_struct {
 } Costmap2D;
 
 typedef struct Observation {
-    bool  rolling_window;
+    bool  rolling_window_;
     Point master_origin;
     float master_resolution;
-    double max_obstacle_height;
-    double min_obstacle_height;
-    double raytrace_range;
+    double max_obstacle_height_;
+    double min_obstacle_height_;
+    double raytrace_range_;
     MapLocation map_coordinates;
     Costmap2D master_costmap;
 } Observation;
@@ -113,17 +113,15 @@ void printMap();
 
 void addStaticObstacle(unsigned char* obstacle_type);
 
-void initCostmap(Costmap2D* theMap,
+void initCostmap(Observation* obsvtn,
+		 bool rolling_window,
+		 double min_obstacle_height, double max_obstacle_height, double raytrace_range,
 		 unsigned int size_x, unsigned int size_y, double resolution,
+		 /*unsigned char default_value,*/
 		 double robot_x, double robot_y, double robot_z);
 
-void initObservation(Observation* obsvtn,
-		     bool rolling_window,
-		     double min_obstacle_height, double max_obstacle_height, double raytrace_range,
-		     unsigned int size_x, unsigned int size_y, double resolution,
-		     double robot_x, double robot_y, double robot_z);
-
 void init_occgrid_state(void);
-void print_ascii_costmap(Costmap2D* cmap);
 
-#endif // OCCGRID_H
+void print_ascii_costmap(FILE* fptr, Costmap2D* cmap);
+
+#endif // OCCGRID_H_

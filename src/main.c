@@ -23,11 +23,13 @@
 
 char bag_inet_addr_str[20];
 char wifi_inet_addr_str[20];
+char car_inet_addr_str[20];
 unsigned  max_time_steps = ~1;
 
 int bag_sock = 0;
 int xmit_sock = 0;
 int recv_sock = 0;
+int car_sock = 0;
 
 char *ack = "OK";
 
@@ -102,9 +104,14 @@ struct timeval stop_pd_combGrids, start_pd_combGrids;
 uint64_t pd_combGrids_sec  = 0LL;
 uint64_t pd_combGrids_usec = 0LL;
 
+struct timeval stop_pd_xmit_car, start_pd_xmit_car;
+uint64_t pd_xmit_car_sec  = 0LL;
+uint64_t pd_xmit_car_usec = 0LL;
+
 #endif
 
 int counter = 0;
+int ascii_counter = 0;
 
 unsigned odo_count = 0;
 unsigned lidar_count = 0;
@@ -126,7 +133,8 @@ void print_usage(char * pname) {
   printf("    -h         : print this helpful usage info\n");
   printf("    -B <str>   : set the internet-address for the bagfile server to <str>\n");
   printf("    -W <str>   : set the internet-address for the WiFi server to <str>\n");
-  printf("    -s <Num>     : exit run after <Num> Lidar time-steps (msgs)\n");
+  printf("    -C <str>   : set the internet-address for the Car Map Output server to <str>\n");
+  printf("    -s <Num>   : exit run after <Num> Lidar time-steps (msgs)\n");
 }
 
 void INThandler(int dummy)
@@ -135,6 +143,7 @@ void INThandler(int dummy)
   close(bag_sock);
   close(xmit_sock);
   close(recv_sock);
+  close(car_sock);
   exit(-1);
 }
 
@@ -160,6 +169,9 @@ void closeout_and_exit(int rval)
   }
   if (recv_sock != 0) {
     close(recv_sock);
+  }
+  if (car_sock != 0) {
+    close(car_sock);
   }
 
  #ifdef HW_VIT
@@ -253,8 +265,16 @@ void process_data(char* data, int data_size)
   DBGOUT(printf("Calling LZ4_compress_default...\n");
 	 printf("  Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
 	 printf("               : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
-	 print_ascii_costmap(local_map));
-	
+	 print_ascii_costmap(stdout, local_map));
+ #ifdef WRITE_ASCII_MAP
+  char ascii_file_name[32];
+  snprintf(ascii_file_name, sizeof(char)*32, "%s%04d.txt", ASCII_FN, ascii_counter);
+  FILE *ascii_fp = fopen(ascii_file_name, "w");
+  fprintf(ascii_fp, "Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
+  fprintf(ascii_fp, "             : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
+  print_ascii_costmap(ascii_fp, local_map);
+ #endif
+
   unsigned char cmp_data[MAX_COMPRESSED_DATA_SIZE];
  #ifdef INT_TIME
   gettimeofday(&start_pd_lz4_cmp, NULL);
@@ -438,8 +458,12 @@ void process_data(char* data, int data_size)
   DBGOUT(printf("  Back from LZ4_decompress_safe with %u decompressed bytes\n", dec_bytes);
 	 printf("  Remote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
 	 printf("                : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
-	 print_ascii_costmap(remote_map));
-	
+	 print_ascii_costmap(stdout, remote_map));
+ #ifdef WRITE_ASCII_MAP
+  fprintf(ascii_fp, "\n\nRemote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
+  fprintf(ascii_fp, "              : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
+  print_ascii_costmap(ascii_fp, remote_map);
+ #endif	
   // Then we should "Fuse" the received GridMap with our local one
   //  We need to "peel out" the remote odometry data from somewhere (in the message?)
   //unsigned char* combineGrids(unsigned char* grid1, unsigned char* grid2, double robot_x1, double robot_y1,
@@ -460,14 +484,51 @@ void process_data(char* data, int data_size)
   pd_combGrids_sec   += stop_pd_combGrids.tv_sec  - start_pd_combGrids.tv_sec;
   pd_combGrids_usec  += stop_pd_combGrids.tv_usec - start_pd_combGrids.tv_usec;
  #endif
-  DBGOUT(printf("  Fused CostMAP : AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
-	 printf("                : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
-	 print_ascii_costmap(local_map));
-
+  DEBUG(printf(fp, "  Fused CostMAP : AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
+	printf(fp, "                : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
+	print_ascii_costmap(stdout, local_map));
+	  
+ #ifdef WRITE_ASCII_MAP
+  fprintf(ascii_fp, "\n\nFused CostMAP : AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
+  fprintf(ascii_fp, "              : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
+  print_ascii_costmap(ascii_fp, local_map);
+  fclose(ascii_fp);
+  ascii_counter++;
+ #endif
   // Write the combined map to a file
  #ifdef WRITE_FUSED_MAPS
   write_array_to_file(local_map->costmap, COST_MAP_ENTRIES);
  #endif
+
+  // This is now the fused map that should be sent to the AV(Car)
+  //  The n values of the (fused) local_map Costmap
+  // Connect to the Car-Socket and send the data...
+#ifdef INT_TIME
+  gettimeofday(&start_pd_xmit_send, NULL);
+#endif	
+  unsigned car_bytes = sizeof(Costmap2D);
+  snprintf(w_buffer, 9, "X%-6uX", car_bytes);
+  DBGOUT(printf("\nCAR-OUT Sending %s on CAR port %u socket\n", w_buffer, CAR_OUT_PORT));
+  send(car_sock, w_buffer, 8, 0);
+  DBGOUT(printf("     Send %u bytes on CAR port %u socket\n", car_bytes, CAR_PORT));
+  char * car_out_chars = (char*)&(local_map);
+  DBGOUT2(printf("CAR-OUT %4u : Dumping XMIT-PIPE REAL raw bytes\n", car_send_count);
+	  for (int i = 0; i < car_bytes; i++) {
+	    unsigned char c = car_out_chars[i];
+	    printf("CAR-OUT %4u REAL-byte %6u : %u\n", car_sendcount, i, c);
+	  }
+	  printf("\n"));
+#ifdef INT_TIME
+  gettimeofday(&start_pd_xmit_car, NULL);
+#endif	
+  send(car_sock, car_out_chars, car_bytes, 0);
+  DBGOUT(printf("     Send %u IMAG values %u bytes on XMIT port %u socket\n", n_xmit_out, xfer_bytes, XMIT_PORT));
+#ifdef INT_TIME
+  gettimeofday(&stop_pd_xmit_car, NULL);
+  pd_xmit_car_sec   += stop_pd_xmit_car.tv_sec  - start_pd_xmit_car.tv_sec;
+  pd_xmit_car_usec  += stop_pd_xmit_car.tv_usec - start_pd_xmit_car.tv_usec;
+#endif
+
   DBGOUT(printf("Returning from process_data\n"));
   fflush(stdout);
 }
@@ -477,10 +538,12 @@ int main(int argc, char *argv[])
   struct sockaddr_in bag_servaddr;
   struct sockaddr_in xmit_servaddr;
   struct sockaddr_in recv_servaddr;
+  struct sockaddr_in car_servaddr;
   unsigned char buffer[200002] = {0};
 
   snprintf(bag_inet_addr_str, 20, "127.0.0.1");
   snprintf(wifi_inet_addr_str, 20, "127.0.0.1");
+  snprintf(car_inet_addr_str, 20, "127.0.0.1");
 
  #ifdef HW_VIT
   DEBUG(printf("Calling init_VIT_HW_ACCEL...\n"));
@@ -496,7 +559,7 @@ int main(int argc, char *argv[])
   // string so that program can
   // distinguish between '?' and ':'
   int opt;
-  while((opt = getopt(argc, argv, ":hB:W:s:")) != -1) {
+  while((opt = getopt(argc, argv, ":hB:W:C:s:")) != -1) {
     switch(opt) {
     case 'h':
       print_usage(argv[0]);
@@ -506,6 +569,9 @@ int main(int argc, char *argv[])
       break;
     case 'W':
       snprintf(wifi_inet_addr_str, 20, "%s", optarg);
+      break;
+    case 'C':
+      snprintf(car_inet_addr_str, 20, "%s", optarg);
       break;
     case 's':
       max_time_steps = atoi(optarg);
@@ -605,6 +671,32 @@ int main(int argc, char *argv[])
     }
   }
 
+  printf("Connecting to car-server at IP %s PORT %u\n", car_inet_addr_str, CAR_PORT);
+  // Open and connect to the CAR_SERVER 
+  if ((car_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)  {
+    printf("CAR Socket creation failed...\n");
+    exit(0);
+  }
+  else {
+    printf("CAR Socket successfully created..\n");
+  }
+
+  car_servaddr.sin_family = AF_INET;
+  car_servaddr.sin_addr.s_addr = inet_addr(car_inet_addr_str);
+  car_servaddr.sin_port = htons(CAR_PORT);
+
+  while (true) {
+    if (connect(car_sock, (struct sockaddr*)&car_servaddr, sizeof(car_servaddr)) != 0) {
+      printf("connection with the CAR server failed...\n");
+      sleep(1);
+      continue;
+    }
+    else {
+      printf("connected to the CAR server..\n");
+      break;
+    }
+  }
+  
  #ifdef INT_TIME
   gettimeofday(&start_prog, NULL);
  #endif
@@ -751,6 +843,7 @@ void dump_final_run_statistics()
   uint64_t pd_recv_pipe  = (uint64_t)(pd_recv_pipe_sec)  * 1000000 + (uint64_t)(pd_recv_pipe_usec);
   uint64_t pd_lz4_uncmp  = (uint64_t)(pd_lz4_uncmp_sec)  * 1000000 + (uint64_t)(pd_lz4_uncmp_usec);
   uint64_t pd_combGrids  = (uint64_t)(pd_combGrids_sec)  * 1000000 + (uint64_t)(pd_combGrids_usec);
+  uint64_t pd_carSend    = (uint64_t)(pd_xmit_car_sec)  * 1000000 + (uint64_t)(pd_xmit_car_usec);
 
   // This is the xmit_pipe.c breakdown
   uint64_t x_pipe      = (uint64_t)(x_pipe_sec)  * 1000000 + (uint64_t)(x_pipe_usec);
@@ -827,6 +920,7 @@ void dump_final_run_statistics()
   printf("         R-Pipe DeScramble Time : %10lu usec\n", r_descrmbl);
   printf("       Total pd lz4_uncmp       : %10lu usec\n", pd_lz4_uncmp);
   printf("       Total pd combGrids       : %10lu usec\n", pd_combGrids);
+  printf("       Total pd carSend         : %10lu usec\n", pd_carSend);
   printf("\n");
  #else
   printf(" NO Timing information on this run...\n");

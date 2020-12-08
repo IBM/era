@@ -58,12 +58,22 @@ target_compile_definitions(era2 PRIVATE XMIT_PORT=5560)
 target_compile_definitions(era1 PRIVATE RECV_PORT=5559)
 target_compile_definitions(era2 PRIVATE RECV_PORT=5561)
 
+target_compile_definitions(era1 PRIVATE CAR_PORT=5562)
+target_compile_definitions(era2 PRIVATE CAR_PORT=5563)
+
 target_compile_definitions(era1 PRIVATE IMAGE_FN="gridimage_era1_")
 target_compile_definitions(era2 PRIVATE IMAGE_FN="gridimage_era2_")
+
+target_compile_definitions(era1 PRIVATE ASCII_FN="asciimap_era1_")
+target_compile_definitions(era2 PRIVATE ASCII_FN="asciimap_era2_")
 
 # Enable this if you want intermediate files of the fused gridmaps 
 #target_compile_definitions(era1 PRIVATE WRITE_FUSED_MAPS)
 #target_compile_definitions(era2 PRIVATE WRITE_FUSED_MAPS)
+
+# Enable this if you want intermediate files of the fused gridmaps 
+target_compile_definitions(era1 PRIVATE WRITE_ASCII_MAP)
+target_compile_definitions(era2 PRIVATE WRITE_ASCII_MAP)
 
 # Enable this for detailed run-time debug information
 #target_compile_definitions(era1 PRIVATE DEBUG_MODE)

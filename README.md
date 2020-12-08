@@ -37,6 +37,7 @@ cd build
 cmake ..
 make
 ```
+### cmake Targets
 
 At this point, you should have generated two executables file named ```eraX```
 which are the main ERA executables for this Demo-ERA version.  There are two
@@ -48,18 +49,39 @@ two ERA executables:
 
 The bag file can be downloaded at: https://ibm.box.com/s/2ji8jljguz3wgyovaxfs4m6v9vyjtwfk
 
+There are an additional 2 executables names ```do_cxit_pipe``` and ```do_recv_pipe```
+which are standalone versions of the transmit and receive pipelines used in the ERA executables.
+These are useful programs for further development and testing of the specific transmit (xmit)
+or receive (recv) pipeline implementations.
+
+### cmake Options
+
+If you look in the CMakeLists.txt file, there are a number of options included there
+(largely in the form of C MACRO definitions).  Some useful ones include:
+ - target_compile_definitions(era1 PRIVATE DEBUG_MODE)  which, if enabled (not commented out) enables DEBUG output
+ - target_compile_definitions(era1 PRIVATE WRITE_ASCII_MAP)  which, if enabled (not commented out) enables intermediate ASCII gridmap output
+ - target_compile_definitions(era1 PRIVATE ASCII_FN="asciimap_era1_") which gives the base name for the ASCII map files
+ - target_compile_definitions(era1 PRIVATE WRITE_FUSED_MAPS)  which, if enabled (not commented out) enables intermediate gridmap PPM file output
+ - target_compile_definitions(era2 PRIVATE IMAGE_FN="gridimage_era1_") which gives the base name for the gridmap PPM files
+
+Generally, running with DEBUG_MODE puts out a LOT of information, and lenghtens the run-tmie considerably.
+The MAP generation options provide a couple of means tio visualize the map fusion process.  These results are written to
+a number of files, one per time-step, which does only affects the run-time slightly.
+
 ## Execution
 
-To execute the Demo-ERA program requires six simultaneous processes:
+To execute the Demo-ERA program requires eight simultaneous processes:
  - one process to read the input bagfile for AV 1 (```read_bag_1.py```)
  - one process to read the input bagfile for AV 2 (```read_bag_2.py```)
  - one process to run the ERA (swarming) workload for AV 1 (```wifi_comm_1.sh```)
  - one process to run the ERA (swarming) workload for AV 2 (```wifi_comm_2.sh```)
  - one process to operate as the WiFi interconnect for AV 1 -> AV 2 messages (```era1```)
  - one process to operate as the WiFi interconnect for AV 2 -> AV 1 messages (```era2```)
+ - one process to operate as the AV 1 target for the final fused maps (```carla_recv_1.sh```)
+ - one process to operate as the AV 2 target for the final fused maps (```carla_recv_2.sh```)
 
 The simplest method (currently) to invoke/execute ERA is therefore to set up
-six terminal windows, and to invoke the related processes in each window.
+eight terminal windows, and to invoke the related processes in each window.
 It is recommended that one start the bagfiles and WiFi interconnect (socket server)
 processes before invocation of either the ```era1``` or ```era2``` program.
 A possible environment for this is illustrated below.
@@ -84,10 +106,24 @@ The underlying function is as follows
  (embodied in the era programs) to communicate their shared messages/data.
 
 The ```wifi_comm.py``` program implements a "receiver" channel (socket) and a "transmission" channel
-(socket) which provides them the means to take tranmitted data from one AV and provide it to the
+(socket) which provides them the means to take transmitted data from one AV and provide it to the
 other AV.  At present this only supports the 2-AV initial system, and does not provide for broadcast
 communications, which may be future work.  Similarly, this operates in a "time-step" fully
 deterministic (and reproducible) manner, to provide consistency in the test environment, etc.
+
+### ```carla_recvr_X.sh```
+ The carla_recvr programs are really just shell-scripts that embody specific (command-line)
+ parameters for underlying invocations of the ```carla_recvr.py``` program.  The
+ ```carla_recvr.py``` program will set up a socket server, and listen for the appropriate
+ connections from the era programs.  The carla_recvr server then acts as a stand-in (substitute)
+ for the AV itself which would receive back the fused gridmaps.  Presently, we are simulating the
+ AVs using the Carla simulator (though others are also possible), hence the name.
+
+The ```carla_recvr.py``` program implements a "receiver" channel (socket) 
+which provides a means to send the data from the ERA hardware (doing the intercommunication
+and cooperative intelligence aspects) and return the resulting learned data (in this case the
+fused occupancy gridmap) back to the AV proper.
+At present we only model a 2-AV system, but this can easily be expanded.
 
 ### ```eraX```
 The era programs are the target workload, compiled from the underlying C source code, and
@@ -128,7 +164,18 @@ cd era/src
 python ./wifi_comm_2.py
 ```
 
-Now activate a third pair of terminals, and type in one
+Now activate a third pair of terminals, and type
+```
+cd era/src
+python ./carla_recvr_1.py
+```
+and in the other
+```
+cd era/src
+python ./carla_recvr_2.py
+```
+
+Now activate afourth pair of terminals, and type in one
 ```
 cd era/build
 ./era1
