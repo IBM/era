@@ -28,15 +28,15 @@ include_directories(include)
 
 #add_library(occgrid STATIC src/occgrid.c)
 #add_library(lz4 STATIC src/lz4.c)
-#add_library(sdr STATIC src/complex_ops.c src/crc.c src/delay.c src/fft.c src/fir.c src/gr_equalizer.c src/ofdm.c src/recv_pipe.c src/sdr_descrabler.c src/sdr_viterbi.c src/simple_dft.c src/sync_long.c src/sync_short.c src/xmit_pipe.c)
+#add_library(sdr STATIC src/complex_ops.c src/crc.c src/delay.c src/fft.c src/fir.c src/gr_equalizer.c src/ofdm.c src/recv_pipe.c src/sdr_descrambler.c src/sdr_viterbi.c src/simple_dft.c src/sync_long.c src/sync_short.c src/xmit_pipe.c)
 #add_executable(era1 src/main.c)
 #add_executable(era2 src/main.c)
 
 
-add_executable(era1 src/main.c src/occgrid.c src/lz4.c src/complex_ops.c src/crc.c src/delay.c src/fft.c src/fir.c src/gr_equalizer.c src/ofdm.c src/recv_pipe.c src/sdr_descrabler.c src/sdr_viterbi.c  src/sync_long.c src/sync_short.c src/xmit_pipe.c)
-add_executable(era2 src/main.c src/occgrid.c src/lz4.c src/complex_ops.c src/crc.c src/delay.c src/fft.c src/fir.c src/gr_equalizer.c src/ofdm.c src/recv_pipe.c src/sdr_descrabler.c src/sdr_viterbi.c src/sync_long.c src/sync_short.c src/xmit_pipe.c)
+add_executable(era1 src/main.c src/occgrid.c src/lz4.c src/complex_ops.c src/crc.c src/delay.c src/fft.c src/fir.c src/gr_equalizer.c src/ofdm.c src/recv_pipe.c src/sdr_descrambler.c src/sdr_viterbi.c  src/sync_long.c src/sync_short.c src/xmit_pipe.c)
+add_executable(era2 src/main.c src/occgrid.c src/lz4.c src/complex_ops.c src/crc.c src/delay.c src/fft.c src/fir.c src/gr_equalizer.c src/ofdm.c src/recv_pipe.c src/sdr_descrambler.c src/sdr_viterbi.c src/sync_long.c src/sync_short.c src/xmit_pipe.c)
 
-add_executable(do_recv_pipe src/recv_main.c src/complex_ops.c src/delay.c src/fft.c src/fir.c src/gr_equalizer.c src/ofdm.c src/recv_pipe.c src/sdr_descrabler.c src/sdr_viterbi.c src/sync_long.c src/sync_short.c)
+add_executable(do_recv_pipe src/recv_main.c src/complex_ops.c src/delay.c src/fft.c src/fir.c src/gr_equalizer.c src/ofdm.c src/recv_pipe.c src/sdr_descrambler.c src/sdr_viterbi.c src/sync_long.c src/sync_short.c)
 add_executable(do_xmit_pipe src/xmit_main.c src/crc.c src/fft.c src/xmit_pipe.c)
 
 target_compile_definitions(era1 PRIVATE USE_ESP_INTERFACE)
