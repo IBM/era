@@ -256,12 +256,19 @@ void process_data(char* data, int data_size)
   pd_cloud2grid_sec   += stop_pd_cloud2grid.tv_sec  - start_pd_cloud2grid.tv_sec;
   pd_cloud2grid_usec  += stop_pd_cloud2grid.tv_usec - start_pd_cloud2grid.tv_usec;
  #endif
+  // This call updates our world-view with local information (which we assume to be "right")
+  //   This can also alter the "origin" location of our world map...
+  Costmap2D* local_map = &(master_observation.master_costmap);
+  fuseIntoWorld(&theWorldMap, local_map);
+  //           local_map->costmap, theWorldMap->map,
+  //	       local_map->av_x, local_map->av_y,
+  //	       theWorldMap->av_x, theWorldMap->av_y,
+  //	       theWorldMap->x_dim, theWorldMap->y_dim, theWorldMap->cell_size);
 
   // Write the read-in image to a file
   //write_array_to_file(grid, COST_MAP_ENTRIES);
 
   // Now we compress the grid for transmission...
-  Costmap2D* local_map = &(master_observation.master_costmap);
   DBGOUT(printf("Calling LZ4_compress_default...\n");
 	 printf("  Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
 	 printf("               : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
@@ -273,6 +280,9 @@ void process_data(char* data, int data_size)
   fprintf(ascii_fp, "Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
   fprintf(ascii_fp, "             : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
   print_ascii_costmap(ascii_fp, local_map);
+  fprintf(ascii_fp, "\n\nCurrent WorldMAP : AV x %lf y %lf z %lf\n", theWorldMap.x, theWorldMap.y, theWorldMap.z);
+  fprintf(ascii_fp, "                 : Cell_Size %lf X-Dim %u Y-Dim %u\n", theWorldMap.cell_size, theWorldMap.x_dim, theWorldMap.y_dim);
+  print_ascii_worldmap(ascii_fp, &theWorldMap);
  #endif
 
   unsigned char cmp_data[MAX_COMPRESSED_DATA_SIZE];
@@ -475,10 +485,10 @@ void process_data(char* data, int data_size)
   gettimeofday(&start_pd_combGrids, NULL);
  #endif	
   combineGrids(remote_map->costmap, local_map->costmap,
-	       remote_map->av_x, remote_map->av_y,
-	       local_map->av_x, local_map->av_y,
-	       local_map->x_dim, local_map->y_dim, local_map->cell_size
-	       /*,local_map->default_value*/);
+  	       remote_map->av_x, remote_map->av_y,
+  	       local_map->av_x, local_map->av_y,
+  	       local_map->x_dim, local_map->y_dim, local_map->cell_size
+  	       /*,local_map->default_value*/);
  #ifdef INT_TIME
   gettimeofday(&stop_pd_combGrids, NULL);
   pd_combGrids_sec   += stop_pd_combGrids.tv_sec  - start_pd_combGrids.tv_sec;
@@ -488,10 +498,14 @@ void process_data(char* data, int data_size)
 	printf(fp, "                : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
 	print_ascii_costmap(stdout, local_map));
 	  
+  fuseIntoWorld(&theWorldMap, remote_map);
  #ifdef WRITE_ASCII_MAP
   fprintf(ascii_fp, "\n\nFused CostMAP : AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
   fprintf(ascii_fp, "              : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
   print_ascii_costmap(ascii_fp, local_map);
+  fprintf(ascii_fp, "\n\nCurrent WorldMAP : AV x %lf y %lf z %lf\n", theWorldMap.x, theWorldMap.y, theWorldMap.z);
+  fprintf(ascii_fp, "                 : Cell_Size %lf X-Dim %u Y-Dim %u\n", theWorldMap.cell_size, theWorldMap.x_dim, theWorldMap.y_dim);
+  print_ascii_worldmap(ascii_fp, &theWorldMap);
   fclose(ascii_fp);
   ascii_counter++;
  #endif
@@ -789,7 +803,6 @@ int main(int argc, char *argv[])
       odometry[0] = *((float*)(buffer));   //bytes_to_float(buffer);
       odometry[1] = *((float*)(buffer+4)); //bytes_to_float(buffer+4);
       odometry[2] = *((float*)(buffer+8)); //bytes_to_float(buffer+8);
-
       printf("Odometry msg %4u: %.2f %.2f %.2f\n", odo_count, odometry[0], odometry[1], odometry[2]);
       odo_count++;
      #ifdef INT_TIME

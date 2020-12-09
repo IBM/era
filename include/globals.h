@@ -7,8 +7,8 @@
 //#define DBGOUT2(x) x  // Uncomment for DEBUG Level-2 (more detail) messages
 #define DBGOUT2(x)  // Uncomment for NO DEBUG Level-2 (more detail) messages
 
-//#define CHECK(x) x  // Uncomment for RUN-TIME CHECK logic
-#define CHECK(x)  // Uncomment for NO RUN-TIME CHECK logic
+#define CHECK(x) x  // Uncomment for RUN-TIME CHECK logic
+//#define CHECK(x)  // Uncomment for NO RUN-TIME CHECK logic
 
 void closeout_and_exit(int rv);
 

@@ -4,7 +4,13 @@
 #include "globals.h"
 #include "occgrid.h"
 
+/** FORWARD DECLARATIONS **/
+void touch(double x, double y, double* min_x, double* min_y, double* max_x, double* max_y);
+
+
 //Define global variables
+Worldmap2D theWorldMap;
+bool initWorldMap = true;
 Observation master_observation;
 //char data[199992];
 bool rotating_window;
@@ -117,7 +123,290 @@ void initCostmap(Observation* obsvtn,
 }
 
 /******************* FUNCTIONS *********************/
+#undef DBGOUT
+#define DBGOUT(x) x
+void fuseIntoWorld(Worldmap2D* theWorld, Costmap2D* theInput)
+{
+  DBGOUT(printf("Entered fuseIntoWorld...\n"));
+  if (theWorld->must_init) {
+    theWorld->x = theInput->av_x;
+    theWorld->y = theInput->av_y;
+    theWorld->z = theInput->av_z;
+    DBGOUT(printf("Set worldMap x, y, z = %2lf, %2lf, %2lf\n", theWorldMap.x, theWorldMap.y, theWorldMap.z));
+    theWorld->must_init = false;
+  }
+  //worldMap is the persistent map fo world knowledge; inputMap is the new information to enter into the worldMap
+  unsigned char* worldMap = theWorld->map;
+  unsigned char* inputMap = theInput->costmap;
+  // These are the "position" of the (center) of the map
+  int world_x_pos = (int)((float)theWorld->x / theWorld->cell_size);
+  int world_y_pos = (int)((float)theWorld->y / theWorld->cell_size);
+  int input_x_pos = (int)((float)theInput->av_x / theInput->cell_size);
+  int input_y_pos = (int)((float)theInput->av_y / theInput->cell_size);
+  // These are the dimension (raw input) of the map
+  int world_x_dim = theWorld->x_dim;
+  int world_y_dim = theWorld->y_dim;
+  int input_x_dim = theInput->x_dim;
+  int input_y_dim = theInput->y_dim;
+  // Thess are the number of costmap/gridmap "cells" (dimensionally)
+  int world_x_cells = (world_x_dim / theWorld->cell_size);
+  int world_y_cells = (world_y_dim / theWorld->cell_size);
+  int input_x_cells = (input_x_dim / theInput->cell_size);
+  int input_y_cells = (input_y_dim / theInput->cell_size);
+  //int resolution = theWorld->cell_size;
+  /* DBGOUT(printf("in fuseIntoWorld: x1 = %d x2 = %d  y1 = %d y2 = %d\n", input_x, world_x, input_y, world_y); */
+  /* 	 printf("      num_cells : w_x = %u  w_y = %u   u_x = %u  u_y = %u\n", world_x_cells, world_y_cells, input_x_cells, input_y_cells)); */
 
+  DBGOUT(printf(" World in-data: X-pos %d y_pos %d x_cells %d y_cells %d\n", world_x_pos, world_y_pos, world_x_cells, world_y_cells);
+	 printf(" Input in-data: X-pos %d y_pos %d x_cells %d y_cells %d\n", input_x_pos, input_y_pos, input_x_cells, input_y_cells));
+  // Express the world/input maps in terms of "Global Cell Coordinates"
+  int input_0_x = input_x_pos - input_x_cells/2;
+  int input_0_y = input_y_pos - input_x_cells/2;
+  int input_N_x = input_x_pos + input_x_cells/2 - 1;
+  int input_N_y = input_y_pos + input_x_cells/2 - 1;
+  DBGOUT(printf("Input: 0x Nx = %d  %d   :   0y Ny = %d  %d\n", input_0_x, input_N_x, input_0_y, input_N_y));
+
+  int world_0_x = world_x_pos - world_x_cells/2;
+  int world_0_y = world_y_pos - world_x_cells/2;
+  int world_N_x = world_x_pos + world_x_cells/2 - 1;
+  int world_N_y = world_y_pos + world_x_cells/2 - 1;
+  DBGOUT(printf("World: 0x Nx = %d  %d   :   0y Ny = %d  %d\n", world_0_x, world_N_x, world_0_y, world_N_y));
+
+  // Now determine the (localized) X and Y cell dimensions that overlap
+  //  We compute the min and max X and Y as for a for loop: for (ix = x_min; ix < x_max; ix++) 
+  int input_x_min = max(0, (world_0_x - input_0_x));
+  DBGOUT(printf("   input_x_min = max(0, (%d - %d) = %d) = %d\n", world_0_x, input_0_x, (world_0_x - input_0_x), input_x_min));
+  int input_x_max = input_x_cells - max(0, (input_N_x - world_N_x));
+  DBGOUT(printf("   input_x_max = %d - max(0, (%d - %d) = %d) = %d\n", input_x_cells, input_0_x, world_0_x, (input_N_x - world_N_x), input_x_max));
+  int input_y_min = max(0, (world_0_y - input_0_y));
+  DBGOUT(printf("   input_y_min = max(0, (%d - %d) = %d) = %d\n", world_0_y, input_0_y, (world_0_y - input_0_y), input_y_min));
+  int input_y_max = input_y_cells - max(0, (input_N_y - world_N_y));
+  DBGOUT(printf("   input_y_max = %d - max(0, (%d - %d) = %d) = %d\n", input_y_cells, input_0_y, world_0_y, (input_N_y - world_N_y), input_y_max));
+  DBGOUT(printf("Input: x_min %d  x_max %d  y_min %d  y_max %d\n", input_x_min, input_x_max, input_y_min, input_y_max));
+
+  int world_x_min = max(0, (input_0_x - world_0_x));
+  int world_x_max = world_x_cells - max(0, (world_N_x - input_N_x));
+  int world_y_min = max(0, (world_0_y, input_0_y));
+  int world_y_max = world_y_cells - max(0, (world_N_y - input_N_y));
+  DBGOUT(printf("World: x_min %d  x_max %d  y_min %d  y_max %d\n", world_x_min, world_x_max, world_y_min, world_y_max));
+
+  //Iterate through grids and assign corresponding max value
+  int iiy = input_y_min;
+  for (int wiy = world_y_min; wiy < world_y_max; wiy++) {
+    int wbase = wiy*world_x_cells;
+    int ibase = iiy*input_x_cells;
+    int iix = input_x_min;
+    for (int wix = world_x_min; wix < world_x_max; wix++) {
+      int world_idx = wbase + wix;
+      int input_idx = ibase + iix;
+      CHECK(if ((world_idx < 0) || (world_idx >= WORLD_MAP_ENTRIES)) {
+      	  printf("ERROR : fuseIntoWorld world_idx outside bounds at %d vs 0 .. %d\n", world_idx, WORLD_MAP_ENTRIES);
+      	});
+      CHECK(if ((input_idx < 0) || (input_idx >= COST_MAP_ENTRIES)) {
+      	  printf("ERROR : fuseIntoWorld input_idx outside bounds at %d vs 0 .. %d\n", input_idx, COST_MAP_ENTRIES);
+      	});
+      //DBGOUT(printf("  Setting worldMap[%d] = max(%u, %u = inputMap[%d])\n", world_idx, worldMap[world_idx], inputMap[input_idx], input_idx));
+      worldMap[world_idx] = max(worldMap[world_idx], inputMap[input_idx]);
+      iix++;
+    }
+    iiy++;
+  }
+  return;
+}
+#if(0)
+
+void fuseIntoWorld(Worldmap2D* theWorld, Costmap2D* theUpdate)
+{
+  unsigned char* worldMap = theWorld->map;
+  unsigned char* updateMap = theUpdate->costmap;
+  double world_x = theWorld->x;
+  double world_y = theWorld->y;
+  double update_x = theUpdate->av_x;
+  double update_y = theUpdate->av_y;
+  unsigned int world_x_dim = theWorld->x_dim;
+  unsigned int world_y_dim = theWorld->y_dim;
+  unsigned int update_x_dim = theUpdate->x_dim;
+  unsigned int update_y_dim = theUpdate->y_dim;
+  double resolution = theWorld->cell_size;
+  DBGOUT(printf("in fuseIntoWorld: x1 = %.1f x2 = %.1f  y1 = %.1f y2 = %.1f\n", update_x, world_x, update_y, world_y);
+	 printf("     dimensions: w_x = %u  w_y = %u   u_x = %u  u_y = %u\n", world_x_dim, world_y_dim, update_x_dim, update_y_dim));
+  //updateMap is previous map, world is current map
+
+  //Calculate the old origin of the map
+  double origin_x = update_x - (update_x_dim - 1) / 2;
+  double origin_y = update_y - (update_y_dim - 1) / 2;
+  DBGOUT(printf("origin_x = %.1f - (%d / 2) = %.1f\n", update_x, update_x_dim, origin_x);
+	 printf("origin_y = %.1f - (%d / 2) = %.1f\n", update_y, update_y_dim, origin_y));
+  //Calculate the new origin of the map
+  double new_origin_x = world_x - (world_x_dim - 1) / 2.0;
+  double new_origin_y = world_y - (world_y_dim - 1) / 2.0;
+  DBGOUT(printf("new_origin_x = %.1f - (%d / 2) = %.1f\n", world_x, world_x_dim, new_origin_x);
+	 printf("new_origin_y = %.1f - (%d / 2) = %.1f\n", world_y, world_y_dim, new_origin_y));
+
+  //Calculate the number of cells between the old and new origin
+  int cell_ox = ((new_origin_x - origin_x) / resolution);
+  int cell_oy = ((new_origin_y - origin_y) / resolution);
+  DBGOUT(printf("cell_ox = (%.1f - %.1f) / %.1f = %.1f = %d\n", new_origin_x, origin_x, resolution, ((new_origin_x - origin_x) / resolution), cell_ox);
+	 printf("cell_oy = (%.1f - %.1f) / %.1f = %.1f = %d\n", new_origin_y, origin_y, resolution, ((new_origin_y - origin_y) / resolution), cell_oy));
+  // Determine the dimensions (x, y) in terms of Grid cells
+  int cell_world_x_dim = (int)(world_x_dim / resolution);
+  int cell_world_y_dim = (int)(world_y_dim / resolution);
+  DBGOUT(printf("cell_world_x_dim = %d / %.f = %d\n", world_x_dim, resolution, cell_world_x_dim);
+	 printf("cell_world_y_dim = %d / %.f = %d\n", world_y_dim, resolution, cell_world_y_dim));
+    
+  //Determine the lower left cells of the origin
+  int max_ux = max(cell_ox, 0);
+  int max_uy = max(cell_oy, 0);
+  int update_lower_left_x = min(max_ux, cell_world_x_dim);
+  int update_lower_left_y = min(max_uy, cell_world_y_dim);
+  DBGOUT(printf("update_lower_left_x = min(max(%d, 0) = %d, %d) = %d\n", cell_ox, max_ux, cell_world_x_dim, update_lower_left_x);
+	 printf("update_lower_left_y = min(max(%d, 0) = %d, %d) = %d\n", cell_oy, max_uy, cell_world_y_dim, update_lower_left_y));
+  int world_lower_left_x = update_lower_left_x - cell_ox;
+  int world_lower_left_y = update_lower_left_y - cell_oy;
+  DBGOUT(printf("world_lower_left_x = %d - %d = %d\n", update_lower_left_x, cell_ox, world_lower_left_x);
+	 printf("world_lower_left_y = %d - %d = %d\n", update_lower_left_y, cell_oy, world_lower_left_y));
+
+  //Calculate the indexes of which to start 'copying' over
+  int update_index = (update_lower_left_y * cell_world_x_dim + update_lower_left_x);
+  int world_index = (world_lower_left_y * cell_world_x_dim + world_lower_left_x);
+  DBGOUT(printf("update_index = %d * %d + %d = %d\n", update_lower_left_y, cell_world_x_dim, update_lower_left_x, update_index);
+	 printf("world_index = %d * %d + %d = %d\n", world_lower_left_y, cell_world_x_dim, world_lower_left_x, world_index));
+
+  //The size of the overlapping region
+  int region_world_x_dim = cell_world_x_dim - cell_ox;
+  int region_world_y_dim = cell_world_y_dim - cell_oy;
+  DBGOUT(printf("region_world_x_dim = %d - %d = %d\n", cell_world_x_dim, cell_ox, region_world_x_dim);
+	 printf("region_world_y_dim = %d - %d = %d\n", cell_world_y_dim, cell_oy, region_world_y_dim));
+
+  /*DBGOUT(printf("origin : %.1lf %.1lf   new_origin: %.1lf %.1lf\n", origin_x, origin_y, new_origin_x, new_origin_y);
+	 printf("cell : ox,y %d %d  dimx,y %d %d\n", cell_ox, cell_oy, cell_world_x_dim, cell_world_y_dim);
+	 printf("Lower Left: Update (%d, %d)  World(%d, %d)\n", update_lower_left_x, update_lower_left_y, world_lower_left_x, world_lower_left_y);
+	 //printf("Lower Left of New Map = (%d, %d) \n", world_lower_left_x, world_lower_left_y);
+	 printf("Index of Old Map, Index of New Map = %d, %d \n", update_index, world_index);
+	 printf("Dimensions of Overlapping Region = (%d, %d) \n", region_world_x_dim, region_world_y_dim)); */
+  //Iterate through grids and assign corresponding max value
+  unsigned int total_count = 0;
+  unsigned int count = 0;
+  for (int i = 0; i < cell_world_x_dim; i++) {
+    for (int j = 0; j < cell_world_y_dim; j++) {
+      if (update_index == cell_world_x_dim * cell_world_y_dim) return;
+      if (count == region_world_x_dim) {
+	update_index = update_index + cell_ox;
+	world_index = world_index + cell_ox;
+	count = 0;
+      }
+      CHECK(if ((world_index < 0) || (world_index >= WORLD_MAP_ENTRIES)) {
+	  printf("ERROR : fuseIntoWorld world_index too large at %d vs %d\n", world_index, WORLD_MAP_ENTRIES);
+	});
+      CHECK(if ((update_index < 0) || (update_index >= COST_MAP_ENTRIES)) {
+	  printf("ERROR : fuseIntoWorld update_index too large at %d vs %d\n", update_index, COST_MAP_ENTRIES);
+	});
+
+      worldMap[world_index] = max(worldMap[world_index], updateMap[update_index]);
+      //DBGOUT(printf("%d : %d v %d : %d, %d \n", total_count, count, region_world_x_dim, update_index, world_index));
+      update_index++;
+      world_index++;
+      count++;
+      total_count++;
+    }
+  }
+  return;
+}
+
+void fuseIntoWorld(Worldmap2D* theWorld, Costmap2D* theUpdate)
+//                unsigned char* grid1, unsigned char* grid2,
+//		  double robot_x1, double robot_y1,
+//		  double robot_x2, double robot_y2,
+//		  unsigned int x_dim, unsigned int y_dim, double resolution
+//		  /*,char def_val*/ )
+{
+  unsigned char* worldMap = theWorld->map;
+  unsigned char* updateMap = theUpdate->costmap;
+  double world_x = theWorld->x;
+  double world_y = theWorld->y;
+  double update_x = theUpdate->av_x;
+  double update_y = theUpdate->av_y;
+  unsigned int world_x_dim = theWorld->x_dim;
+  unsigned int world_y_dim = theWorld->y_dim;
+  unsigned int update_x_dim = theUpdate->x_dim;
+  unsigned int update_y_dim = theUpdate->y_dim;
+  double resolution = theWorld->cell_size;
+    
+  DBGOUT(printf("in fuseIntoWorld: x1 = %.1f x2 = %.1f  y1 = %.1f y2 = %.1f\n", world_x, update_x, world_y, update_y);
+	 printf("  dims:  world: x = %u  y = %u   update: x = %u  y = %u\n", world_x_dim, world_y_dim, update_x_dim, update_y_dim));
+  //worldMap is previous map, updateMap is current map
+
+  //Calculate the old origin of the map
+  double origin_x = world_x - (world_x_dim - 1) / 2;
+  double origin_y = world_y - (world_y_dim - 1) / 2;
+	   
+  //Calculate the new origin of the map
+  double new_origin_x = update_x - (world_x_dim - 1) / 2.0;
+  double new_origin_y = update_y - (world_y_dim - 1) / 2.0;
+
+  //Calculate the number of cells between the old and new origin
+  int cell_ox = ((new_origin_x - origin_x) / resolution);
+  int cell_oy = ((new_origin_y - origin_y) / resolution);
+  DBGOUT(printf("cell_ox = (%.1f - %.1f) / %.1f = %.1f = %d\n", new_origin_x, origin_x, resolution, ((new_origin_x - origin_x) / resolution), cell_ox);
+	 printf("cell_oy = (%.1f - %.1f) / %.1f = %.1f = %d\n", new_origin_y, origin_y, resolution, ((new_origin_y - origin_y) / resolution), cell_oy));
+  // Determine the dimensions (x, y) in terms of Grid cells
+  int cell_world_x_dim = (int)(world_x_dim / resolution);
+  int cell_world_y_dim = (int)(world_y_dim / resolution);
+  int cell_update_x_dim = (int)(update_x_dim / resolution);
+  int cell_update_y_dim = (int)(update_y_dim / resolution);
+    
+  //Determine the lower left cells of the origin
+  int world_lower_left_x = min(max(cell_ox, 0), cell_world_x_dim);
+  int world_lower_left_y = min(max(cell_oy, 0), cell_world_y_dim);
+  int update_lower_left_x = world_lower_left_x - cell_ox;
+  int update_lower_left_y = world_lower_left_y - cell_oy;
+
+  //Calculate the indexes of which to start 'copying' over
+  int world_index = (world_lower_left_y * cell_world_x_dim + world_lower_left_x);
+  int update_index = (update_lower_left_y * cell_update_x_dim + update_lower_left_x);
+
+  //The size of the overlapping region
+  int region_world_x_dim = cell_world_x_dim - cell_ox;
+  int region_world_y_dim = cell_world_y_dim - cell_oy;
+  int region_update_x_dim = cell_update_x_dim - cell_ox;
+  int region_update_y_dim = cell_update_y_dim - cell_oy;
+
+  DBGOUT(printf("origin : %.1lf %.1lf   new_origin: %.1lf %.1lf\n", origin_x, origin_y, new_origin_x, new_origin_y);
+	 printf("cell : ox,y %d %d  dimx,y %d %d\n", cell_ox, cell_oy, cell_world_x_dim, cell_world_y_dim);
+	 printf("Lower Left: Old (%d, %d)  New (%d, %d)\n", world_lower_left_x, world_lower_left_y, update_lower_left_x, update_lower_left_y);
+	 //printf("Lower Left of New Map = (%d, %d) \n", update_lower_left_x, update_lower_left_y);
+	 printf("Index of Old Map, Index of New Map = %d, %d \n", world_index, update_index);
+	 printf("Dimensions of Overlapping Region = (%d, %d) \n", region_world_x_dim, region_world_y_dim));
+  //Iterate through grids and assign corresponding max value
+  unsigned int total_count = 0;
+  unsigned int count = 0;
+  for (int i = 0; i < cell_world_x_dim; i++) {
+    for (int j = 0; j < cell_world_y_dim; j++) {
+      //DBGOUT(printf(" i %u j %u world_idx %u upd_idx %u cw_dim %u count %u rw_x_dim %u\n", i, j, world_index, update_index, (cell_world_x_dim*cell_world_y_dim), count, region_world_x_dim));
+      if (world_index == cell_world_x_dim * cell_world_y_dim) return;
+      if (count == region_update_x_dim) {
+	world_index = world_index + cell_ox;
+	update_index = update_index + cell_ox;
+	count = 0;
+      }
+      CHECK(if ((update_index < 0) || (update_index >= COST_MAP_ENTRIES)) {
+	  printf("ERROR : fuseIntoWorld update_index too large at %d vs %d\n", update_index, COST_MAP_ENTRIES);
+	});
+      CHECK(if ((world_index < 0) || (world_index >= WORLD_MAP_ENTRIES)) {
+	  printf("ERROR : fuseIntoWorld world_index too large at %d vs %d\n", world_index, WORLD_MAP_ENTRIES);
+	});
+
+      worldMap[world_index] = max(worldMap[update_index], updateMap[world_index]);
+      //DBGOUT(printf("%d : %d v %d : %d, %d \n", total_count, count, region_world_x_dim, world_index, update_index));
+      world_index++;
+      update_index++;
+      count++;
+      total_count++;
+    }
+  }
+  return;
+}
+#endif
 /* The combineGrids function takes two input map grids, grid1 and grid2, 
    and "fuses" (or combines) the information from both into grid2
    (overwriting some or all af that grid's contents).
@@ -128,7 +417,8 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
 		  unsigned int x_dim, unsigned int y_dim, double resolution
 		  /*,char def_val*/ )
 {
-  DBGOUT(printf("in combineGrids: x1 = %.1f x2 = %.1f  y1 = %.1f y2 = %.1f\n", robot_x1, robot_x2, robot_y1, robot_y2));
+  DBGOUT(printf("in combineGrids: x1 = %.1f x2 = %.1f  y1 = %.1f y2 = %.1f\n", robot_x1, robot_x2, robot_y1, robot_y2);
+	 printf("     dimensions: x = %u  y = %u\n", x_dim, y_dim));
   //grid1 is previous map, grid2 is current map
 
   //Calculate the old origin of the map
@@ -142,8 +432,8 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
   //Calculate the number of cells between the old and new origin
   int cell_ox = ((new_origin_x - origin_x) / resolution);
   int cell_oy = ((new_origin_y - origin_y) / resolution);
-  DBGOUT(printf("cell_ox = (%.1f - %.1f) / %.1f = %.1f = %u\n", new_origin_x, origin_x, resolution, ((new_origin_x - origin_x) / resolution), cell_ox);
-	 printf("cell_oy = (%.1f - %.1f) / %.1f = %.1f = %u\n", new_origin_y, origin_y, resolution, ((new_origin_y - origin_y) / resolution), cell_oy));
+  DBGOUT(printf("cell_ox = (%.1f - %.1f) / %.1f = %.1f = %d\n", new_origin_x, origin_x, resolution, ((new_origin_x - origin_x) / resolution), cell_ox);
+	 printf("cell_oy = (%.1f - %.1f) / %.1f = %.1f = %d\n", new_origin_y, origin_y, resolution, ((new_origin_y - origin_y) / resolution), cell_oy));
   // Determine the dimensions (x, y) in terms of Grid cells
   int cell_x_dim = (int)(x_dim / resolution);
   int cell_y_dim = (int)(y_dim / resolution);
@@ -196,6 +486,9 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
   }
   return;
 }
+
+#undef DBGOUT
+#define DBGOUT(x)
 
 unsigned char* cloudToOccgrid(float* data, unsigned int data_size,
 			      double robot_x, double robot_y, double robot_z, double robot_yaw,
@@ -369,7 +662,7 @@ void updateBounds(float* data, unsigned int data_size, double robot_x, double ro
   //Iterate through cloud to register obstacles within costmap
   for(unsigned int i = 0; i < data_size; i = i + 3) { //TODO: Test if sizeof(points) works correctly
     //Only consider points within height boundaries
-    if (data[i + 2] <= master_observation.max_obstacle_height && data[i + 2] >= master_observation.min_obstacle_height) {
+    if ((data[i + 2] <= master_observation.max_obstacle_height) && (data[i + 2] >= master_observation.min_obstacle_height)) {
       double px = (double) *(data + i);
       double py = (double) *(data + i + 1);
       double pz = (double) *(data + i + 2);
@@ -415,11 +708,10 @@ void raytraceFreespace(float* data, unsigned int data_size, double min_x, double
 
   // get the map coordinates of the origin of the sensor
   unsigned int x0, y0;
-  if (!worldToMap(0, 0, robot_x, robot_y)) //TODO:
-    {
-      printf("The origin for the sensor at (%.2f, %.2f) is out of map bounds. So, the costmap cannot raytrace for it.\n", ox, oy);
-      return;
-    }
+  if (!worldToMap(0, 0, robot_x, robot_y)) {//TODO:
+    printf("The origin for the sensor at (%.2f, %.2f) is out of map bounds. So, the costmap cannot raytrace for it.\n", ox, oy);
+    return;
+  }
   x0 = master_observation.map_coordinates.x;
   y0 = master_observation.map_coordinates.y;
   //printf(">>> Map Coordinates of the Sensor Origin -> <%d, %d>\n", x0, y0);
@@ -496,7 +788,7 @@ bool worldToMap(double wx, double wy, double robot_x, double robot_y) {
   double wx_rel_origin = wx + robot_x;
   double wy_rel_origin = wy + robot_y;
   //printf("World To Map (Relative to Origin) = (%d, %d)\n", (int)((wx_rel_origin - master_observation.master_origin.x) / master_observation.master_resolution), (int)((wy_rel_origin - master_observation.master_origin.y) / master_observation.master_resolution));
-  if (wx_rel_origin < master_observation.master_origin.x || wy_rel_origin < master_observation.master_origin.y) {
+  if ((wx_rel_origin < master_observation.master_origin.x) || (wy_rel_origin < master_observation.master_origin.y)) {
     DBGOUT(printf("Coordinates Out Of Bounds .... (wx, wy) = (%f, %f); (ox, oy) = (%f, %f)\n", wx, wy, master_observation.master_origin.x, master_observation.master_origin.y));
     return false;
   }
@@ -506,8 +798,9 @@ bool worldToMap(double wx, double wy, double robot_x, double robot_y) {
 
   //printf("World To Map (wx, wy) = (%f, %f) -> (mx, my) = (%d, %d)\n\n", wx, wy, master_observation.map_coordinates.x, master_observation.map_coordinates.y);
 
-  if (master_observation.map_coordinates.x < master_observation.master_costmap.x_dim && master_observation.map_coordinates.y < master_observation.master_costmap.y_dim) return true;
-
+  if ((master_observation.map_coordinates.x < master_observation.master_costmap.x_dim) && (master_observation.map_coordinates.y < master_observation.master_costmap.y_dim)) {
+    return true;
+  }
   return false;
 }
 
@@ -538,14 +831,12 @@ void raytraceLine(unsigned int x0, unsigned int y0, unsigned int x1, unsigned in
   double dist = hypot(dx, dy);
   double scale = (dist == 0.0) ? 1.0 : min(1.0, max_length / dist);
 
-  // if x is dominan
-
-  if (abs_dx >= abs_dy)
-    {
-      int error_y = abs_dx / 2;
-      bresenham2D(abs_dx, abs_dy, error_y, offset_dx, offset_dy, offset, (unsigned int)(scale * abs_dx));
-      return;
-    }
+  // if x is dominant
+  if (abs_dx >= abs_dy) {
+    int error_y = abs_dx / 2;
+    bresenham2D(abs_dx, abs_dy, error_y, offset_dx, offset_dy, offset, (unsigned int)(scale * abs_dx));
+    return;
+  }
 
   // otherwise y is dominant
   int error_x = abs_dy / 2;
@@ -632,8 +923,15 @@ void init_occgrid_state()
     error++;
   }
   // Initialize thge entire world-map to the default value.
+  // We could set these here; I am going to take the first local odometry and use that...
+  //  theWorldMap.av_x = 0;
+  //  theWorldMap.av_y = 0;
+  theWorldMap.x_dim = WORLD_GRID_X_DIM;
+  theWorldMap.y_dim = WORLD_GRID_Y_DIM;
+  theWorldMap.cell_size = GRID_MAP_RESLTN;
+  theWorldMap.must_init = true;
   for (int i = 0; i < WORLD_MAP_ENTRIES; i++) {
-    master_observation.master_costmap.costmap[i] = CMV_NO_INFORMATION; // master_observation.master_costmap.default_value;
+    theWorldMap.map[i] = CMV_NO_INFORMATION;
   }
 
 }
@@ -662,6 +960,36 @@ void print_ascii_costmap(FILE*  fptr, Costmap2D* cmap)
     for (int ij = 0; ij < COST_MAP_Y_DIM; ij++) {
       int idx = COST_MAP_X_DIM*ii + ij;
       fprintf(fptr, "%c", pr_map_char[cmap->costmap[idx]]);
+    }
+    fprintf(fptr, " | %3u\n  ", ii);
+  }
+  fprintf(fptr, "\n");
+}
+
+void print_ascii_worldmap(FILE*  fptr, Worldmap2D* wmap)
+{
+  fprintf(fptr, "  ");
+  unsigned h1 = 0;
+  unsigned h10 = 0;
+  for (int ii = 0; ii < WORLD_MAP_X_DIM; ii++) {
+    fprintf(fptr, "%u", h10);
+    h1++;
+    if (h1 == 10) { h1 = 0; h10++; }
+    if (h10 == 10) { h10 = 0;}
+  }
+  fprintf(fptr, "\n  ");
+  for (int ii = 0; ii < WORLD_MAP_X_DIM; ii++) {
+    fprintf(fptr, "%u", ii%10);
+  }
+  fprintf(fptr, "\n  ");
+  for (int ii = 0; ii < WORLD_MAP_X_DIM; ii++) {
+    fprintf(fptr, "-");
+  }
+  fprintf(fptr, "\n  ");
+  for (int ii = 0; ii < WORLD_MAP_X_DIM; ii++) {
+    for (int ij = 0; ij < WORLD_MAP_Y_DIM; ij++) {
+      int idx = WORLD_MAP_X_DIM*ii + ij;
+      fprintf(fptr, "%c", pr_map_char[wmap->map[idx]]);
     }
     fprintf(fptr, " | %3u\n  ", ii);
   }
