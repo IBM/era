@@ -843,6 +843,7 @@ void dump_final_run_statistics()
   uint64_t pd_recv_pipe  = (uint64_t)(pd_recv_pipe_sec)  * 1000000 + (uint64_t)(pd_recv_pipe_usec);
   uint64_t pd_lz4_uncmp  = (uint64_t)(pd_lz4_uncmp_sec)  * 1000000 + (uint64_t)(pd_lz4_uncmp_usec);
   uint64_t pd_combGrids  = (uint64_t)(pd_combGrids_sec)  * 1000000 + (uint64_t)(pd_combGrids_usec);
+  uint64_t pd_carSend    = (uint64_t)(pd_xmit_car_sec)  * 1000000 + (uint64_t)(pd_xmit_car_usec);
 
   // This is the xmit_pipe.c breakdown
   uint64_t x_pipe      = (uint64_t)(x_pipe_sec)  * 1000000 + (uint64_t)(x_pipe_usec);
@@ -919,6 +920,7 @@ void dump_final_run_statistics()
   printf("         R-Pipe DeScramble Time : %10lu usec\n", r_descrmbl);
   printf("       Total pd lz4_uncmp       : %10lu usec\n", pd_lz4_uncmp);
   printf("       Total pd combGrids       : %10lu usec\n", pd_combGrids);
+  printf("       Total pd carSend         : %10lu usec\n", pd_carSend);
   printf("\n");
  #else
   printf(" NO Timing information on this run...\n");
