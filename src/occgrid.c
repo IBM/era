@@ -4,6 +4,47 @@
 #include "globals.h"
 #include "occgrid.h"
 
+/** FORWARD DECLARATIONS **/
+void touch(double x, double y, double* min_x, double* min_y, double* max_x, double* max_y);
+void updateBounds(float* data, unsigned int data_size, double robot_x, double robot_y, double robot_z, double robot_yaw,
+		  double* min_x, double* min_y, double* max_x, double* max_y);
+void raytraceFreespace(float* data, unsigned int data_size,
+		       double* min_x, double* min_y, double* max_x, double* max_y,
+		       double robot_x, double robot_y, double robot_z, double robot_yaw);
+void updateRaytraceBounds(double ox, double oy, double wx, double wy, double range,
+                          double* min_x, double* min_y, double* max_x, double* max_y);
+void updateMap(float* data, unsigned int data_size, double robot_x, double robot_y, double robot_z, double robot_yaw);
+
+void updateOrigin(double new_origin_x, double new_origin_y);
+
+void copyMapRegion(unsigned char* source_map, unsigned int sm_lower_left_x, unsigned int sm_lower_left_y,
+                       unsigned int sm_size_x, unsigned int dm_lower_left_x,
+                       unsigned int dm_lower_left_y, unsigned int dm_size_x, unsigned int region_size_x,
+                       unsigned int region_size_y);
+
+bool worldToMap(double wx, double wy, double robot_x, double robot_y);
+
+unsigned int cellDistance(double world_dist);
+
+void raytraceLine(unsigned int x0, unsigned int y0, unsigned int x1, unsigned int y1, unsigned int max_length); //TODO: Default max argument for max_length is UNIT_MAX
+
+void bresenham2D(unsigned int abs_da, unsigned int abs_db, int error_b, int offset_a,
+                        int offset_b, unsigned int offset, unsigned int max_length);
+
+void markCell(unsigned char value, unsigned int offset);
+
+unsigned int getIndex(unsigned int x, unsigned int y);
+
+void addStaticObstacle(unsigned char* obstacle_type);
+
+void initCostmap(Observation* obsvtn,
+		 bool rolling_window,
+		 double min_obstacle_height, double max_obstacle_height, double raytrace_range,
+		 unsigned int size_x, unsigned int size_y, double resolution,
+		 /*unsigned char default_value,*/
+		 double robot_x, double robot_y, double robot_z);
+
+
 //Define global variables
 Observation master_observation;
 //char data[199992];
@@ -27,15 +68,12 @@ int sign (int x) {
   return x > 0 ? 1.0 : -1.0;
 }
 
-#if(0)
-double getSizeInMetersX() {
-  return (master_observation.master_costmap.x_dim - 1 + 0.5) * master_observation.master_resolution;
+void touch(double x, double y, double* min_x, double* min_y, double* max_x, double* max_y) {
+  *min_x = min(x, *min_x);
+  *min_y = min(y, *min_y);
+  *max_x = max(x, *max_x);
+  *max_y = max(y, *max_y);
 }
-
-double getSizeInMetersY() {
-  return (master_observation.master_costmap.y_dim - 1 + 0.5) * master_observation.master_resolution;
-}
-#endif
 
 unsigned int getIndex(unsigned int i, unsigned int j) {
   //printf("x_dim * j + i = %d * %d + %d = %d", master_observation.master_costmap.x_dim, j, i, master_observation.master_costmap.x_dim * j + i);
@@ -121,6 +159,88 @@ void initCostmap(Observation* obsvtn,
 
 /******************* FUNCTIONS *********************/
 
+void fuseIntoLocal(Costmap2D* theLocal, Costmap2D* theInput)
+{
+  DBGOUT(printf("Entered fuseIntoLocal...\n"));
+  //localMap is the persistent map fo local knowledge; inputMap is the new information to enter into the localMap
+  unsigned char* localMap = theLocal->costmap;
+  unsigned char* inputMap = theInput->costmap;
+  // These are the "position" of the (center) of the map
+  int local_x_pos = (int)((float)theLocal->av_x / theLocal->cell_size);
+  int local_y_pos = (int)((float)theLocal->av_y / theLocal->cell_size);
+  int input_x_pos = (int)((float)theInput->av_x / theInput->cell_size);
+  int input_y_pos = (int)((float)theInput->av_y / theInput->cell_size);
+  // These are the dimension (raw input) of the map
+  int local_x_dim = theLocal->x_dim;
+  int local_y_dim = theLocal->y_dim;
+  int input_x_dim = theInput->x_dim;
+  int input_y_dim = theInput->y_dim;
+  // Thess are the number of costmap/gridmap "cells" (dimensionally)
+  int local_x_cells = (local_x_dim / theLocal->cell_size);
+  int local_y_cells = (local_y_dim / theLocal->cell_size);
+  int input_x_cells = (input_x_dim / theInput->cell_size);
+  int input_y_cells = (input_y_dim / theInput->cell_size);
+  //int resolution = theLocal->cell_size;
+  /* DBGOUT(printf("in fuseIntoLocal: x1 = %d x2 = %d  y1 = %d y2 = %d\n", input_x, local_x, input_y, local_y); */
+  /* 	 printf("      num_cells : w_x = %u  w_y = %u   u_x = %u  u_y = %u\n", local_x_cells, local_y_cells, input_x_cells, input_y_cells)); */
+
+  DBGOUT(printf(" Local in-data: X-pos %d y_pos %d x_cells %d y_cells %d\n", local_x_pos, local_y_pos, local_x_cells, local_y_cells);
+	 printf(" Input in-data: X-pos %d y_pos %d x_cells %d y_cells %d\n", input_x_pos, input_y_pos, input_x_cells, input_y_cells));
+  // Express the local/input maps in terms of "Global Cell Coordinates"
+  int input_0_x = input_x_pos - input_x_cells/2;
+  int input_0_y = input_y_pos - input_x_cells/2;
+  int input_N_x = input_x_pos + input_x_cells/2 - 1;
+  int input_N_y = input_y_pos + input_x_cells/2 - 1;
+  DBGOUT(printf("Input: 0x Nx = %d  %d   :   0y Ny = %d  %d\n", input_0_x, input_N_x, input_0_y, input_N_y));
+
+  int local_0_x = local_x_pos - local_x_cells/2;
+  int local_0_y = local_y_pos - local_x_cells/2;
+  int local_N_x = local_x_pos + local_x_cells/2 - 1;
+  int local_N_y = local_y_pos + local_x_cells/2 - 1;
+  DBGOUT(printf("Local: 0x Nx = %d  %d   :   0y Ny = %d  %d\n", local_0_x, local_N_x, local_0_y, local_N_y));
+
+  // Now determine the (localized) X and Y cell dimensions that overlap
+  //  We compute the min and max X and Y as for a for loop: for (ix = x_min; ix < x_max; ix++) 
+  int input_x_min = max(0, (local_0_x - input_0_x));
+  DBGOUT(printf("   input_x_min = max(0, (%d - %d) = %d) = %d\n", local_0_x, input_0_x, (local_0_x - input_0_x), input_x_min));
+  int input_x_max = input_x_cells - max(0, (input_N_x - local_N_x));
+  DBGOUT(printf("   input_x_max = %d - max(0, (%d - %d) = %d) = %d\n", input_x_cells, input_0_x, local_0_x, (input_N_x - local_N_x), input_x_max));
+  int input_y_min = max(0, (local_0_y - input_0_y));
+  DBGOUT(printf("   input_y_min = max(0, (%d - %d) = %d) = %d\n", local_0_y, input_0_y, (local_0_y - input_0_y), input_y_min));
+  int input_y_max = input_y_cells - max(0, (input_N_y - local_N_y));
+  DBGOUT(printf("   input_y_max = %d - max(0, (%d - %d) = %d) = %d\n", input_y_cells, input_0_y, local_0_y, (input_N_y - local_N_y), input_y_max));
+  DBGOUT(printf("Input: x_min %d  x_max %d  y_min %d  y_max %d\n", input_x_min, input_x_max, input_y_min, input_y_max));
+
+  int local_x_min = max(0, (input_0_x - local_0_x));
+  int local_x_max = local_x_cells - max(0, (local_N_x - input_N_x));
+  int local_y_min = max(0, (local_0_y, input_0_y));
+  int local_y_max = local_y_cells - max(0, (local_N_y - input_N_y));
+  DBGOUT(printf("Local: x_min %d  x_max %d  y_min %d  y_max %d\n", local_x_min, local_x_max, local_y_min, local_y_max));
+
+  //Iterate through grids and assign corresponding max value
+  int iiy = input_y_min;
+  for (int wiy = local_y_min; wiy < local_y_max; wiy++) {
+    int wbase = wiy*local_x_cells;
+    int ibase = iiy*input_x_cells;
+    int iix = input_x_min;
+    for (int wix = local_x_min; wix < local_x_max; wix++) {
+      int local_idx = wbase + wix;
+      int input_idx = ibase + iix;
+      CHECK(if ((local_idx < 0) || (local_idx >= COST_MAP_ENTRIES)) {
+      	  printf("ERROR : fuseIntoLocal local_idx outside bounds at %d vs 0 .. %d\n", local_idx, COST_MAP_ENTRIES);
+      	});
+      CHECK(if ((input_idx < 0) || (input_idx >= COST_MAP_ENTRIES)) {
+      	  printf("ERROR : fuseIntoLocal input_idx outside bounds at %d vs 0 .. %d\n", input_idx, COST_MAP_ENTRIES);
+      	});
+      //DBGOUT(printf("  Setting localMap[%d] = max(%u, %u = inputMap[%d])\n", local_idx, localMap[local_idx], inputMap[input_idx], input_idx));
+      localMap[local_idx] = max(localMap[local_idx], inputMap[input_idx]);
+      iix++;
+    }
+    iiy++;
+  }
+  return;
+}
+
 /* The combineGrids function takes two input map grids, grid1 and grid2, 
    and "fuses" (or combines) the information from both into grid2
    (overwriting some or all af that grid's contents).
@@ -131,7 +251,8 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
 		  unsigned int x_dim, unsigned int y_dim, double resolution
 		  /*,char def_val*/ )
 {
-  DBGOUT(printf("in combineGrids: x1 = %.1f x2 = %.1f  y1 = %.1f y2 = %.1f\n", robot_x1, robot_x2, robot_y1, robot_y2));
+  DBGOUT(printf("in combineGrids: x1 = %.1f x2 = %.1f  y1 = %.1f y2 = %.1f\n", robot_x1, robot_x2, robot_y1, robot_y2);
+	 printf("     dimensions: x = %u  y = %u\n", x_dim, y_dim));
   //grid1 is previous map, grid2 is current map
 
   //Calculate the old origin of the map
@@ -145,8 +266,8 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
   //Calculate the number of cells between the old and new origin
   int cell_ox = ((new_origin_x - origin_x) / resolution);
   int cell_oy = ((new_origin_y - origin_y) / resolution);
-  DBGOUT(printf("cell_ox = (%.1f - %.1f) / %.1f = %.1f = %u\n", new_origin_x, origin_x, resolution, ((new_origin_x - origin_x) / resolution), cell_ox);
-	 printf("cell_oy = (%.1f - %.1f) / %.1f = %.1f = %u\n", new_origin_y, origin_y, resolution, ((new_origin_y - origin_y) / resolution), cell_oy));
+  DBGOUT(printf("cell_ox = (%.1f - %.1f) / %.1f = %.1f = %d\n", new_origin_x, origin_x, resolution, ((new_origin_x - origin_x) / resolution), cell_ox);
+	 printf("cell_oy = (%.1f - %.1f) / %.1f = %.1f = %d\n", new_origin_y, origin_y, resolution, ((new_origin_y - origin_y) / resolution), cell_oy));
   // Determine the dimensions (x, y) in terms of Grid cells
   int cell_x_dim = (int)(x_dim / resolution);
   int cell_y_dim = (int)(y_dim / resolution);
@@ -164,24 +285,33 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
   //The size of the overlapping region
   int region_x_dim = cell_x_dim - cell_ox;
   int region_y_dim = cell_y_dim - cell_oy;
-
+  
   DBGOUT(printf("origin : %.1lf %.1lf   new_origin: %.1lf %.1lf\n", origin_x, origin_y, new_origin_x, new_origin_y);
 	 printf("cell : ox,y %d %d  dimx,y %d %d\n", cell_ox, cell_oy, cell_x_dim, cell_y_dim);
 	 printf("Lower Left: Old (%d, %d)  New (%d, %d)\n", g1_lower_left_x, g1_lower_left_y, g2_lower_left_x, g2_lower_left_y);
 	 //printf("Lower Left of New Map = (%d, %d) \n", g2_lower_left_x, g2_lower_left_y);
 	 printf("Index of Old Map, Index of New Map = %d, %d \n", g1_index, g2_index);
+	 printf("Cell_Dimensions: X %d y %d\n", cell_x_dim, cell_y_dim);
 	 printf("Dimensions of Overlapping Region = (%d, %d) \n", region_x_dim, region_y_dim));
   //Iterate through grids and assign corresponding max value
   unsigned int total_count = 0;
+  unsigned int incr_ct = 0;
   unsigned int count = 0;
-  for (int i = 0; i < cell_x_dim; i++) {
-    for (int j = 0; j < cell_y_dim; j++) {
-      if (g1_index == cell_x_dim * cell_y_dim) return;
-      if (count == region_x_dim) {
-	g1_index = g1_index + cell_ox;
-	g2_index = g2_index + cell_ox;
+  for (int j = 0; j < cell_y_dim; j++) {
+    for (int i = 0; i < cell_x_dim; i++) {
+      printf("i %d  j %d  g1_index %d  g1_index %d  count %d  tot_count %d DIM^2: %d\n", i, j, g1_index, g2_index, count, total_count, cell_x_dim * cell_y_dim);
+      if (g1_index >= cell_x_dim * cell_y_dim) return;
+      if (g2_index >= cell_x_dim * cell_y_dim) return;
+      if (count >= region_x_dim) {
+	//g1_index = g1_index + cell_ox;
+	g1_index = (g1_lower_left_y + incr_ct) * cell_x_dim + g1_lower_left_x;
+	//g2_index = g2_index + cell_ox;
+	g2_index = (g2_lower_left_y + incr_ct) * cell_x_dim + g2_lower_left_x;
 	count = 0;
+	incr_ct++;
       }
+      if (g1_index >= cell_x_dim * cell_y_dim) return;
+      if (g2_index >= cell_x_dim * cell_y_dim) return;
       CHECK(if ((g2_index < 0) || (g2_index >= COST_MAP_ENTRIES)) {
 	  printf("ERROR : combineGrids g2_index too large at %d vs %d\n", g2_index, COST_MAP_ENTRIES);
 	});
@@ -229,16 +359,16 @@ void updateMap(float* data, unsigned int data_size,
     updateOrigin(new_origin_x, new_origin_y);
   }
 
-  double minx_ = 1e30;
-  double miny_ = 1e30;
-  double maxx_ = -1e30;
-  double maxy_ = -1e30;
+  double min_x = 1e30;
+  double min_y = 1e30;
+  double max_x = -1e30;
+  double max_y = -1e30;
 
   //printf("(1) Number of elements : %d ... ", data_size);
   //printf("First Coordinate = <%f, %f>\n", *data, *(data+1));
   //rotating_window = true; //Comment out if not rolling window
 
-  updateBounds(data, data_size, robot_x, robot_y, robot_z, robot_yaw, minx_, miny_, maxx_, maxy_);
+  updateBounds(data, data_size, robot_x, robot_y, robot_z, robot_yaw, &min_x, &min_y, &max_x, &max_y);
 }
 
 void updateOrigin(double new_origin_x, double new_origin_y) {
@@ -359,8 +489,8 @@ void copyMapRegion(unsigned char* source_map,
   }
 }
 
-void updateBounds(float* data, unsigned int data_size, double robot_x, double robot_y, double robot_z,
-                  double robot_yaw, double min_x, double min_y, double max_x, double max_y) {
+void updateBounds(float* data, unsigned int data_size, double robot_x, double robot_y, double robot_z, double robot_yaw,
+		  double* min_x, double* min_y, double* max_x, double* max_y) {
   //printf("(1) Number of elements : %d ... ", data_size);
   //printf("First Coordinate = <%f, %f>\n", *data, *(data+1));
 
@@ -372,7 +502,7 @@ void updateBounds(float* data, unsigned int data_size, double robot_x, double ro
   //Iterate through cloud to register obstacles within costmap
   for(unsigned int i = 0; i < data_size; i = i + 3) { //TODO: Test if sizeof(points) works correctly
     //Only consider points within height boundaries
-    if (data[i + 2] <= master_observation.max_obstacle_height && data[i + 2] >= master_observation.min_obstacle_height) {
+    if ((data[i + 2] <= master_observation.max_obstacle_height) && (data[i + 2] >= master_observation.min_obstacle_height)) {
       double px = (double) *(data + i);
       double py = (double) *(data + i + 1);
       double pz = (double) *(data + i + 2);
@@ -405,7 +535,9 @@ void updateBounds(float* data, unsigned int data_size, double robot_x, double ro
    (1) Finding the size of the array for iteration
    (2) Difference between origin_x_ and observation.origin_x
 */
-void raytraceFreespace(float* data, unsigned int data_size, double min_x, double min_y, double max_x, double max_y, double robot_x, double robot_y, double robot_z, double robot_yaw) {
+void raytraceFreespace(float* data, unsigned int data_size,
+		       double* min_x, double* min_y, double* max_x, double* max_y,
+		       double robot_x, double robot_y, double robot_z, double robot_yaw) {
   //printf("(1) Number of elements : %d ... ", data_size);
   //printf("First Coordinate = <%f, %f>\n", *data, *(data+1));
 
@@ -416,11 +548,10 @@ void raytraceFreespace(float* data, unsigned int data_size, double min_x, double
 
   // get the map coordinates of the origin of the sensor
   unsigned int x0, y0;
-  if (!worldToMap(0, 0, robot_x, robot_y)) //TODO:
-    {
-      printf("The origin for the sensor at (%.2f, %.2f) is out of map bounds. So, the costmap cannot raytrace for it.\n", ox, oy);
-      return;
-    }
+  if (!worldToMap(0, 0, robot_x, robot_y)) {//TODO:
+    printf("The origin for the sensor at (%.2f, %.2f) is out of map bounds. So, the costmap cannot raytrace for it.\n", ox, oy);
+    return;
+  }
   x0 = master_observation.map_coordinates.x;
   y0 = master_observation.map_coordinates.y;
   //printf(">>> Map Coordinates of the Sensor Origin -> <%d, %d>\n", x0, y0);
@@ -495,7 +626,7 @@ bool worldToMap(double wx, double wy, double robot_x, double robot_y) {
   double wx_rel_origin = wx + robot_x;
   double wy_rel_origin = wy + robot_y;
   //printf("World To Map (Relative to Origin) = (%d, %d)\n", (int)((wx_rel_origin - master_observation.master_origin.x) / master_observation.master_resolution), (int)((wy_rel_origin - master_observation.master_origin.y) / master_observation.master_resolution));
-  if (wx_rel_origin < master_observation.master_origin.x || wy_rel_origin < master_observation.master_origin.y) {
+  if ((wx_rel_origin < master_observation.master_origin.x) || (wy_rel_origin < master_observation.master_origin.y)) {
     DBGOUT(printf("Coordinates Out Of Bounds .... (wx, wy) = (%f, %f); (ox, oy) = (%f, %f)\n", wx, wy, master_observation.master_origin.x, master_observation.master_origin.y));
     return false;
   }
@@ -505,8 +636,9 @@ bool worldToMap(double wx, double wy, double robot_x, double robot_y) {
 
   //printf("World To Map (wx, wy) = (%f, %f) -> (mx, my) = (%d, %d)\n\n", wx, wy, master_observation.map_coordinates.x, master_observation.map_coordinates.y);
 
-  if (master_observation.map_coordinates.x < master_observation.master_costmap.x_dim && master_observation.map_coordinates.y < master_observation.master_costmap.y_dim) return true;
-
+  if ((master_observation.map_coordinates.x < master_observation.master_costmap.x_dim) && (master_observation.map_coordinates.y < master_observation.master_costmap.y_dim)) {
+    return true;
+  }
   return false;
 }
 
@@ -537,14 +669,12 @@ void raytraceLine(unsigned int x0, unsigned int y0, unsigned int x1, unsigned in
   double dist = hypot(dx, dy);
   double scale = (dist == 0.0) ? 1.0 : min(1.0, max_length / dist);
 
-  // if x is dominan
-
-  if (abs_dx >= abs_dy)
-    {
-      int error_y = abs_dx / 2;
-      bresenham2D(abs_dx, abs_dy, error_y, offset_dx, offset_dy, offset, (unsigned int)(scale * abs_dx));
-      return;
-    }
+  // if x is dominant
+  if (abs_dx >= abs_dy) {
+    int error_y = abs_dx / 2;
+    bresenham2D(abs_dx, abs_dy, error_y, offset_dx, offset_dy, offset, (unsigned int)(scale * abs_dx));
+    return;
+  }
 
   // otherwise y is dominant
   int error_x = abs_dy / 2;
@@ -578,7 +708,7 @@ void markCell(unsigned char value, unsigned int offset) {
 }
 
 void updateRaytraceBounds(double ox, double oy, double wx, double wy, double range,
-                          double min_x, double min_y, double max_x, double max_y) {
+                          double* min_x, double* min_y, double* max_x, double* max_y) {
   double dx = wx - ox, dy = wy - oy;
   double full_distance = hypot(dx, dy);
   double scale = min(1.0, range / full_distance);
@@ -586,12 +716,6 @@ void updateRaytraceBounds(double ox, double oy, double wx, double wy, double ran
   touch(ex, ey, min_x, min_y, max_x, max_y);
 }
 
-void touch(double x, double y, double min_x, double min_y, double max_x, double max_y) {
-  min_x = min(x, min_x);
-  min_y = min(y, min_y);
-  max_x = max(x, max_x);
-  max_y = max(y, max_y);
-}
 
 
 
@@ -606,39 +730,6 @@ void init_occgrid_state()
   pr_map_char[CMV_NO_INFORMATION]  = '.';
   pr_map_char[CMV_FREE_SPACE]      = ' ';
   pr_map_char[CMV_LETHAL_OBSTACLE] = 'X';
-
-  int error = 0;
-  if (WORLD_GRID_X_DIM < GRID_MAP_X_DIM) {
-    printf("ERROR : WORLD_GRID_X_DIM = %u  < %u = GRID_MAP_X_DIM\n", WORLD_GRID_X_DIM, GRID_MAP_X_DIM);
-    error++;
-  }
-  if (WORLD_GRID_Y_DIM < GRID_MAP_Y_DIM) {
-    printf("ERROR : WORLD_GRID_Y_DIM = %u  < %u = GRID_MAP_Y_DIM\n", WORLD_GRID_Y_DIM, GRID_MAP_Y_DIM);
-    error++;
-  }
-  int pop_x_count = 0;
-  int pop_y_count = 0;
-  for (int ii = 0; ii < 32; ii++) {
-    if (((WORLD_MAP_X_DIM >> ii)&0x1) == 1) {
-      pop_x_count++;
-    }
-    if (((WORLD_MAP_X_DIM >> ii)&0x1) == 1) {
-      pop_y_count++;
-    }
-  }
-  if (pop_x_count > 1) {
-    printf("ERROR : WORLD_GRID_X_DIM id %u - must be power-of-2 >= 2\n", WORLD_GRID_X_DIM);
-    error++;
-  }
-  if (pop_y_count > 1) {
-    printf("ERROR : WORLD_GRID_Y_DIM id %u - must be power-of-2 >= 2\n", WORLD_GRID_Y_DIM);
-    error++;
-  }
-  // Initialize thge entire world-map to the default value.
-  for (int i = 0; i < WORLD_MAP_ENTRIES; i++) {
-    master_observation.master_costmap.costmap[i] = CMV_NO_INFORMATION; // master_observation.master_costmap.default_value;
-  }
-
 }
 
 void print_ascii_costmap(FILE*  fptr, Costmap2D* cmap)

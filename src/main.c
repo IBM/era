@@ -473,12 +473,13 @@ void process_data(char* data, int data_size)
   //  and the x_dim, et.c MUST correspond to that second map (here local)
  #ifdef INT_TIME
   gettimeofday(&start_pd_combGrids, NULL);
- #endif	
-  combineGrids(remote_map->costmap, local_map->costmap,
-	       remote_map->av_x, remote_map->av_y,
-	       local_map->av_x, local_map->av_y,
-	       local_map->x_dim, local_map->y_dim, local_map->cell_size
-	       /*,local_map->default_value*/);
+ #endif
+  fuseIntoLocal(local_map, remote_map);
+  /*combineGrids(remote_map->costmap, local_map->costmap,
+  	       remote_map->av_x, remote_map->av_y,
+  	       local_map->av_x, local_map->av_y,
+  	       local_map->x_dim, local_map->y_dim, local_map->cell_size);
+  */
  #ifdef INT_TIME
   gettimeofday(&stop_pd_combGrids, NULL);
   pd_combGrids_sec   += stop_pd_combGrids.tv_sec  - start_pd_combGrids.tv_sec;
@@ -789,7 +790,6 @@ int main(int argc, char *argv[])
       odometry[0] = *((float*)(buffer));   //bytes_to_float(buffer);
       odometry[1] = *((float*)(buffer+4)); //bytes_to_float(buffer+4);
       odometry[2] = *((float*)(buffer+8)); //bytes_to_float(buffer+8);
-
       printf("Odometry msg %4u: %.2f %.2f %.2f\n", odo_count, odometry[0], odometry[1], odometry[2]);
       odo_count++;
      #ifdef INT_TIME
