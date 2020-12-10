@@ -460,7 +460,7 @@ void process_data(char* data, int data_size)
   pd_lz4_uncmp_sec   += stop_pd_lz4_uncmp.tv_sec  - start_pd_lz4_uncmp.tv_sec;
   pd_lz4_uncmp_usec  += stop_pd_lz4_uncmp.tv_usec - start_pd_lz4_uncmp.tv_usec;
  #endif
-  printf("Recevied %d decoded bytes from the wifi...\n", dec_bytes);
+  DEBUG(printf("Recevied %d decoded bytes from the wifi...\n", dec_bytes));
   Costmap2D* remote_map = (Costmap2D*)&(uncmp_data); // Convert "type" to Costmap2D
   DBGOUT(printf("  Back from LZ4_decompress_safe with %u decompressed bytes\n", dec_bytes);
 	 printf("  Remote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
