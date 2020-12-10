@@ -761,10 +761,13 @@ void print_ascii_costmap(FILE*  fptr, Costmap2D* cmap)
   for (int ii = 0; ii < COST_MAP_X_DIM; ii++) {
     for (int ij = 0; ij < COST_MAP_Y_DIM; ij++) {
       int idx = COST_MAP_X_DIM*ii + ij;
+      //printf("%2x ", cmap->costmap[idx]);
       fprintf(fptr, "%c", pr_map_char[cmap->costmap[idx]]);
     }
     fprintf(fptr, " | %3u\n  ", ii);
+    //printf("| %3u\n", ii);
   }
   fprintf(fptr, "\n");
+  //printf("\n");
 }
 

@@ -270,6 +270,7 @@ void process_data(char* data, int data_size)
   char ascii_file_name[32];
   snprintf(ascii_file_name, sizeof(char)*32, "%s%04d.txt", ASCII_FN, ascii_counter);
   FILE *ascii_fp = fopen(ascii_file_name, "w");
+  //printf("Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
   fprintf(ascii_fp, "Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
   fprintf(ascii_fp, "             : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
   print_ascii_costmap(ascii_fp, local_map);
@@ -446,14 +447,20 @@ void process_data(char* data, int data_size)
   unsigned char uncmp_data[MAX_UNCOMPRESSED_DATA_SIZE];
  #ifdef INT_TIME
   gettimeofday(&start_pd_lz4_uncmp, NULL);
- #endif	
-  int dec_bytes = LZ4_decompress_safe((char*)recvd_msg, (char*)uncmp_data, n_cmp_bytes, MAX_UNCOMPRESSED_DATA_SIZE);
+ #endif
+  DEBUG(printf("Calling LZ4_decompress_safe with %d input bytes...\n", recvd_msg_len));
+  int dec_bytes = LZ4_decompress_safe((char*)recvd_msg, (char*)uncmp_data, recvd_msg_len, MAX_UNCOMPRESSED_DATA_SIZE);
+  if (dec_bytes < 0) {
+    printf("LZ4_decompress_safe ERROR : %d\n", dec_bytes);
+  } DEBUG(else {
+    printf("LZ4_decompress_safe returned %d bytes\n", dec_bytes);
+    });
  #ifdef INT_TIME
   gettimeofday(&stop_pd_lz4_uncmp, NULL);
   pd_lz4_uncmp_sec   += stop_pd_lz4_uncmp.tv_sec  - start_pd_lz4_uncmp.tv_sec;
   pd_lz4_uncmp_usec  += stop_pd_lz4_uncmp.tv_usec - start_pd_lz4_uncmp.tv_usec;
  #endif
-
+  printf("Recevied %d decoded bytes from the wifi...\n", dec_bytes);
   Costmap2D* remote_map = (Costmap2D*)&(uncmp_data); // Convert "type" to Costmap2D
   DBGOUT(printf("  Back from LZ4_decompress_safe with %u decompressed bytes\n", dec_bytes);
 	 printf("  Remote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
@@ -461,6 +468,7 @@ void process_data(char* data, int data_size)
 	 print_ascii_costmap(stdout, remote_map));
  #ifdef WRITE_ASCII_MAP
   fprintf(ascii_fp, "\n\nRemote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
+  //printf("\n\nRemote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
   fprintf(ascii_fp, "              : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
   print_ascii_costmap(ascii_fp, remote_map);
  #endif	
@@ -491,6 +499,7 @@ void process_data(char* data, int data_size)
 	  
  #ifdef WRITE_ASCII_MAP
   fprintf(ascii_fp, "\n\nFused CostMAP : AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
+  //printf("\n\nFused CostMAP : AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
   fprintf(ascii_fp, "              : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
   print_ascii_costmap(ascii_fp, local_map);
   fclose(ascii_fp);

@@ -112,7 +112,7 @@ uint8_t  decoded_message[MAX_PAYLOAD_SIZE];   // Holds the resulting decodede me
 fx_pt*   input_data = &delay16_out[16]; // [2*(RAW_DATA_IN_MAX_SIZE + 16)];  // Holds the input data (plus a "front-pad" of 16 0's for delay16
 
 
-void compute(unsigned num_inputs, fx_pt *inbuff, uint8_t *outbuff);
+void compute(unsigned num_inputs, fx_pt *inbuff, int* out_msg_len, uint8_t *outbuff);
 
 
 /********************************************************************************
@@ -209,8 +209,7 @@ do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, float* recvd_in_imag,
  #ifdef INT_TIME
   gettimeofday(&r_pipe_start, NULL);
  #endif
-  compute(num_recvd_vals, input_data, (uint8_t*)recvd_msg); // outbuff);
-  *recvd_msg_len = 1500; // Default max size...
+  compute(num_recvd_vals, input_data, recvd_msg_len, (uint8_t*)recvd_msg); // outbuff);
  #ifdef INT_TIME
   gettimeofday(&r_pipe_stop, NULL);
   r_pipe_sec  += r_pipe_stop.tv_sec  - r_pipe_start.tv_sec;
@@ -221,7 +220,7 @@ do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, float* recvd_in_imag,
 }
 
 
-void compute(unsigned num_inputs, fx_pt *input_data, uint8_t *out_msg) {
+void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *out_msg) {
   uint8_t scrambled_msg[MAX_ENCODED_BITS * 3 / 4];
   DEBUG(for (int ti = 0; ti < num_inputs /*RAW_DATA_IN_MAX_SIZE*/; ti++) {
 	  printf("  %6u : TOP_INBUF %12.8f %12.8f\n", ti, crealf(input_data[ti]), cimagf(input_data[ti]));
@@ -442,4 +441,5 @@ void compute(unsigned num_inputs, fx_pt *input_data, uint8_t *out_msg) {
   r_descrmbl_usec += r_descrmbl_stop.tv_usec - r_descrmbl_start.tv_usec;
  #endif
   DEBUG(printf("\nDESC_MSG:\n%s\n", out_msg));
+  *out_msg_len = (psdu - 28); // The message length in bytes
 }
