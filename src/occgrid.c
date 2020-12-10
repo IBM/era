@@ -56,6 +56,11 @@ inline double hypot(double x, double y) {
   return sqrt(x * x + y * y);
 }
 
+// Adding MACRO versions; a bit more dangerous (if used improperly) but could be faster.
+#define MMIN(x, y) (((x) > (y)) ? (y)  : (x))
+#define MMAX(x, y) (((x) > (y)) ? (x)  : (y))
+#define MSIGN(x)   (((x) > 0) ? 1 : -1);
+
 int max(int num1, int num2) {
   return (num1 > num2) ? num1 : num2;
 }
@@ -69,10 +74,10 @@ int sign (int x) {
 }
 
 void touch(double x, double y, double* min_x, double* min_y, double* max_x, double* max_y) {
-  *min_x = min(x, *min_x);
-  *min_y = min(y, *min_y);
-  *max_x = max(x, *max_x);
-  *max_y = max(y, *max_y);
+  *min_x = MMIN(x, *min_x);
+  *min_y = MMIN(y, *min_y);
+  *max_x = MMAX(x, *max_x);
+  *max_y = MMAX(y, *max_y);
 }
 
 unsigned int getIndex(unsigned int i, unsigned int j) {
@@ -201,20 +206,20 @@ void fuseIntoLocal(Costmap2D* theLocal, Costmap2D* theInput)
 
   // Now determine the (localized) X and Y cell dimensions that overlap
   //  We compute the min and max X and Y as for a for loop: for (ix = x_min; ix < x_max; ix++) 
-  int input_x_min = max(0, (local_0_x - input_0_x));
-  DBGOUT(printf("   input_x_min = max(0, (%d - %d) = %d) = %d\n", local_0_x, input_0_x, (local_0_x - input_0_x), input_x_min));
-  int input_x_max = input_x_cells - max(0, (input_N_x - local_N_x));
-  DBGOUT(printf("   input_x_max = %d - max(0, (%d - %d) = %d) = %d\n", input_x_cells, input_0_x, local_0_x, (input_N_x - local_N_x), input_x_max));
-  int input_y_min = max(0, (local_0_y - input_0_y));
-  DBGOUT(printf("   input_y_min = max(0, (%d - %d) = %d) = %d\n", local_0_y, input_0_y, (local_0_y - input_0_y), input_y_min));
-  int input_y_max = input_y_cells - max(0, (input_N_y - local_N_y));
-  DBGOUT(printf("   input_y_max = %d - max(0, (%d - %d) = %d) = %d\n", input_y_cells, input_0_y, local_0_y, (input_N_y - local_N_y), input_y_max));
+  int input_x_min = MMAX(0, (local_0_x - input_0_x));
+  DBGOUT(printf("   input_x_min = MMAX(0, (%d - %d) = %d) = %d\n", local_0_x, input_0_x, (local_0_x - input_0_x), input_x_min));
+  int input_x_max = input_x_cells - MMAX(0, (input_N_x - local_N_x));
+  DBGOUT(printf("   input_x_max = %d - MMAX(0, (%d - %d) = %d) = %d\n", input_x_cells, input_0_x, local_0_x, (input_N_x - local_N_x), input_x_max));
+  int input_y_min = MMAX(0, (local_0_y - input_0_y));
+  DBGOUT(printf("   input_y_min = MMAX(0, (%d - %d) = %d) = %d\n", local_0_y, input_0_y, (local_0_y - input_0_y), input_y_min));
+  int input_y_max = input_y_cells - MMAX(0, (input_N_y - local_N_y));
+  DBGOUT(printf("   input_y_max = %d - MMAX(0, (%d - %d) = %d) = %d\n", input_y_cells, input_0_y, local_0_y, (input_N_y - local_N_y), input_y_max));
   DBGOUT(printf("Input: x_min %d  x_max %d  y_min %d  y_max %d\n", input_x_min, input_x_max, input_y_min, input_y_max));
 
-  int local_x_min = max(0, (input_0_x - local_0_x));
-  int local_x_max = local_x_cells - max(0, (local_N_x - input_N_x));
-  int local_y_min = max(0, (local_0_y, input_0_y));
-  int local_y_max = local_y_cells - max(0, (local_N_y - input_N_y));
+  int local_x_min = MMAX(0, (input_0_x - local_0_x));
+  int local_x_max = local_x_cells - MMAX(0, (local_N_x - input_N_x));
+  int local_y_min = MMAX(0, (local_0_y, input_0_y));
+  int local_y_max = local_y_cells - MMAX(0, (local_N_y - input_N_y));
   DBGOUT(printf("Local: x_min %d  x_max %d  y_min %d  y_max %d\n", local_x_min, local_x_max, local_y_min, local_y_max));
 
   //Iterate through grids and assign corresponding max value
@@ -232,8 +237,8 @@ void fuseIntoLocal(Costmap2D* theLocal, Costmap2D* theInput)
       CHECK(if ((input_idx < 0) || (input_idx >= COST_MAP_ENTRIES)) {
       	  printf("ERROR : fuseIntoLocal input_idx outside bounds at %d vs 0 .. %d\n", input_idx, COST_MAP_ENTRIES);
       	});
-      //DBGOUT(printf("  Setting localMap[%d] = max(%u, %u = inputMap[%d])\n", local_idx, localMap[local_idx], inputMap[input_idx], input_idx));
-      localMap[local_idx] = max(localMap[local_idx], inputMap[input_idx]);
+      //DBGOUT(printf("  Setting localMap[%d] = MMAX(%u, %u = inputMap[%d])\n", local_idx, localMap[local_idx], inputMap[input_idx], input_idx));
+      localMap[local_idx] = MMAX(localMap[local_idx], inputMap[input_idx]);
       iix++;
     }
     iiy++;
@@ -273,8 +278,8 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
   int cell_y_dim = (int)(y_dim / resolution);
     
   //Determine the lower left cells of the origin
-  int g1_lower_left_x = min(max(cell_ox, 0), cell_x_dim);
-  int g1_lower_left_y = min(max(cell_oy, 0), cell_y_dim);
+  int g1_lower_left_x = MMIN(MMAX(cell_ox, 0), cell_x_dim);
+  int g1_lower_left_y = MMIN(MMAX(cell_oy, 0), cell_y_dim);
   int g2_lower_left_x = g1_lower_left_x - cell_ox;
   int g2_lower_left_y = g1_lower_left_y - cell_oy;
 
@@ -319,7 +324,7 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
 	  printf("ERROR : combineGrids g1_index too large at %d vs %d\n", g1_index, COST_MAP_ENTRIES);
 	});
 
-      grid2[g2_index] = max(grid2[g2_index], grid1[g1_index]);
+      grid2[g2_index] = MMAX(grid2[g2_index], grid1[g1_index]);
       //DBGOUT(printf("%d : %d v %d : %d, %d \n", total_count, count, region_x_dim, g1_index, g2_index));
       g1_index++;
       g2_index++;
@@ -396,10 +401,10 @@ void updateOrigin(double new_origin_x, double new_origin_y) {
 
   // we need to compute the overlap of the new and existing windows
   int lower_left_x, lower_left_y, upper_right_x, upper_right_y;
-  lower_left_x = min(max(cell_ox, 0), x_dim);
-  lower_left_y = min(max(cell_oy, 0), y_dim);
-  upper_right_x = min(max(cell_ox + x_dim, 0), x_dim);
-  upper_right_y = min(max(cell_oy + y_dim, 0), y_dim);
+  lower_left_x = MMIN(MMAX(cell_ox, 0), x_dim);
+  lower_left_y = MMIN(MMAX(cell_oy, 0), y_dim);
+  upper_right_x = MMIN(MMAX(cell_ox + x_dim, 0), x_dim);
+  upper_right_y = MMIN(MMAX(cell_oy + y_dim, 0), y_dim);
   //printf("The Corner Coordinates for Window = {%d, %d} {%d, %d}\n", lower_left_x, lower_left_y, upper_right_x, upper_right_y);
 
   unsigned int cell_x_dim = (upper_right_x - lower_left_x);
@@ -656,10 +661,11 @@ void raytraceLine(unsigned int x0, unsigned int y0, unsigned int x1, unsigned in
   unsigned int abs_dx = abs(dx);
   unsigned int abs_dy = abs(dy);
 
-  int offset_dx = sign(dx);
+  int offset_dx = MSIGN(dx);
   //printf("offset_dx -> %d, \n", offset_dx);
   //printf("cell_x_dim -> %d \n", (int) (master_observation.master_costmap.x_dim / master_observation.master_resolution));
-  int offset_dy = sign(dy) * (int) (master_observation.master_costmap.x_dim / master_observation.master_resolution);
+  int sdy = MSIGN(dy);
+  int offset_dy = sdy * (int)(master_observation.master_costmap.x_dim / master_observation.master_resolution);
   //printf("offset_dy -> %d \n", offset_dy);
 
   unsigned int offset = y0 * master_observation.master_costmap.x_dim / master_observation.master_resolution + x0;
@@ -667,7 +673,7 @@ void raytraceLine(unsigned int x0, unsigned int y0, unsigned int x1, unsigned in
 
   // we need to chose how much to scale our dominant dimension, based on the maximum length of the line
   double dist = hypot(dx, dy);
-  double scale = (dist == 0.0) ? 1.0 : min(1.0, max_length / dist);
+  double scale = (dist == 0.0) ? 1.0 : MMIN(1.0, max_length / dist);
 
   // if x is dominant
   if (abs_dx >= abs_dy) {
@@ -683,7 +689,7 @@ void raytraceLine(unsigned int x0, unsigned int y0, unsigned int x1, unsigned in
 
 void bresenham2D(unsigned int abs_da, unsigned int abs_db, int error_b, int offset_a,
 		 int offset_b, unsigned int offset, unsigned int max_length) {
-  unsigned int end = min(max_length, abs_da);
+  unsigned int end = MMIN(max_length, abs_da);
   //printf("\n\n abs_da, end -> %d, %d\n", abs_da, end);
   for (unsigned int i = 0; i < end; ++i)
     {
@@ -711,7 +717,7 @@ void updateRaytraceBounds(double ox, double oy, double wx, double wy, double ran
                           double* min_x, double* min_y, double* max_x, double* max_y) {
   double dx = wx - ox, dy = wy - oy;
   double full_distance = hypot(dx, dy);
-  double scale = min(1.0, range / full_distance);
+  double scale = MMIN(1.0, range / full_distance);
   double ex = ox + dx * scale, ey = oy + dy * scale;
   touch(ex, ey, min_x, min_y, max_x, max_y);
 }
