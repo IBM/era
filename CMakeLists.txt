@@ -42,6 +42,15 @@ add_executable(era2 src/main.c src/occgrid.c src/lz4.c src/complex_ops.c src/crc
 add_executable(do_recv_pipe src/recv_main.c src/complex_ops.c src/delay.c src/fft.c src/fir.c src/gr_equalizer.c src/ofdm.c src/recv_pipe.c src/sdr_descrambler.c src/sdr_viterbi.c src/sync_long.c src/sync_short.c)
 add_executable(do_xmit_pipe src/xmit_main.c src/crc.c src/fft.c src/xmit_pipe.c)
 
+target_compile_definitions(era1 PRIVATE GRID_MAP_X_DIM=100)
+target_compile_definitions(era2 PRIVATE GRID_MAP_X_DIM=100)
+target_compile_definitions(era1 PRIVATE GRID_MAP_Y_DIM=100)
+target_compile_definitions(era2 PRIVATE GRID_MAP_Y_DIM=100)
+target_compile_definitions(era1 PRIVATE GRID_MAP_RESLTN=2.0)
+target_compile_definitions(era2 PRIVATE GRID_MAP_RESLTN=2.0)
+target_compile_definitions(era1 PRIVATE RAYTR_RANGE=100)
+target_compile_definitions(era2 PRIVATE RAYTR_RANGE=100)
+
 target_compile_definitions(era1 PRIVATE USE_ESP_INTERFACE)
 target_compile_definitions(era2 PRIVATE USE_ESP_INTERFACE)
 target_compile_definitions(do_recv_pipe PRIVATE USE_ESP_INTERFACE)
@@ -70,11 +79,11 @@ target_compile_definitions(era2 PRIVATE IMAGE_FN="gridimage_era2_")
 target_compile_definitions(era1 PRIVATE ASCII_FN="asciimap_era1_")
 target_compile_definitions(era2 PRIVATE ASCII_FN="asciimap_era2_")
 
-# Enable this if you want intermediate files (PPM) of the fused gridmaps 
+# Enable this if you want intermediate files (PPM) of the fused gridmaps
 target_compile_definitions(era1 PRIVATE WRITE_FUSED_MAPS)
 target_compile_definitions(era2 PRIVATE WRITE_FUSED_MAPS)
 
-# Enable this if you want intermediate files of the fused gridmaps 
+# Enable this if you want intermediate files of the fused gridmaps
 target_compile_definitions(era1 PRIVATE WRITE_ASCII_MAP)
 target_compile_definitions(era2 PRIVATE WRITE_ASCII_MAP)
 

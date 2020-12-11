@@ -14,11 +14,11 @@
 #define CMV_FREE_SPACE          1
 #define CMV_LETHAL_OBSTACLE   255
 
-#define GRID_MAP_X_DIM     100
-#define GRID_MAP_Y_DIM     100
-#define GRID_MAP_RESLTN    2.0
-
-#define RAYTR_RANGE        100
+// Moved to the CMakeLists.txt or .config file.
+//#define GRID_MAP_X_DIM     100
+//#define GRID_MAP_Y_DIM     100
+//#define GRID_MAP_RESLTN    2.0
+//#define RAYTR_RANGE        100
 
 #define COST_MAP_X_DIM     (GRID_MAP_X_DIM/(int)GRID_MAP_RESLTN)
 #define COST_MAP_Y_DIM     (GRID_MAP_Y_DIM/(int)GRID_MAP_RESLTN)
