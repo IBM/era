@@ -46,7 +46,7 @@ def main():
         parser.add_argument("-A", "--address", help="define the IP address to connect to")
         parser.add_argument("-R", "--recv_port", type=int, help="define the Port for the socket to receive from")
         parser.add_argument("-F", "--file_name", help="define the save-file name")
-        parser.add_argument("-O", "--out_type", type=int, help="define the save-file content type; 0 = raw_data") #; 1 = ascii; 2 = ppm")
+        parser.add_argument("-O", "--out_type", type=int, help="define the save-file content type; 0 = none, 1 = raw_data") #; 1 = ascii; 2 = ppm")
         
         args = parser.parse_args()
         if (args.address != None) :
@@ -92,7 +92,8 @@ def main():
 
                 print('Wifi received all msg-set %d from port %d payload %d bytes' % (msg_count, RPORT, len(d_data)))
                 # Now save this to a file...
-                write_output_file(FNAME, O_TYPE, msg_count, d_data);
+                if O_TYPE:
+                        write_output_file(FNAME, O_TYPE, msg_count, d_data);
                 msg_count += 1
 
 if __name__ == "__main__":
