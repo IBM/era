@@ -78,7 +78,7 @@ def main():
                 if not header :
                         print('... end of run on message %d.' % msg_count)
                         break
-		#print('Wifi msg %d received %d bytes from port %d' % (msg_count, len(header), RPORT))
+		#print('Carla msg %d received %d bytes from port %d' % (msg_count, len(header), RPORT))
                 #print('   msg: "%s"' % str(header))
 
                 d_len = int(header[1:7])
@@ -87,10 +87,10 @@ def main():
                 if not d_data :
                         print('... end of run on d_data of message %d.' % msg_count)
                         break
-		#print('Wifi msg %d received %d bytes from port %d' % (msg_count, len(d_data), RPORT))
+		#print('Carla msg %d received %d bytes from port %d' % (msg_count, len(d_data), RPORT))
                 #print('   msg: "%s"' % str(d_data))
 
-                print('Wifi received all msg-set %d from port %d payload %d bytes' % (msg_count, RPORT, len(d_data)))
+                print('Carla received all msg-set %d from port %d payload %d bytes' % (msg_count, RPORT, len(d_data)))
                 # Now save this to a file...
                 if O_TYPE:
                         write_output_file(FNAME, O_TYPE, msg_count, d_data);

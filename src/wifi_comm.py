@@ -21,6 +21,9 @@ def recvall(sock, n):
         
 
 def main():
+        global HOST
+        global RPORT
+        global XPORT
         msg_count = 0
 
         parser = argparse.ArgumentParser()
@@ -79,11 +82,11 @@ def main():
 		#print('Wifi msg %d received %d bytes from port %d' % (msg_count, len(d_imag), RPORT))
                 #print('   msg: "%s"' % str(d_imag))
                 print('Wifi received all msg-set %d from port %d payload %d bytes' % (msg_count, RPORT, len(d_real)))
-		#print('Wfi sending messages %d to port %d' % (msg_count, XPORT))
+		#print('Wifi sending messages %d to port %d' % (msg_count, XPORT))
                 conn2.sendall(header)
                 conn2.sendall(d_real)
                 conn2.sendall(d_imag)
-		print('Wfi sent all messages %d to port %d' %(msg_count, XPORT))
+		print('Wifi sent all messages %d to port %d' %(msg_count, XPORT))
                 msg_count += 1
 
 if __name__ == "__main__":
