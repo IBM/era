@@ -35,6 +35,10 @@ char *ack = "OK";
 
 float odometry[] = {0.0, 0.0, 0.0};
 
+// We will define 2 observations; one "current" and one that is to be constructed to be the new current.
+int curr_obs = 0;
+int next_obs = 1;
+Observation observations[2];
 
 // These variables capture "time" spent in various parts ofthe workload
 #ifdef INT_TIME
@@ -236,116 +240,8 @@ int read_all(int sock, char* buffer, int xfer_in_bytes)
   return total_recvd;
 }
 
-
-void process_data(char* data, int data_size)
+void receive_and_fuse_map()
 {
-  DBGOUT(printf("Calling cloudToOccgrid with odometry %.1f %.1f %.1f\n", odometry[0], odometry[1], odometry[2]));
-  int valread = 0;
- #ifdef INT_TIME
-  gettimeofday(&start_pd_cloud2grid, NULL);
- #endif	
-  unsigned char * grid = cloudToOccgrid(&master_observation, (float*)data, data_size/sizeof(float), // data, data_size
-					odometry[0],odometry[1],odometry[2],1.5, // AVx, AVy , AVz, AVw
-					false,  // rolling window
-					0.05, 2.05, // min, max obstacle height
-					RAYTR_RANGE, // raytrace_range
-					GRID_MAP_X_DIM, GRID_MAP_Y_DIM, GRID_MAP_RESLTN  // size_x, size_y, resolution
-					/*,CMV_NO_INFORMATION*/);
- #ifdef INT_TIME
-  gettimeofday(&stop_pd_cloud2grid, NULL);
-  pd_cloud2grid_sec   += stop_pd_cloud2grid.tv_sec  - start_pd_cloud2grid.tv_sec;
-  pd_cloud2grid_usec  += stop_pd_cloud2grid.tv_usec - start_pd_cloud2grid.tv_usec;
- #endif
-
-  // Write the read-in image to a file
-  //write_array_to_file(grid, COST_MAP_ENTRIES);
-
-  // Now we compress the grid for transmission...
-  Costmap2D* local_map = &(master_observation.master_costmap);
-  DBGOUT(printf("Calling LZ4_compress_default...\n");
-	 printf("  Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
-	 printf("               : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
-	 print_ascii_costmap(stdout, local_map));
- #ifdef WRITE_ASCII_MAP
-  char ascii_file_name[32];
-  snprintf(ascii_file_name, sizeof(char)*32, "%s%04d.txt", ASCII_FN, ascii_counter);
-  FILE *ascii_fp = fopen(ascii_file_name, "w");
-  //printf("Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
-  fprintf(ascii_fp, "Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
-  fprintf(ascii_fp, "             : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
-  print_ascii_costmap(ascii_fp, local_map);
- #endif
-
-  unsigned char cmp_data[MAX_COMPRESSED_DATA_SIZE];
- #ifdef INT_TIME
-  gettimeofday(&start_pd_lz4_cmp, NULL);
- #endif	
-  int n_cmp_bytes = LZ4_compress_default((char*)local_map, (char*)cmp_data, MAX_UNCOMPRESSED_DATA_SIZE, MAX_COMPRESSED_DATA_SIZE);
- #ifdef INT_TIME
-  gettimeofday(&stop_pd_lz4_cmp, NULL);
-  pd_lz4_cmp_sec   += stop_pd_lz4_cmp.tv_sec  - start_pd_lz4_cmp.tv_sec;
-  pd_lz4_cmp_usec  += stop_pd_lz4_cmp.tv_usec - start_pd_lz4_cmp.tv_usec;
- #endif
-  DBGOUT(double c_ratio = 100*(1-((double)(n_cmp_bytes)/(double)(MAX_UNCOMPRESSED_DATA_SIZE)));
-	 printf("  Back from LZ4_compress_default: %lu bytes -> %u bytes for %5.2f%%\n", MAX_UNCOMPRESSED_DATA_SIZE, n_cmp_bytes, c_ratio););
-
-  // Now we encode and transmit the grid...
-  DBGOUT(printf("Calling do_xmit_pipeline for %u compressed grid elements\n", n_cmp_bytes));
-  int n_xmit_out;
-  float xmit_out_real[MAX_XMIT_OUTPUTS];
-  float xmit_out_imag[MAX_XMIT_OUTPUTS];
- #ifdef INT_TIME
-  gettimeofday(&start_pd_xmit_pipe, NULL);
- #endif	
-  do_xmit_pipeline(n_cmp_bytes, cmp_data, &n_xmit_out, xmit_out_real, xmit_out_imag);
- #ifdef INT_TIME
-  gettimeofday(&stop_pd_xmit_pipe, NULL);
-  pd_xmit_pipe_sec   += stop_pd_xmit_pipe.tv_sec  - start_pd_xmit_pipe.tv_sec;
-  pd_xmit_pipe_usec  += stop_pd_xmit_pipe.tv_usec - start_pd_xmit_pipe.tv_usec;
- #endif
-  DBGOUT(printf("  Back from do_xmit_pipeline with %u xmit outputs...\n", n_xmit_out));
-
-  // This is now the content that should be sent out via IEEE 802.11p WiFi
-  //  The n_xmit_out values of xmit_out_real and xmit_out_imag
-  // Connect to the Wifi-Socket and send the n_xmit_out
-  char w_buffer[10];
- #ifdef INT_TIME
-  gettimeofday(&start_pd_xmit_send, NULL);
- #endif	
-  unsigned xfer_bytes = n_xmit_out*sizeof(float);
-  snprintf(w_buffer, 9, "X%-6uX", xfer_bytes);
-  DBGOUT(printf("\nXMIT Sending %s on XMIT port %u socket\n", w_buffer, XMIT_PORT));
-  send(xmit_sock, w_buffer, 8, 0);
-  DBGOUT(printf("     Send %u REAL values %u bytes on XMIT port %u socket\n", n_xmit_out, xfer_bytes, XMIT_PORT));
-  DBGOUT2(printf("XFER %4u : Dumping XMIT-PIPE REAL raw bytes\n", xmit_recv_count);
-	  for (int i = 0; i < n_xmit_out; i++) {
-	    printf("XFER %4u REAL-byte %6u : %f\n", xmit_recv_count, i, xmit_out_real[i]);
-	  }
-	  printf("\n"));
- #ifdef INT_TIME
-  gettimeofday(&start_pd_xmit_send_rl, NULL);
- #endif	
-  send(xmit_sock, (char*)(xmit_out_real), n_xmit_out*sizeof(float), 0);
-  DBGOUT(printf("     Send %u IMAG values %u bytes on XMIT port %u socket\n", n_xmit_out, xfer_bytes, XMIT_PORT));
-  DBGOUT2(printf("XFER %4u : Dumping XMIT-PIPE IMAG raw bytes\n", xmit_recv_count);
-	  for (int i = 0; i < n_xmit_out; i++) {
-	    printf("XFER %4u IMAG-byte %6u : %f\n", xmit_recv_count, i, xmit_out_imag[i]);
-	  }
-	  printf("\n"));
- #ifdef INT_TIME
-  gettimeofday(&stop_pd_xmit_send_rl, NULL);
- #endif
-  send(xmit_sock, (char*)(xmit_out_imag), n_xmit_out*sizeof(float), 0);
- #ifdef INT_TIME
-  gettimeofday(&stop_pd_xmit_send, NULL);
-  pd_xmit_send_sec   += stop_pd_xmit_send.tv_sec  - start_pd_xmit_send.tv_sec;
-  pd_xmit_send_usec  += stop_pd_xmit_send.tv_usec - start_pd_xmit_send.tv_usec;
-  pd_xmit_send_rl_sec   += stop_pd_xmit_send_rl.tv_sec  - start_pd_xmit_send_rl.tv_sec;
-  pd_xmit_send_rl_usec  += stop_pd_xmit_send_rl.tv_usec - start_pd_xmit_send_rl.tv_usec;
-  pd_xmit_send_im_sec   += stop_pd_xmit_send.tv_sec  - stop_pd_xmit_send_rl.tv_sec;
-  pd_xmit_send_im_usec  += stop_pd_xmit_send.tv_usec - stop_pd_xmit_send_rl.tv_usec;
- #endif
-
   // Now we take in a recevied transmission with the other AV's map
   // If we receive a transmission, the process to turn it back into the gridMap is:
   int   n_recvd_in;
@@ -356,8 +252,9 @@ void process_data(char* data, int data_size)
  #ifdef INT_TIME
   gettimeofday(&start_pd_xmit_recv, NULL);
  #endif	
-  valread = read_all(recv_sock, w_buffer, 8);
-  DBGOUT2(printf("  RECV got msg %s\n", w_buffer);
+  char r_buffer[10];
+  int valread = read_all(recv_sock, r_buffer, 8);
+  DBGOUT2(printf("  RECV got msg %s\n", r_buffer);
 	  printf("  RECV msg psn %s\n", "01234567890"));
   if (valread < 8) {
     if (valread == 0) {
@@ -368,13 +265,13 @@ void process_data(char* data, int data_size)
       closeout_and_exit(-1);
     }
   }
-  if(!(w_buffer[0] == 'X' && w_buffer[7] == 'X')) {
+  if(!(r_buffer[0] == 'X' && r_buffer[7] == 'X')) {
     printf("ERROR: Unexpected message from WiFi...\n");
     closeout_and_exit(-3);
   }
 
   char * ptr;
-  unsigned xfer_in_bytes = strtol(w_buffer+1, &ptr, 10);
+  unsigned xfer_in_bytes = strtol(r_buffer+1, &ptr, 10);
   n_recvd_in = xfer_in_bytes / sizeof(float);
   DBGOUT(printf("     Recv %u REAL values %u bytes from RECV port %u socket\n", n_recvd_in, xfer_in_bytes, RECV_PORT));
  #ifdef INT_TIME
@@ -465,7 +362,20 @@ void process_data(char* data, int data_size)
 	 printf("  Remote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
 	 printf("                : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
 	 print_ascii_costmap(stdout, remote_map));
- #ifdef WRITE_ASCII_MAP
+
+  // Get the current local-map 
+  Costmap2D* local_map = &(observations[curr_obs].master_costmap);
+
+#ifdef WRITE_ASCII_MAP
+  char ascii_file_name[32];
+  snprintf(ascii_file_name, sizeof(char)*32, "%s%04d.txt", ASCII_FN, ascii_counter);
+  FILE *ascii_fp = fopen(ascii_file_name, "w");
+
+  //printf("Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
+  fprintf(ascii_fp, "Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
+  fprintf(ascii_fp, "             : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
+  print_ascii_costmap(ascii_fp, local_map);
+
   fprintf(ascii_fp, "\n\nRemote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
   //printf("\n\nRemote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
   fprintf(ascii_fp, "              : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
@@ -481,6 +391,7 @@ void process_data(char* data, int data_size)
  #ifdef INT_TIME
   gettimeofday(&start_pd_combGrids, NULL);
  #endif
+
   fuseIntoLocal(local_map, remote_map);
   /*combineGrids(remote_map->costmap, local_map->costmap,
   	       remote_map->av_x, remote_map->av_y,
@@ -516,9 +427,9 @@ void process_data(char* data, int data_size)
   gettimeofday(&start_pd_xmit_send, NULL);
 #endif	
   unsigned car_bytes = sizeof(Costmap2D);
-  snprintf(w_buffer, 9, "X%-6uX", car_bytes);
-  DBGOUT(printf("\nCAR-OUT Sending %s on CAR port %u socket\n", w_buffer, CAR_OUT_PORT));
-  send(car_sock, w_buffer, 8, 0);
+  snprintf(r_buffer, 9, "X%-6uX", car_bytes);
+  DBGOUT(printf("\nCAR-OUT Sending %s on CAR port %u socket\n", r_buffer, CAR_OUT_PORT));
+  send(car_sock, r_buffer, 8, 0);
   DBGOUT(printf("     Send %u bytes on CAR port %u socket\n", car_bytes, CAR_PORT));
   char * car_out_chars = (char*)&(local_map);
   DBGOUT2(printf("CAR-OUT %4u : Dumping XMIT-PIPE REAL raw bytes\n", car_send_count);
@@ -537,6 +448,125 @@ void process_data(char* data, int data_size)
   pd_xmit_car_sec   += stop_pd_xmit_car.tv_sec  - start_pd_xmit_car.tv_sec;
   pd_xmit_car_usec  += stop_pd_xmit_car.tv_usec - start_pd_xmit_car.tv_usec;
 #endif
+}
+
+
+
+void process_data(char* data, int data_size)
+{
+  DBGOUT(printf("Calling cloudToOccgrid with odometry %.1f %.1f %.1f\n", odometry[0], odometry[1], odometry[2]));
+  int valread = 0;
+ #ifdef INT_TIME
+  gettimeofday(&start_pd_cloud2grid, NULL);
+ #endif	
+  unsigned char * grid = cloudToOccgrid(&observations[next_obs], (float*)data, data_size/sizeof(float), // data, data_size
+					odometry[0],odometry[1],odometry[2],1.5, // AVx, AVy , AVz, AVw
+					false,  // rolling window
+					0.05, 2.05, // min, max obstacle height
+					RAYTR_RANGE, // raytrace_range
+					GRID_MAP_X_DIM, GRID_MAP_Y_DIM, GRID_MAP_RESLTN  // size_x, size_y, resolution
+					/*,CMV_NO_INFORMATION*/);
+ #ifdef INT_TIME
+  gettimeofday(&stop_pd_cloud2grid, NULL);
+  pd_cloud2grid_sec   += stop_pd_cloud2grid.tv_sec  - start_pd_cloud2grid.tv_sec;
+  pd_cloud2grid_usec  += stop_pd_cloud2grid.tv_usec - start_pd_cloud2grid.tv_usec;
+ #endif
+  
+  // Write the read-in image to a file
+  //write_array_to_file(grid, COST_MAP_ENTRIES);
+
+  // Now we compress the grid for transmission...
+  Costmap2D* local_map = &(observations[next_obs].master_costmap);
+  DBGOUT(printf("Calling LZ4_compress_default...\n");
+	 printf("  Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
+	 printf("               : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
+	 print_ascii_costmap(stdout, local_map));
+ #ifdef WRITE_ASCII_MAP
+  char ascii_file_name[32];
+  snprintf(ascii_file_name, sizeof(char)*32, "%sform_%04d.txt", ASCII_FN, ascii_counter);
+  FILE *ascii_fp = fopen(ascii_file_name, "w");
+  //printf("Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
+  fprintf(ascii_fp, "Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
+  fprintf(ascii_fp, "             : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
+  print_ascii_costmap(ascii_fp, local_map);
+  fclose(ascii_fp);
+ #endif
+  // Now we update the current_observation index and the next_observation index
+  curr_obs = 1-curr_obs;
+  next_obs = 1-next_obs;
+
+  // And now we compress to encode for Wifi transmission, etc.
+  unsigned char cmp_data[MAX_COMPRESSED_DATA_SIZE];
+ #ifdef INT_TIME
+  gettimeofday(&start_pd_lz4_cmp, NULL);
+ #endif	
+  int n_cmp_bytes = LZ4_compress_default((char*)local_map, (char*)cmp_data, MAX_UNCOMPRESSED_DATA_SIZE, MAX_COMPRESSED_DATA_SIZE);
+ #ifdef INT_TIME
+  gettimeofday(&stop_pd_lz4_cmp, NULL);
+  pd_lz4_cmp_sec   += stop_pd_lz4_cmp.tv_sec  - start_pd_lz4_cmp.tv_sec;
+  pd_lz4_cmp_usec  += stop_pd_lz4_cmp.tv_usec - start_pd_lz4_cmp.tv_usec;
+ #endif
+  DBGOUT(double c_ratio = 100*(1-((double)(n_cmp_bytes)/(double)(MAX_UNCOMPRESSED_DATA_SIZE)));
+	 printf("  Back from LZ4_compress_default: %lu bytes -> %u bytes for %5.2f%%\n", MAX_UNCOMPRESSED_DATA_SIZE, n_cmp_bytes, c_ratio););
+
+  // Now we encode and transmit the grid...
+  DBGOUT(printf("Calling do_xmit_pipeline for %u compressed grid elements\n", n_cmp_bytes));
+  int n_xmit_out;
+  float xmit_out_real[MAX_XMIT_OUTPUTS];
+  float xmit_out_imag[MAX_XMIT_OUTPUTS];
+ #ifdef INT_TIME
+  gettimeofday(&start_pd_xmit_pipe, NULL);
+ #endif	
+  do_xmit_pipeline(n_cmp_bytes, cmp_data, &n_xmit_out, xmit_out_real, xmit_out_imag);
+ #ifdef INT_TIME
+  gettimeofday(&stop_pd_xmit_pipe, NULL);
+  pd_xmit_pipe_sec   += stop_pd_xmit_pipe.tv_sec  - start_pd_xmit_pipe.tv_sec;
+  pd_xmit_pipe_usec  += stop_pd_xmit_pipe.tv_usec - start_pd_xmit_pipe.tv_usec;
+ #endif
+  DBGOUT(printf("  Back from do_xmit_pipeline with %u xmit outputs...\n", n_xmit_out));
+
+  // This is now the content that should be sent out via IEEE 802.11p WiFi
+  //  The n_xmit_out values of xmit_out_real and xmit_out_imag
+  // Connect to the Wifi-Socket and send the n_xmit_out
+  char w_buffer[10];
+ #ifdef INT_TIME
+  gettimeofday(&start_pd_xmit_send, NULL);
+ #endif	
+  unsigned xfer_bytes = n_xmit_out*sizeof(float);
+  snprintf(w_buffer, 9, "X%-6uX", xfer_bytes);
+  DBGOUT(printf("\nXMIT Sending %s on XMIT port %u socket\n", w_buffer, XMIT_PORT));
+  send(xmit_sock, w_buffer, 8, 0);
+  DBGOUT(printf("     Send %u REAL values %u bytes on XMIT port %u socket\n", n_xmit_out, xfer_bytes, XMIT_PORT));
+  DBGOUT2(printf("XFER %4u : Dumping XMIT-PIPE REAL raw bytes\n", xmit_recv_count);
+	  for (int i = 0; i < n_xmit_out; i++) {
+	    printf("XFER %4u REAL-byte %6u : %f\n", xmit_recv_count, i, xmit_out_real[i]);
+	  }
+	  printf("\n"));
+ #ifdef INT_TIME
+  gettimeofday(&start_pd_xmit_send_rl, NULL);
+ #endif	
+  send(xmit_sock, (char*)(xmit_out_real), n_xmit_out*sizeof(float), 0);
+  DBGOUT(printf("     Send %u IMAG values %u bytes on XMIT port %u socket\n", n_xmit_out, xfer_bytes, XMIT_PORT));
+  DBGOUT2(printf("XFER %4u : Dumping XMIT-PIPE IMAG raw bytes\n", xmit_recv_count);
+	  for (int i = 0; i < n_xmit_out; i++) {
+	    printf("XFER %4u IMAG-byte %6u : %f\n", xmit_recv_count, i, xmit_out_imag[i]);
+	  }
+	  printf("\n"));
+ #ifdef INT_TIME
+  gettimeofday(&stop_pd_xmit_send_rl, NULL);
+ #endif
+  send(xmit_sock, (char*)(xmit_out_imag), n_xmit_out*sizeof(float), 0);
+ #ifdef INT_TIME
+  gettimeofday(&stop_pd_xmit_send, NULL);
+  pd_xmit_send_sec   += stop_pd_xmit_send.tv_sec  - start_pd_xmit_send.tv_sec;
+  pd_xmit_send_usec  += stop_pd_xmit_send.tv_usec - start_pd_xmit_send.tv_usec;
+  pd_xmit_send_rl_sec   += stop_pd_xmit_send_rl.tv_sec  - start_pd_xmit_send_rl.tv_sec;
+  pd_xmit_send_rl_usec  += stop_pd_xmit_send_rl.tv_usec - start_pd_xmit_send_rl.tv_usec;
+  pd_xmit_send_im_sec   += stop_pd_xmit_send.tv_sec  - stop_pd_xmit_send_rl.tv_sec;
+  pd_xmit_send_im_usec  += stop_pd_xmit_send.tv_usec - stop_pd_xmit_send_rl.tv_usec;
+ #endif
+
+  receive_and_fuse_map();
 
   DBGOUT(printf("Returning from process_data\n"));
   fflush(stdout);

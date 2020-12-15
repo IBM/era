@@ -46,7 +46,7 @@ void initCostmap(Observation* obs_ptr,
 
 
 //Define global variables
-Observation master_observation;
+//Observation master_observation;
 //char data[199992];
 bool rotating_window;
 
@@ -89,6 +89,15 @@ inline unsigned int getIndex(Observation* obs_ptr, unsigned int i, unsigned int 
   //printf("x_dim * j + i = %d * %d + %d = %d", obs_ptr->master_costmap.x_dim, j, i, obs_ptr->master_costmap.x_dim * j + i);
   return (obs_ptr->master_costmap.x_dim / obs_ptr->master_resolution) * j + i;
 }
+
+inline void markCell(Observation* obs_ptr, unsigned char value, unsigned int offset) {
+  //printf("OFFSET -> %d\n", offset);
+  CHECK(if (offset >= COST_MAP_ENTRIES) {
+      printf("ERROR : updateBounds : offset is too large at %d vs %d\n", offset, COST_MAP_ENTRIES);
+    });
+  obs_ptr->master_costmap.costmap[offset] = value;
+}
+
 
 //Calculate world coordinates relative to origin (and not robot's odometry)
 inline bool worldToMapCell(Observation* obs_ptr, double owx, double owy, double robot_x, double robot_y, int* nwx, int* nwy) {
@@ -702,14 +711,6 @@ void raytraceLine(Observation* obs_ptr, unsigned int x0, unsigned int y0, unsign
   // otherwise y is dominant
   int error_x = abs_dy / 2;
   bresenham2D(obs_ptr, abs_dy, abs_dx, error_x, offset_dy, offset_dx, offset, (unsigned int)(scale * abs_dy));
-}
-
-static inline void markCell(Observation* obs_ptr, unsigned char value, unsigned int offset) {
-  //printf("OFFSET -> %d\n", offset);
-  CHECK(if (offset >= COST_MAP_ENTRIES) {
-      printf("ERROR : updateBounds : offset is too large at %d vs %d\n", offset, COST_MAP_ENTRIES);
-    });
-  obs_ptr->master_costmap.costmap[offset] = value;
 }
 
 void bresenham2D(Observation* obs_ptr, unsigned int abs_da, unsigned int abs_db, int error_b, int offset_a,
