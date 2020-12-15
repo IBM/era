@@ -240,7 +240,7 @@ int read_all(int sock, char* buffer, int xfer_in_bytes)
   return total_recvd;
 }
 
-void receive_and_fuse_map()
+void receive_and_fuse_maps(void* parm_ptr)
 {
   // Now we take in a recevied transmission with the other AV's map
   // If we receive a transmission, the process to turn it back into the gridMap is:
@@ -451,16 +451,22 @@ void receive_and_fuse_map()
 }
 
 
-
-void process_data(char* data, int data_size)
+typedef struct lidar_inputs_struct {
+  float odometry[3];
+  int data_size;
+  char data[200002];
+} lidar_inputs_t;
+  
+void process_data(void* void_parms_ptr)
 {
-  DBGOUT(printf("Calling cloudToOccgrid with odometry %.1f %.1f %.1f\n", odometry[0], odometry[1], odometry[2]));
+  lidar_inputs_t* lidar_inputs = (lidar_inputs_t*)void_parms_ptr;
+  DBGOUT(printf("Calling cloudToOccgrid with odometry %.1f %.1f %.1f\n", lidar_inputs->odometry[0], lidar_inputs->odometry[1], lidar_inputs->odometry[2]));
   int valread = 0;
  #ifdef INT_TIME
   gettimeofday(&start_pd_cloud2grid, NULL);
  #endif	
-  unsigned char * grid = cloudToOccgrid(&observations[next_obs], (float*)data, data_size/sizeof(float), // data, data_size
-					odometry[0],odometry[1],odometry[2],1.5, // AVx, AVy , AVz, AVw
+  unsigned char * grid = cloudToOccgrid(&observations[next_obs], (float*)(lidar_inputs->data), lidar_inputs->data_size/sizeof(float), // data, data_size
+					lidar_inputs->odometry[0], lidar_inputs->odometry[1], lidar_inputs->odometry[2], 1.5, // AVx, AVy , AVz, AVw
 					false,  // rolling window
 					0.05, 2.05, // min, max obstacle height
 					RAYTR_RANGE, // raytrace_range
@@ -566,7 +572,7 @@ void process_data(char* data, int data_size)
   pd_xmit_send_im_usec  += stop_pd_xmit_send.tv_usec - stop_pd_xmit_send_rl.tv_usec;
  #endif
 
-  receive_and_fuse_map();
+  receive_and_fuse_maps(NULL);
 
   DBGOUT(printf("Returning from process_data\n"));
   fflush(stdout);
@@ -578,8 +584,11 @@ int main(int argc, char *argv[])
   struct sockaddr_in xmit_servaddr;
   struct sockaddr_in recv_servaddr;
   struct sockaddr_in car_servaddr;
-  unsigned char buffer[200002] = {0};
+  unsigned char l_buffer[20] = {0};
+  //unsigned char buffer[200002] = {0};
 
+  lidar_inputs_t lidar_inputs;
+    
   snprintf(bag_inet_addr_str, 20, "127.0.0.1");
   snprintf(wifi_inet_addr_str, 20, "127.0.0.1");
   snprintf(car_inet_addr_str, 20, "127.0.0.1");
@@ -736,17 +745,32 @@ int main(int argc, char *argv[])
     }
   }
   
+  // Now set up the processing threads - 1 for Lidar input, one for WiFi RECV processing (fusion)
+  /*
+  pthread_t form_occmap_thread;
+  pthread_t fuse_occmap_thread;
+  int pt_ret = pthread_create(&form_occmap_thread, &pt_attr, process_lidar_to_occgrid, NULL);
+  if (pt_ret != 0) {
+    printf("Could not start the scheduler pthread... return value %d\n", pt_ret);
+    cleanup_and_exit(-1);
+  }
+  int pt_ret = pthread_create(&fuse_occmap_thread, &pt_attr, receive_and_fuse_maps, NULL);
+  if (pt_ret != 0) {
+    printf("Could not start the scheduler pthread... return value %d\n", pt_ret);
+    cleanup_and_exit(-1);
+  }
+  */
  #ifdef INT_TIME
   gettimeofday(&start_prog, NULL);
  #endif
   bool hit_eof = false;
   while ((!hit_eof) && (lidar_count < max_time_steps)) {
     DBGOUT(printf("Calling read_all on the BAG socket...\n"); fflush(stdout));
-    //int valread = read(bag_sock , buffer, 10);
+    //int valread = read(bag_sock , l_buffer, 10);
    #ifdef INT_TIME
     gettimeofday(&start_proc_rdbag, NULL);
    #endif
-    int valread = read_all(bag_sock, buffer, 10);
+    int valread = read_all(bag_sock, l_buffer, 10);
    #ifdef INT_TIME
     gettimeofday(&stop_proc_rdbag, NULL);
     proc_rdbag_sec   += stop_proc_rdbag.tv_sec  - start_proc_rdbag.tv_sec;
@@ -763,16 +787,16 @@ int main(int argc, char *argv[])
       }
     }
 
-    if(buffer[0] == 'L' && buffer[9] == 'L') {
+    if(l_buffer[0] == 'L' && l_buffer[9] == 'L') {
    #ifdef INT_TIME
       gettimeofday(&start_proc_lidar, NULL);
    #endif
       char * ptr;
-      int message_size = strtol(buffer+1, &ptr, 10);
+      int message_size = strtol(l_buffer+1, &ptr, 10);
       DBGOUT(printf("Lidar: expecting message size: %d\n", message_size));
       send(bag_sock, ack, 2, 0);
 
-      int total_bytes_read = read_all(bag_sock, buffer, message_size);
+      int total_bytes_read = read_all(bag_sock, lidar_inputs.data, message_size);
       if (total_bytes_read < message_size) {
 	if (total_bytes_read == 0) {
 	  printf("  Lidar read got ZERO bytes -- END of TRANSFER?\n");
@@ -785,12 +809,16 @@ int main(int argc, char *argv[])
       if (total_bytes_read > message_size) {
 	printf("NOTE: read more total bytes than expected: %u vs %u\n", total_bytes_read, message_size);
       }
+      lidar_inputs.odometry[0] = odometry[0];
+      lidar_inputs.odometry[1] = odometry[1];
+      lidar_inputs.odometry[2] = odometry[2];
+      lidar_inputs.data_size = total_bytes_read;
       DBGOUT(printf("Calling process_data for %d total bytes\n", total_bytes_read));
       printf("Processing Lidar msg %4u data\n", lidar_count);
      #ifdef INT_TIME
       gettimeofday(&start_proc_data, NULL);
      #endif
-      process_data(buffer, total_bytes_read);
+      process_data((void*)(&lidar_inputs)); // buffer, total_bytes_read);
       DBGOUT(printf("Back from process_data for Lidar\n"); fflush(stdout));
       lidar_count++;
      #ifdef INT_TIME
@@ -801,19 +829,19 @@ int main(int argc, char *argv[])
       proc_lidar_usec += stop_proc_lidar.tv_usec - start_proc_lidar.tv_usec;
      #endif
     }
-    else if(buffer[0] == 'O' && buffer[9] == 'O') {
+    else if(l_buffer[0] == 'O' && l_buffer[9] == 'O') {
      #ifdef INT_TIME
       gettimeofday(&start_proc_odo, NULL);
      #endif
       char * ptr;
-      int message_size = strtol(buffer+1, &ptr, 10);
+      int message_size = strtol(l_buffer+1, &ptr, 10);
       DBGOUT(printf("Odometry: expecting message size: %d\n", message_size));
       send(bag_sock, ack, 2, 0);
 
       int total_bytes_read = 0;
 
       //valread = read(bag_sock , buffer, 10000);
-      valread = read_all(bag_sock , buffer, message_size);
+      valread = read_all(bag_sock , l_buffer, message_size);
       DBGOUT(printf("read %d bytes\n", valread));
       if (valread < message_size) {
 	if (valread == 0) {
@@ -825,9 +853,9 @@ int main(int argc, char *argv[])
 	}
       }
 
-      odometry[0] = *((float*)(buffer));   //bytes_to_float(buffer);
-      odometry[1] = *((float*)(buffer+4)); //bytes_to_float(buffer+4);
-      odometry[2] = *((float*)(buffer+8)); //bytes_to_float(buffer+8);
+      odometry[0] = *((float*)(l_buffer));
+      odometry[1] = *((float*)(l_buffer+4));
+      odometry[2] = *((float*)(l_buffer+8));
       printf("Odometry msg %4u: %.2f %.2f %.2f\n", odo_count, odometry[0], odometry[1], odometry[2]);
       odo_count++;
      #ifdef INT_TIME
@@ -838,7 +866,7 @@ int main(int argc, char *argv[])
     } else {
       /*DBGOUT(printf("BUFFER : '");
 	for (int ii = 0; ii < 8; ii++) {
-	printf("%c", buffer[ii]);
+	printf("%c", l_buffer[ii]);
 	}
 	printf("'\n");
 	fflush(stdout));*/
