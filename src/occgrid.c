@@ -11,8 +11,8 @@ void updateBounds(Observation* obs_ptr, float* data, unsigned int data_size, dou
 void raytraceFreespace(Observation* obs_ptr, float* data, unsigned int data_size,
 		       double* min_x, double* min_y, double* max_x, double* max_y,
 		       double robot_x, double robot_y, double robot_z, double robot_yaw);
-void updateRaytraceBounds(double ox, double oy, double wx, double wy, double range,
-                          double* min_x, double* min_y, double* max_x, double* max_y);
+/*void updateRaytraceBounds(double ox, double oy, double wx, double wy, double range,
+  double* min_x, double* min_y, double* max_x, double* max_y);*/
 //void updateMap(Observation* obs_ptr, float* data, unsigned int data_size, double robot_x, double robot_y, double robot_z, double robot_yaw);
 
 void updateOrigin(Observation* obs_ptr, double new_origin_x, double new_origin_y);
@@ -73,12 +73,12 @@ inline double hypot(double x, double y) {
   return x > 0 ? 1.0 : -1.0;
 }*/
 
-inline void touch(double x, double y, double* min_x, double* min_y, double* max_x, double* max_y) {
+/*inline void touch(double x, double y, double* min_x, double* min_y, double* max_x, double* max_y) {
   *min_x = MMIN(x, *min_x);
   *min_y = MMIN(y, *min_y);
   *max_x = MMAX(x, *max_x);
   *max_y = MMAX(y, *max_y);
-}
+  }*/
 
 inline unsigned int cellDistance(Observation* obs_ptr, double world_dist) {
   double cells_dist = MMAX(0.0, ceil(world_dist/obs_ptr->master_resolution));
@@ -396,7 +396,7 @@ unsigned char* cloudToOccgrid(Observation* obs_ptr,
 
   //printf("(1) Number of elements : %d ... ", data_size);
   //printf("First Coordinate = <%f, %f>\n", *data, *(data+1));
-  //  updateMap(obs_ptr, data, data_size, robot_x, robot_y, robot_z, robot_yaw);
+  //MOVED to physically inlined here... updateMap(obs_ptr, data, data_size, robot_x, robot_y, robot_z, robot_yaw);
   if (obs_ptr->rolling_window) {
     //printf("\nUpdating Map .... \n");
     //printf("   robot_x = %f, robot_y = %f, robot_yaw = %f \n", robot_x, robot_y, robot_yaw);
@@ -578,7 +578,7 @@ void updateBounds(Observation* obs_ptr, float* data, unsigned int data_size, dou
 	});
       //printf("Index of Obstacle -> %d\n", index);
       obs_ptr->master_costmap.costmap[index] = CMV_LETHAL_OBSTACLE; //TODO: Test simple test case (char) 255 = '255' ?
-      touch(px, py, min_x, min_y, max_x, max_y);
+      //touch(px, py, min_x, min_y, max_x, max_y);
     }
   }
 }
@@ -611,7 +611,7 @@ void raytraceFreespace(Observation* obs_ptr, float* data, unsigned int data_size
   double map_end_y = obs_ptr->master_origin.y + obs_ptr->master_costmap.y_dim * obs_ptr->master_resolution;
   //printf(">>> End of Map Coordinates -> <%f, %f>\n", map_end_x, map_end_y);
 
-  touch(ox, oy, min_x, min_y, max_x, max_y);
+  //touch(ox, oy, min_x, min_y, max_x, max_y);
 
   for (int i = 0; i < data_size; i = i + 3) {
     double wx = (double) *(data + i);
@@ -663,7 +663,8 @@ void raytraceFreespace(Observation* obs_ptr, float* data, unsigned int data_size
     // and finally... we can execute our trace to clear obstacles along that line
     raytraceLine(obs_ptr, x0, y0, x1, y1, cell_raytrace_range);
 
-    updateRaytraceBounds(ox, oy, wx, wy, obs_ptr->raytrace_range, min_x, min_y, max_x, max_y);
+    /* No apparent effect
+       updateRaytraceBounds(ox, oy, wx, wy, obs_ptr->raytrace_range, min_x, min_y, max_x, max_y);*/
   }
 }
 
@@ -727,14 +728,19 @@ void bresenham2D(Observation* obs_ptr, unsigned int abs_da, unsigned int abs_db,
   markCell(obs_ptr, CMV_FREE_SPACE, offset);
 }
 
-void updateRaytraceBounds(double ox, double oy, double wx, double wy, double range,
+// Interestingly, we comput min_x, min_y, etc. via touch() calls and this updateRayTraceBounds
+//  call, but the computed min/max don't appear to ever get used, or have any real
+//  effect on the run results...
+// I suspect this was a desgn element that might be intended ot reduce the ray-trace
+//  search (distance?) but not either fully implemented or needed...
+/*void updateRaytraceBounds(double ox, double oy, double wx, double wy, double range,
                           double* min_x, double* min_y, double* max_x, double* max_y) {
   double dx = wx - ox, dy = wy - oy;
   double full_distance = hypot(dx, dy);
   double scale = MMIN(1.0, range / full_distance);
   double ex = ox + dx * scale, ey = oy + dy * scale;
   touch(ex, ey, min_x, min_y, max_x, max_y);
-}
+  }*/
 
 
 
