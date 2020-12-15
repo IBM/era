@@ -49,14 +49,14 @@ typedef struct Costmap2D_struct {
 } Costmap2D;
 
 typedef struct Observation {
-    bool  rolling_window;
-    Point master_origin;
-    float master_resolution;
-    double max_obstacle_height;
-    double min_obstacle_height;
-    double raytrace_range;
-    MapLocation map_coordinates;
-    Costmap2D master_costmap;
+  bool  rolling_window;
+  Point master_origin;
+  float master_resolution;
+  double max_obstacle_height;
+  double min_obstacle_height;
+  double raytrace_range;
+  //MapLocation map_coordinates;
+  Costmap2D master_costmap;
 } Observation;
 
 //Define global variables

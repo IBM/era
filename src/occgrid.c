@@ -5,7 +5,7 @@
 #include "occgrid.h"
 
 /** FORWARD DECLARATIONS **/
-void touch(double x, double y, double* min_x, double* min_y, double* max_x, double* max_y);
+//void touch(double x, double y, double* min_x, double* min_y, double* max_x, double* max_y);
 void updateBounds(Observation* obs_ptr, float* data, unsigned int data_size, double robot_x, double robot_y, double robot_z, double robot_yaw,
 		  double* min_x, double* min_y, double* max_x, double* max_y);
 void raytraceFreespace(Observation* obs_ptr, float* data, unsigned int data_size,
@@ -13,7 +13,7 @@ void raytraceFreespace(Observation* obs_ptr, float* data, unsigned int data_size
 		       double robot_x, double robot_y, double robot_z, double robot_yaw);
 void updateRaytraceBounds(double ox, double oy, double wx, double wy, double range,
                           double* min_x, double* min_y, double* max_x, double* max_y);
-void updateMap(Observation* obs_ptr, float* data, unsigned int data_size, double robot_x, double robot_y, double robot_z, double robot_yaw);
+//void updateMap(Observation* obs_ptr, float* data, unsigned int data_size, double robot_x, double robot_y, double robot_z, double robot_yaw);
 
 void updateOrigin(Observation* obs_ptr, double new_origin_x, double new_origin_y);
 
@@ -22,18 +22,18 @@ void copyMapRegion(Observation* obs_ptr, unsigned char* source_map, unsigned int
 		   unsigned int dm_lower_left_y, unsigned int dm_size_x, unsigned int region_size_x,
 		   unsigned int region_size_y);
 
-bool worldToMap(Observation* obs_ptr, double wx, double wy, double robot_x, double robot_y);
+//bool worldToMapCell(Observation* obs_ptr, double wx, double wy, double robot_x, double robot_y, int* nx, int* ny));
 
-unsigned int cellDistance(Observation* obs_ptr, double world_dist);
+//unsigned int cellDistance(Observation* obs_ptr, double world_dist);
 
 void raytraceLine(Observation* obs_ptr, unsigned int x0, unsigned int y0, unsigned int x1, unsigned int y1, unsigned int max_length); //TODO: Default max argument for max_length is UNIT_MAX
 
 void bresenham2D(Observation* obs_ptr, unsigned int abs_da, unsigned int abs_db, int error_b, int offset_a,
                         int offset_b, unsigned int offset, unsigned int max_length);
 
-void markCell(Observation* obs_ptr, unsigned char value, unsigned int offset);
+//void markCell(Observation* obs_ptr, unsigned char value, unsigned int offset);
 
-unsigned int getIndex(Observation* obs_ptr, unsigned int x, unsigned int y);
+//unsigned int getIndex(Observation* obs_ptr, unsigned int x, unsigned int y);
 
 void addStaticObstacle(unsigned char* obstacle_type);
 
@@ -61,32 +61,57 @@ inline double hypot(double x, double y) {
 #define MMAX(x, y) (((x) > (y)) ? (x)  : (y))
 #define MSIGN(x)   (((x) > 0) ? 1 : -1);
 
-int max(int num1, int num2) {
+/*inline int max(int num1, int num2) {
   return (num1 > num2) ? num1 : num2;
-}
+  }*/
 
-int min(int num1, int num2) {
+/*inline int min(int num1, int num2) {
   return (num1 < num2) ? num1 : num2;
-}
+  }*/
 
-int sign (int x) {
+/*inline int sign (int x) {
   return x > 0 ? 1.0 : -1.0;
-}
+}*/
 
-void touch(double x, double y, double* min_x, double* min_y, double* max_x, double* max_y) {
+inline void touch(double x, double y, double* min_x, double* min_y, double* max_x, double* max_y) {
   *min_x = MMIN(x, *min_x);
   *min_y = MMIN(y, *min_y);
   *max_x = MMAX(x, *max_x);
   *max_y = MMAX(y, *max_y);
 }
 
-unsigned int getIndex(Observation* obs_ptr, unsigned int i, unsigned int j) {
+inline unsigned int cellDistance(Observation* obs_ptr, double world_dist) {
+  double cells_dist = MMAX(0.0, ceil(world_dist/obs_ptr->master_resolution));
+  return (unsigned int) cells_dist;
+}
+
+inline unsigned int getIndex(Observation* obs_ptr, unsigned int i, unsigned int j) {
   //printf("x_dim * j + i = %d * %d + %d = %d", obs_ptr->master_costmap.x_dim, j, i, obs_ptr->master_costmap.x_dim * j + i);
   return (obs_ptr->master_costmap.x_dim / obs_ptr->master_resolution) * j + i;
 }
 
-/*
-  void printMap() {
+//Calculate world coordinates relative to origin (and not robot's odometry)
+inline bool worldToMapCell(Observation* obs_ptr, double owx, double owy, double robot_x, double robot_y, int* nwx, int* nwy) {
+  double owx_rel_origin = owx + robot_x;
+  double owy_rel_origin = owy + robot_y;
+  //printf("World To Map (Relative to Origin) = (%d, %d)\n", (int)((owx_rel_origin - obs_ptr->master_origin.x) / obs_ptr->master_resolution), (int)((owy_rel_origin - obs_ptr->master_origin.y) / obs_ptr->master_resolution));
+  if ((owx_rel_origin < obs_ptr->master_origin.x) || (owy_rel_origin < obs_ptr->master_origin.y)) {
+    DBGOUT(printf("Coordinates Out Of Bounds .... (owx, owy) = (%f, %f); (ox, oy) = (%f, %f)\n", owx, owy, obs_ptr->master_origin.x, obs_ptr->master_origin.y));
+    return false;
+  }
+
+  *nwx = (int)((owx_rel_origin - obs_ptr->master_origin.x) / obs_ptr->master_resolution);
+  *nwy = (int)((owy_rel_origin - obs_ptr->master_origin.y) / obs_ptr->master_resolution);
+
+  //printf("World To Map (owx, owy) = (%f, %f) -> (mx, my) = (%d, %d)\n\n", owx, owy, obs_ptr->map_coordinates.x, obs_ptr->map_coordinates.y);
+
+  if ((*nwx < obs_ptr->master_costmap.x_dim) && (*nwy < obs_ptr->master_costmap.y_dim)) {
+    return true;
+  }
+  return false;
+}
+
+/* void printMap() {
   printf("map: \n");
   for (int i = 0; i < obs_ptr->master_costmap.y_dim / obs_ptr->master_resolution; i++) {
   for (int j = 0; j < obs_ptr->master_costmap.x_dim / obs_ptr->master_resolution; j++) {
@@ -95,8 +120,7 @@ unsigned int getIndex(Observation* obs_ptr, unsigned int i, unsigned int j) {
   }
   printf("\n\n");
   }
-  }
-*/
+  } */
 
 /** This is not used?  Should be cleaned up, anyway:
     Move from a string input to an enum type for obstaclt_type?
@@ -335,26 +359,7 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
   return;
 }
 
-unsigned char* cloudToOccgrid(Observation* obs_ptr,
-			      float* data, unsigned int data_size,
-			      double robot_x, double robot_y, double robot_z, double robot_yaw,
-			      bool rolling_window,
-			      double min_obstacle_height, double max_obstacle_height,
-			      double raytrace_range,
-			      unsigned int x_dim, unsigned int y_dim, double resolution/*,
-			      unsigned char default_value*/ ) {
-  DBGOUT(printf("In cloudToOccgrid with Odometry %.1f %.1f %.f1\n", robot_x, robot_y, robot_z));
-  initCostmap(obs_ptr, rolling_window, min_obstacle_height, max_obstacle_height, raytrace_range, x_dim, y_dim, resolution, /*default_value,*/ robot_x, robot_y, robot_z);
-
-  //printf("(1) Number of elements : %d ... ", data_size);
-  //printf("First Coordinate = <%f, %f>\n", *data, *(data+1));
-  updateMap(obs_ptr, data, data_size, robot_x, robot_y, robot_z, robot_yaw);
-
-  //printMap();
-  return obs_ptr->master_costmap.costmap;
-}
-
-void updateMap(Observation* obs_ptr,
+/*void updateMap(Observation* obs_ptr,
 	       float* data, unsigned int data_size,
 	       double robot_x, double robot_y, double robot_z, double robot_yaw) {
   if (obs_ptr->rolling_window) {
@@ -376,7 +381,46 @@ void updateMap(Observation* obs_ptr,
   //rotating_window = true; //Comment out if not rolling window
 
   updateBounds(obs_ptr, data, data_size, robot_x, robot_y, robot_z, robot_yaw, &min_x, &min_y, &max_x, &max_y);
+  }*/
+
+unsigned char* cloudToOccgrid(Observation* obs_ptr,
+			      float* data, unsigned int data_size,
+			      double robot_x, double robot_y, double robot_z, double robot_yaw,
+			      bool rolling_window,
+			      double min_obstacle_height, double max_obstacle_height,
+			      double raytrace_range,
+			      unsigned int x_dim, unsigned int y_dim, double resolution/*,
+			      unsigned char default_value*/ ) {
+  DBGOUT(printf("In cloudToOccgrid with Odometry %.1f %.1f %.f1\n", robot_x, robot_y, robot_z));
+  initCostmap(obs_ptr, rolling_window, min_obstacle_height, max_obstacle_height, raytrace_range, x_dim, y_dim, resolution, /*default_value,*/ robot_x, robot_y, robot_z);
+
+  //printf("(1) Number of elements : %d ... ", data_size);
+  //printf("First Coordinate = <%f, %f>\n", *data, *(data+1));
+  //  updateMap(obs_ptr, data, data_size, robot_x, robot_y, robot_z, robot_yaw);
+  if (obs_ptr->rolling_window) {
+    //printf("\nUpdating Map .... \n");
+    //printf("   robot_x = %f, robot_y = %f, robot_yaw = %f \n", robot_x, robot_y, robot_yaw);
+    //printf("   Master Origin = (%f, %f)\n", obs_ptr->master_origin.x, obs_ptr->master_origin.y);
+    double new_origin_x = robot_x - obs_ptr->master_costmap.x_dim / 2;
+    double new_origin_y = robot_y - obs_ptr->master_costmap.y_dim / 2;
+    updateOrigin(obs_ptr, new_origin_x, new_origin_y);
+  }
+
+  double min_x = 1e30;
+  double min_y = 1e30;
+  double max_x = -1e30;
+  double max_y = -1e30;
+
+  //printf("(1) Number of elements : %d ... ", data_size);
+  //printf("First Coordinate = <%f, %f>\n", *data, *(data+1));
+  //rotating_window = true; //Comment out if not rolling window
+
+  updateBounds(obs_ptr, data, data_size, robot_x, robot_y, robot_z, robot_yaw, &min_x, &min_y, &max_x, &max_y);
+
+  //printMap();
+  return obs_ptr->master_costmap.costmap;
 }
+
 
 void updateOrigin(Observation* obs_ptr, double new_origin_x, double new_origin_y) {
   //printf("\nUpdating Map Origin\n");
@@ -524,10 +568,11 @@ void updateBounds(Observation* obs_ptr, float* data, unsigned int data_size, dou
       //printf("Master Origin Coordinate = < %f, %f > \n", obs_ptr->master_origin.x, obs_ptr->master_origin.y);
 
       //printf("Map Coordinates [BEFORE Conversion] -> (%d, %d)\n", obs_ptr->map_coordinates.x, obs_ptr->map_coordinates.y);
-      worldToMap(obs_ptr, px, py, robot_x, robot_y);
+      int wx, wy;
+      worldToMapCell(obs_ptr, px, py, robot_x, robot_y, &wx, &wy);
       //printf("Map Coordinates (mx, my) = (%d, %d)\n", obs_ptr->map_coordinates.x, obs_ptr->map_coordinates.y);
 
-      unsigned int index = getIndex(obs_ptr, obs_ptr->map_coordinates.x, obs_ptr->map_coordinates.y);
+      unsigned int index = getIndex(obs_ptr, wx, wy);
       CHECK(if (index >= COST_MAP_ENTRIES) {
 	  printf("ERROR : updateBounds : index is too large at %d vs %d\n", index, COST_MAP_ENTRIES);
 	});
@@ -554,13 +599,11 @@ void raytraceFreespace(Observation* obs_ptr, float* data, unsigned int data_size
   //printf(">>> Odometry -> <%f, %f>\n", ox, oy);
 
   // get the map coordinates of the origin of the sensor
-  unsigned int x0, y0;
-  if (!worldToMap(obs_ptr, 0, 0, robot_x, robot_y)) {//TODO:
+  int x0, y0;
+  if (!worldToMapCell(obs_ptr, 0, 0, robot_x, robot_y, &x0, &y0)) {//TODO:
     printf("The origin for the sensor at (%.2f, %.2f) is out of map bounds. So, the costmap cannot raytrace for it.\n", ox, oy);
     return;
   }
-  x0 = obs_ptr->map_coordinates.x;
-  y0 = obs_ptr->map_coordinates.y;
   //printf(">>> Map Coordinates of the Sensor Origin -> <%d, %d>\n", x0, y0);
 
   // we can pre-compute the endpoints of the map outside of the inner loop... we'll need these later
@@ -599,24 +642,20 @@ void raytraceFreespace(Observation* obs_ptr, float* data, unsigned int data_size
     }
 
     // the maximum value to raytrace to is the end of the map
-    if (wx > map_end_x)
-      {
-	double t = (map_end_x - ox) / a;
-	wx = map_end_x - .001;
-	wy = oy + b * t;
-      }
-    if (wy > map_end_y)
-      {
-	double t = (map_end_y - oy) / b;
-	wx = ox + a * t;
-	wy = map_end_y - .001;
-      }
-
+    if (wx > map_end_x) {
+      double t = (map_end_x - ox) / a;
+      wx = map_end_x - .001;
+      wy = oy + b * t;
+    }
+    if (wy > map_end_y) {
+      double t = (map_end_y - oy) / b;
+      wx = ox + a * t;
+      wy = map_end_y - .001;
+    }
+    
     // now that the vector is scaled correctly... we'll get the map coordinates of its endpoint
-    unsigned int x1, y1;
-    if (!worldToMap(obs_ptr, wx, wy, robot_x, robot_y)) continue;
-    x1 = obs_ptr->map_coordinates.x;
-    y1 = obs_ptr->map_coordinates.y;
+    int x1, y1;
+    if (!worldToMapCell(obs_ptr, wx, wy, robot_x, robot_y, &x1, &y1)) continue;
 
     unsigned int cell_raytrace_range = cellDistance(obs_ptr, obs_ptr->raytrace_range);
     //printf(">>> Cell Raytrace Range -> %d\n", cell_raytrace_range);
@@ -628,31 +667,6 @@ void raytraceFreespace(Observation* obs_ptr, float* data, unsigned int data_size
   }
 }
 
-bool worldToMap(Observation* obs_ptr, double wx, double wy, double robot_x, double robot_y) {
-  //Calculate world coordinates relative to origin (and not robot's odometry)
-  double wx_rel_origin = wx + robot_x;
-  double wy_rel_origin = wy + robot_y;
-  //printf("World To Map (Relative to Origin) = (%d, %d)\n", (int)((wx_rel_origin - obs_ptr->master_origin.x) / obs_ptr->master_resolution), (int)((wy_rel_origin - obs_ptr->master_origin.y) / obs_ptr->master_resolution));
-  if ((wx_rel_origin < obs_ptr->master_origin.x) || (wy_rel_origin < obs_ptr->master_origin.y)) {
-    DBGOUT(printf("Coordinates Out Of Bounds .... (wx, wy) = (%f, %f); (ox, oy) = (%f, %f)\n", wx, wy, obs_ptr->master_origin.x, obs_ptr->master_origin.y));
-    return false;
-  }
-
-  obs_ptr->map_coordinates.x = (int)((wx_rel_origin - obs_ptr->master_origin.x) / obs_ptr->master_resolution);
-  obs_ptr->map_coordinates.y = (int)((wy_rel_origin - obs_ptr->master_origin.y) / obs_ptr->master_resolution);
-
-  //printf("World To Map (wx, wy) = (%f, %f) -> (mx, my) = (%d, %d)\n\n", wx, wy, obs_ptr->map_coordinates.x, obs_ptr->map_coordinates.y);
-
-  if ((obs_ptr->map_coordinates.x < obs_ptr->master_costmap.x_dim) && (obs_ptr->map_coordinates.y < obs_ptr->master_costmap.y_dim)) {
-    return true;
-  }
-  return false;
-}
-
-unsigned int cellDistance(Observation* obs_ptr, double world_dist) {
-  double cells_dist = max (0.0, ceil(world_dist/obs_ptr->master_resolution));
-  return (unsigned int) cells_dist;
-}
 
 void raytraceLine(Observation* obs_ptr, unsigned int x0, unsigned int y0, unsigned int x1, unsigned int y1, unsigned int max_length) { //TODO: default parameter for max_length is UNIT_MAX; define UNIT_MAX
   //printf(">>> Raytrace Line from <%d, %d> to <%d, %d> \n", x0, y0, x1, y1);
@@ -689,30 +703,28 @@ void raytraceLine(Observation* obs_ptr, unsigned int x0, unsigned int y0, unsign
   bresenham2D(obs_ptr, abs_dy, abs_dx, error_x, offset_dy, offset_dx, offset, (unsigned int)(scale * abs_dy));
 }
 
-void bresenham2D(Observation* obs_ptr, unsigned int abs_da, unsigned int abs_db, int error_b, int offset_a,
-		 int offset_b, unsigned int offset, unsigned int max_length) {
-  unsigned int end = MMIN(max_length, abs_da);
-  //printf("\n\n abs_da, end -> %d, %d\n", abs_da, end);
-  for (unsigned int i = 0; i < end; ++i)
-    {
-      markCell(obs_ptr, CMV_FREE_SPACE, offset);
-      offset += offset_a;
-      error_b += abs_db;
-      if ((unsigned int)error_b >= abs_da)
-        {
-	  offset += offset_b;
-	  error_b -= abs_da;
-        }
-    }
-  markCell(obs_ptr, CMV_FREE_SPACE, offset);
-}
-
-void markCell(Observation* obs_ptr, unsigned char value, unsigned int offset) {
+static inline void markCell(Observation* obs_ptr, unsigned char value, unsigned int offset) {
   //printf("OFFSET -> %d\n", offset);
   CHECK(if (offset >= COST_MAP_ENTRIES) {
       printf("ERROR : updateBounds : offset is too large at %d vs %d\n", offset, COST_MAP_ENTRIES);
     });
   obs_ptr->master_costmap.costmap[offset] = value;
+}
+
+void bresenham2D(Observation* obs_ptr, unsigned int abs_da, unsigned int abs_db, int error_b, int offset_a,
+		 int offset_b, unsigned int offset, unsigned int max_length) {
+  unsigned int end = MMIN(max_length, abs_da);
+  //printf("\n\n abs_da, end -> %d, %d\n", abs_da, end);
+  for (unsigned int i = 0; i < end; ++i) {
+    markCell(obs_ptr, CMV_FREE_SPACE, offset);
+    offset += offset_a;
+    error_b += abs_db;
+    if ((unsigned int)error_b >= abs_da) {
+      offset += offset_b;
+      error_b -= abs_da;
+    }
+  }
+  markCell(obs_ptr, CMV_FREE_SPACE, offset);
 }
 
 void updateRaytraceBounds(double ox, double oy, double wx, double wy, double range,
