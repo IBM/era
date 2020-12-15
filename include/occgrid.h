@@ -69,9 +69,10 @@ void fuseIntoLocal(Costmap2D* localMap, Costmap2D* updateMap);
 void combineGrids(unsigned char* grid1, unsigned char* grid2, double robot_x1, double robot_y1,
 		  double robot_x2, double robot_y2, unsigned int cell_size_x, unsigned int cell_size_y, double resolution/*, char def_val*/);
 
-unsigned char* cloudToOccgrid(float* data, unsigned int data_size, double robot_x, double robot_y, double robot_z, double robot_yaw, bool rolling_window,
-                              double min_obstacle_height, double max_obstacle_height, double raytrace_range, unsigned int size_x,
-                              unsigned int size_y, double resolution/*, unsigned char default_value*/);
+unsigned char* cloudToOccgrid(Observation* obs_ptr, float* data, unsigned int data_size,
+			      double robot_x, double robot_y, double robot_z, double robot_yaw, bool rolling_window,
+                              double min_obstacle_height, double max_obstacle_height, double raytrace_range,
+			      unsigned int size_x, unsigned int size_y, double resolution);
 
 void printMap();
 

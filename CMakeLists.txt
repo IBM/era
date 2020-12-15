@@ -29,6 +29,9 @@ use_c99()
 
 include_directories(include)
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 #add_library(occgrid STATIC src/occgrid.c)
 #add_library(lz4 STATIC src/lz4.c)
 #add_library(sdr STATIC src/complex_ops.c src/crc.c src/delay.c src/fft.c src/fir.c src/gr_equalizer.c src/ofdm.c src/recv_pipe.c src/sdr_descrambler.c src/sdr_viterbi.c src/simple_dft.c src/sync_long.c src/sync_short.c src/xmit_pipe.c)
