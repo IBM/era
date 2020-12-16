@@ -128,8 +128,9 @@ int ascii_counter = 0;
 
 unsigned odo_count = 0;
 unsigned lidar_count = 0;
-unsigned xmit_recv_count = 0;
-
+unsigned xmit_count = 0;
+unsigned recv_count = 0;
+unsigned car_send_count = 0;
 
 // Forward Declarations
 void print_usage(char * pname);
@@ -300,7 +301,7 @@ void* receive_and_fuse_maps(void* parm_ptr)
 	  closeout_and_exit("RECV REAL got too few bytes..", -1);
 	}
       }
-      DBGOUT2(printf("XFER %4u : Dumping RECV-PIPE REAL raw bytes\n", xmit_recv_count);
+      DBGOUT2(printf("XFER %4u : Dumping RECV-PIPE REAL raw bytes\n", recv_count);
 	      for (int i = 0; i < n_recvd_in; i++) {
 		printf("XFER %4u REAL-byte %6u : %f\n", odo_count, i, recvd_in_real[i]);
 	      }
@@ -376,7 +377,8 @@ void* receive_and_fuse_maps(void* parm_ptr)
 	     printf("                : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
 	     print_ascii_costmap(stdout, remote_map));
 
-      // Get the current local-map 
+      // Get the current local-map
+      printf("Receive step %u : Processing fusion for curr_obs = %d\n", recv_count, curr_obs);
       Costmap2D* local_map = &(observations[curr_obs].master_costmap);
 
      #ifdef WRITE_ASCII_MAP
@@ -461,6 +463,8 @@ void* receive_and_fuse_maps(void* parm_ptr)
       pd_wifi_car_sec   += stop_pd_wifi_car.tv_sec  - start_pd_wifi_car.tv_sec;
       pd_wifi_car_usec  += stop_pd_wifi_car.tv_usec - start_pd_wifi_car.tv_usec;
      #endif
+      car_send_count++;
+      recv_count++;
     } else { // if (valread == 8)
      #ifdef INT_TIME
       gettimeofday(&stop_pd_wifi_recv_wait, NULL);
@@ -495,7 +499,8 @@ typedef struct lidar_inputs_struct {
   
 void process_lidar_to_occgrid(lidar_inputs_t* lidar_inputs)
 {
-  DBGOUT(printf("Calling cloudToOccgrid with odometry %.1f %.1f %.1f\n", lidar_inputs->odometry[0], lidar_inputs->odometry[1], lidar_inputs->odometry[2]));
+  //DBGOUT(
+  printf("Lidar step %u : Calling cloudToOccgrid next_obs = %d with odometry %.1f %.1f %.1f\n", lidar_count, next_obs, lidar_inputs->odometry[0], lidar_inputs->odometry[1], lidar_inputs->odometry[2]);//);
   int valread = 0;
  #ifdef INT_TIME
   gettimeofday(&start_pd_cloud2grid, NULL);
@@ -578,9 +583,9 @@ void process_lidar_to_occgrid(lidar_inputs_t* lidar_inputs)
   DBGOUT(printf("\nXMIT Sending %s on XMIT port %u socket\n", w_buffer, XMIT_PORT));
   send(xmit_sock, w_buffer, 8, 0);
   DBGOUT(printf("     Send %u REAL values %u bytes on XMIT port %u socket\n", n_xmit_out, xfer_bytes, XMIT_PORT));
-  DBGOUT2(printf("XFER %4u : Dumping XMIT-PIPE REAL raw bytes\n", xmit_recv_count);
+  DBGOUT2(printf("XFER %4u : Dumping XMIT-PIPE REAL raw bytes\n", xmit_count);
 	  for (int i = 0; i < n_xmit_out; i++) {
-	    printf("XFER %4u REAL-byte %6u : %f\n", xmit_recv_count, i, xmit_out_real[i]);
+	    printf("XFER %4u REAL-byte %6u : %f\n", xmit_count, i, xmit_out_real[i]);
 	  }
 	  printf("\n"));
  #ifdef INT_TIME
@@ -588,9 +593,9 @@ void process_lidar_to_occgrid(lidar_inputs_t* lidar_inputs)
  #endif	
   send(xmit_sock, (char*)(xmit_out_real), n_xmit_out*sizeof(float), 0);
   DBGOUT(printf("     Send %u IMAG values %u bytes on XMIT port %u socket\n", n_xmit_out, xfer_bytes, XMIT_PORT));
-  DBGOUT2(printf("XFER %4u : Dumping XMIT-PIPE IMAG raw bytes\n", xmit_recv_count);
+  DBGOUT2(printf("XFER %4u : Dumping XMIT-PIPE IMAG raw bytes\n", xmit_count);
 	  for (int i = 0; i < n_xmit_out; i++) {
-	    printf("XFER %4u IMAG-byte %6u : %f\n", xmit_recv_count, i, xmit_out_imag[i]);
+	    printf("XFER %4u IMAG-byte %6u : %f\n", xmit_count, i, xmit_out_imag[i]);
 	  }
 	  printf("\n"));
  #ifdef INT_TIME
@@ -607,6 +612,7 @@ void process_lidar_to_occgrid(lidar_inputs_t* lidar_inputs)
   pd_wifi_send_im_usec  += stop_pd_wifi_send.tv_usec - stop_pd_wifi_send_rl.tv_usec;
  #endif
 
+  xmit_count++;
  #if PARALLEL_PTHREADS
   ; // nothing to do here...
  #else
