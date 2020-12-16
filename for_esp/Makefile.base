@@ -89,67 +89,90 @@ LDFLAGS += -ltest
 LDFLAGS += -lcontig
 endif
 
-SRC_T1 = src/main.c src/occgrid.c src/lz4.c src/complex_ops.c src/crc.c src/delay.c src/fft.c src/fir.c src/gr_equalizer.c src/ofdm.c src/recv_pipe.c src/sdr_descrambler.c src/sdr_viterbi.c  src/sync_long.c src/sync_short.c src/xmit_pipe.c
-SRC_T2 = $(SRC_T1)
-SRC_T3 = src/recv_main.c src/complex_ops.c src/delay.c src/fft.c src/fir.c src/gr_equalizer.c src/ofdm.c src/recv_pipe.c src/sdr_descrambler.c src/sdr_viterbi.c src/sync_long.c src/sync_short.c
-SRC_T4 = src/xmit_main.c src/crc.c src/fft.c src/xmit_pipe.c
+SRC_ERA1 = src/main.c src/occgrid.c src/lz4.c src/complex_ops.c src/crc.c src/delay.c src/fft.c src/fir.c src/gr_equalizer.c src/ofdm.c src/recv_pipe.c src/sdr_descrambler.c src/sdr_viterbi.c  src/sync_long.c src/sync_short.c src/xmit_pipe.c
+SRC_ERA2 = $(SRC_ERA1)
+SRC_PERA1 = $(SRC_ERA1)
+SRC_PERA2 = $(SRC_ERA1)
+SRC_RECV = src/recv_main.c src/complex_ops.c src/delay.c src/fft.c src/fir.c src/gr_equalizer.c src/ofdm.c src/recv_pipe.c src/sdr_descrambler.c src/sdr_viterbi.c src/sync_long.c src/sync_short.c
+SRC_XMIT = src/xmit_main.c src/crc.c src/fft.c src/xmit_pipe.c
 
 #SRC_T = $(foreach f, $(wildcard src/*.c), $(shell basename $(f)))
 SRC_D = $(wildcard src/*.c)
 HDR_T = $(wildcard include/*.h)
-#TSRC_T1 = $(foreach f, $(SRC_T1), $(shell basename $(f)))
-#OBJ_T1 = $(TSRC_T1:%.c=obj_t1/%.o)
-OBJ_T1 = $(SRC_T1:src/%.c=obj_t1/%.o)
-OBJ_T2 = $(SRC_T2:src/%.c=obj_t2/%.o)
-OBJ_T3 = $(SRC_T3:src/%.c=obj_t3/%.o)
-OBJ_T4 = $(SRC_T4:src/%.c=obj_t4/%.o)
+
+OBJ_ERA1 = $(SRC_ERA1:src/%.c=obj_era1/%.o)
+OBJ_ERA2 = $(SRC_ERA2:src/%.c=obj_era2/%.o)
+OBJ_PERA1 = $(SRC_ERA1:src/%.c=obj_pera1/%.o)
+OBJ_PERA2 = $(SRC_ERA2:src/%.c=obj_pera2/%.o)
+OBJ_RECV = $(SRC_RECV:src/%.c=obj_recv/%.o)
+OBJ_XMIT = $(SRC_XMIT:src/%.c=obj_xmit/%.o)
 
 VPATH = ./src
 
 TARGET_ERA1=era1_$(CONFIG_GRID_MAP_X_DIM)_$(CONFIG_GRID_MAP_Y_DIM)_$(CONFIG_GRID_MAP_RESLTN)
 TARGET_ERA2=era2_$(CONFIG_GRID_MAP_X_DIM)_$(CONFIG_GRID_MAP_Y_DIM)_$(CONFIG_GRID_MAP_RESLTN)
+TARGET_PERA1=pera1_$(CONFIG_GRID_MAP_X_DIM)_$(CONFIG_GRID_MAP_Y_DIM)_$(CONFIG_GRID_MAP_RESLTN)
+TARGET_PERA2=pera2_$(CONFIG_GRID_MAP_X_DIM)_$(CONFIG_GRID_MAP_Y_DIM)_$(CONFIG_GRID_MAP_RESLTN)
 TARGET_RECV=do_recv_pipe
 TARGET_XMIT=do_xmit_pipe
 
-all: obj_t1 obj_t2 obj_t3 obj_t4 $(TARGET_ERA1) $(TARGET_ERA2) $(TARGET_RECV) $(TARGET_XMIT)
+all: obj_era1 obj_era2 obj_pera1 obj_pera2 obj_recv obj_xmit $(TARGET_ERA1) $(TARGET_ERA2) $(TARGET_PERA1) $(TARGET_PERA2) $(TARGET_RECV) $(TARGET_XMIT)
 
-obj_t1/%.o: %.c
+obj_era1/%.o: %.c
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DASCII_FN='"asciimap_era1_"' -DIMAGE_FN='"gridimage_era1_"' -DBAG_PORT=5556 -DXMIT_PORT=5558 -DRECV_PORT=5559 -DCAR_PORT=5562 -c $< -o $@
 
-obj_t2/%.o: %.c
+obj_era2/%.o: %.c
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DASCII_FN='"asciimap_era2_"' -DIMAGE_FN='"gridimage_era2_"' -DBAG_PORT=5557 -DXMIT_PORT=5560 -DRECV_PORT=5561 -DCAR_PORT=5563 -c $< -o $@
 
-obj_t3/%.o: %.c
+obj_pera1/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DASCII_FN='"asciimap_pera1_"' -DIMAGE_FN='"gridimage_pera1_"' -DBAG_PORT=5556 -DXMIT_PORT=5558 -DRECV_PORT=5559 -DCAR_PORT=5562 -DPARALLEL_PTHREADS -c $< -o $@
+
+obj_pera2/%.o: %.c
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DASCII_FN='"asciimap_pera2_"' -DIMAGE_FN='"gridimage_pera2_"' -DBAG_PORT=5557 -DXMIT_PORT=5560 -DRECV_PORT=5561 -DCAR_PORT=5563 -DPARALLEL_PTHREADS -c $< -o $@
+
+obj_recv/%.o: %.c
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@
 
-obj_t4/%.o: %.c
+obj_xmit/%.o: %.c
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJ_T1): $(HDR_T)
+$(OBJ_ERA1): $(HDR_T)
 
 
-$(OBJ_T2): $(HDR_T)
+$(OBJ_ERA2): $(HDR_T)
 
 
-$(OBJ_T3): $(HDR_T)
+$(OBJ_PERA1): $(HDR_T)
 
 
-$(OBJ_T4): $(HDR_T)
+$(OBJ_PERA2): $(HDR_T)
 
 
-$(TARGET_ERA1): obj_t1 $(TARGET_ERA1).exe
+$(OBJ_RECV): $(HDR_T)
+
+
+$(OBJ_XMIT): $(HDR_T)
+
+
+$(TARGET_ERA1): obj_era1 $(TARGET_ERA1).exe
 	echo "Done building $@"
 
-$(TARGET_ERA2): obj_t2 $(TARGET_ERA2).exe
+$(TARGET_ERA2): obj_era2 $(TARGET_ERA2).exe
 	echo "Done building $@"
 
-$(TARGET_RECV): obj_t3 $(TARGET_RECV).exe
+$(TARGET_PERA1): obj_era1 $(TARGET_PERA1).exe
 	echo "Done building $@"
 
-$(TARGET_XMIT): obj_t4 $(TARGET_XMIT).exe
+$(TARGET_PERA2): obj_era2 $(TARGET_PERA2).exe
 	echo "Done building $@"
 
-$(TARGET_ERA1).exe: $(OBJ_T1)
+$(TARGET_RECV): obj_recv $(TARGET_RECV).exe
+	echo "Done building $@"
+
+$(TARGET_XMIT): obj_xmit $(TARGET_XMIT).exe
+	echo "Done building $@"
+
+$(TARGET_ERA1).exe: $(OBJ_ERA1)
 ifdef COMPILE_TO_ESP
 	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
 	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
@@ -157,7 +180,7 @@ ifdef COMPILE_TO_ESP
 endif
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
 
-$(TARGET_ERA2).exe: $(OBJ_T2)
+$(TARGET_ERA2).exe: $(OBJ_ERA2)
 ifdef COMPILE_TO_ESP
 	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
 	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
@@ -165,7 +188,7 @@ ifdef COMPILE_TO_ESP
 endif
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
 
-$(TARGET_RECV).exe: $(OBJ_T3)
+$(TARGET_PERA1).exe: $(OBJ_PERA1)
 ifdef COMPILE_TO_ESP
 	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
 	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
@@ -173,7 +196,23 @@ ifdef COMPILE_TO_ESP
 endif
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
 
-$(TARGET_XMIT).exe: $(OBJ_T4)
+$(TARGET_PERA2).exe: $(OBJ_PERA2)
+ifdef COMPILE_TO_ESP
+	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
+	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
+	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/libesp
+endif
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
+
+$(TARGET_RECV).exe: $(OBJ_RECV)
+ifdef COMPILE_TO_ESP
+	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
+	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
+	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/libesp
+endif
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
+
+$(TARGET_XMIT).exe: $(OBJ_XMIT)
 ifdef COMPILE_TO_ESP
 	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
 	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
@@ -182,22 +221,29 @@ endif
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
 
 clean:
-	$(RM) $(OBJ_T1) $(OBJ_T2) $(OBJ_T3) $(OBJ_T4) $(TARGET_ERA1) $(TARGET_ERA2) $(TARGET_RECV) $(TARGET_XMIT)
-	$(RM) -r obj_t1 obj_t2 obj_t3 obj_t4
+	$(RM) $(OBJ_ERA1) $(OBJ_ERA2) $(OBJ_PERA1) $(OBJ_PERA2) $(OBJ_RECV) $(OBJ_XMIT)
+	$(RM) $(TARGET_ERA1) $(TARGET_ERA2) $(TARGET_PERA1) $(TARGET_PERA2) $(TARGET_RECV) $(TARGET_XMIT)
+	$(RM) -r obj_era1 obj_era2 obj_pera1 obj_pera2 obj_recv obj_xmit
 
 clobber: clean
 
 
-obj_t1:
+obj_era1:
 	mkdir $@
 
-obj_t2:
+obj_era2:
 	mkdir $@
 
-obj_t3:
+obj_pera1:
 	mkdir $@
 
-obj_t4:
+obj_pera2:
+	mkdir $@
+
+obj_recv:
+	mkdir $@
+
+obj_xmit:
 	mkdir $@
 
 .PHONY: all clean

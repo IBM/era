@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/socket.h> // Unbuntu 18 on x86_64 has this at /usr/include/x86_64-linux-gnu/sys/socket.h
 #include <signal.h>
+#include <pthread.h>
 #include <fcntl.h> // for open
 #include <unistd.h> // for close
 #include <arpa/inet.h> // for inet_addr
@@ -68,33 +69,41 @@ struct timeval stop_pd_lz4_cmp, start_pd_lz4_cmp;
 uint64_t pd_lz4_cmp_sec  = 0LL;
 uint64_t pd_lz4_cmp_usec = 0LL;
 
-struct timeval stop_pd_xmit_pipe, start_pd_xmit_pipe;
-uint64_t pd_xmit_pipe_sec  = 0LL;
-uint64_t pd_xmit_pipe_usec = 0LL;
+struct timeval stop_pd_wifi_pipe, start_pd_wifi_pipe;
+uint64_t pd_wifi_pipe_sec  = 0LL;
+uint64_t pd_wifi_pipe_usec = 0LL;
 
-struct timeval stop_pd_xmit_send, start_pd_xmit_send;
-uint64_t pd_xmit_send_sec  = 0LL;
-uint64_t pd_xmit_send_usec = 0LL;
+struct timeval stop_pd_wifi_send, start_pd_wifi_send;
+uint64_t pd_wifi_send_sec  = 0LL;
+uint64_t pd_wifi_send_usec = 0LL;
 
-struct timeval stop_pd_xmit_send_rl, start_pd_xmit_send_rl;
-uint64_t pd_xmit_send_rl_sec  = 0LL;
-uint64_t pd_xmit_send_rl_usec = 0LL;
+struct timeval stop_pd_wifi_send_rl, start_pd_wifi_send_rl;
+uint64_t pd_wifi_send_rl_sec  = 0LL;
+uint64_t pd_wifi_send_rl_usec = 0LL;
 
-struct timeval stop_pd_xmit_send_im, start_pd_xmit_send_im;
-uint64_t pd_xmit_send_im_sec  = 0LL;
-uint64_t pd_xmit_send_im_usec = 0LL;
+struct timeval stop_pd_wifi_send_im, start_pd_wifi_send_im;
+uint64_t pd_wifi_send_im_sec  = 0LL;
+uint64_t pd_wifi_send_im_usec = 0LL;
 
-struct timeval stop_pd_xmit_recv, start_pd_xmit_recv;
-uint64_t pd_xmit_recv_sec  = 0LL;
-uint64_t pd_xmit_recv_usec = 0LL;
+struct timeval stop_pd_wifi_recv_th, start_pd_wifi_recv_th;
+uint64_t pd_wifi_recv_th_sec  = 0LL;
+uint64_t pd_wifi_recv_th_usec = 0LL;
 
-struct timeval stop_pd_xmit_recv_rl, start_pd_xmit_recv_rl;
-uint64_t pd_xmit_recv_rl_sec  = 0LL;
-uint64_t pd_xmit_recv_rl_usec = 0LL;
+struct timeval stop_pd_wifi_recv_wait, start_pd_wifi_recv_wait;
+uint64_t pd_wifi_recv_wait_sec  = 0LL;
+uint64_t pd_wifi_recv_wait_usec = 0LL;
 
-struct timeval stop_pd_xmit_recv_im, start_pd_xmit_recv_im;
-uint64_t pd_xmit_recv_im_sec  = 0LL;
-uint64_t pd_xmit_recv_im_usec = 0LL;
+struct timeval stop_pd_wifi_recv_all, start_pd_wifi_recv_all;
+uint64_t pd_wifi_recv_all_sec  = 0LL;
+uint64_t pd_wifi_recv_all_usec = 0LL;
+
+struct timeval stop_pd_wifi_recv_rl, start_pd_wifi_recv_rl;
+uint64_t pd_wifi_recv_rl_sec  = 0LL;
+uint64_t pd_wifi_recv_rl_usec = 0LL;
+
+struct timeval stop_pd_wifi_recv_im, start_pd_wifi_recv_im;
+uint64_t pd_wifi_recv_im_sec  = 0LL;
+uint64_t pd_wifi_recv_im_usec = 0LL;
 
 struct timeval stop_pd_recv_pipe, start_pd_recv_pipe;
 uint64_t pd_recv_pipe_sec  = 0LL;
@@ -108,9 +117,9 @@ struct timeval stop_pd_combGrids, start_pd_combGrids;
 uint64_t pd_combGrids_sec  = 0LL;
 uint64_t pd_combGrids_usec = 0LL;
 
-struct timeval stop_pd_xmit_car, start_pd_xmit_car;
-uint64_t pd_xmit_car_sec  = 0LL;
-uint64_t pd_xmit_car_usec = 0LL;
+struct timeval stop_pd_wifi_car, start_pd_wifi_car;
+uint64_t pd_wifi_car_sec  = 0LL;
+uint64_t pd_wifi_car_usec = 0LL;
 
 #endif
 
@@ -126,7 +135,7 @@ unsigned xmit_recv_count = 0;
 void print_usage(char * pname);
 void dump_final_run_statistics();
 void INThandler(int dummy);
-void closeout_and_exit(int rval);
+// in globals.h void closeout_and_exit(char* last_msg, int rval);
 
 
 
@@ -144,11 +153,14 @@ void print_usage(char * pname) {
 void INThandler(int dummy)
 {
   printf("In SIGINT INThandler -- Closing the connection and exiting\n");
-  close(bag_sock);
-  close(xmit_sock);
-  close(recv_sock);
-  close(car_sock);
-  exit(-1);
+  closeout_and_exit("Received a SIGINT...", -1);
+}
+
+
+void SIGPIPE_handler(int dummy)
+{
+  printf("In SIGPIPE_handler -- Closing the connection and exiting\n");
+  closeout_and_exit("Received a SIGPIPE...", -1);
 }
 
 
@@ -159,7 +171,7 @@ void INThandler(int dummy)
 
 
 // This cleans up the state before exit
-void closeout_and_exit(int rval)
+void closeout_and_exit(char* last_msg, int rval)
 {
   if (lidar_count > 0) {
     dump_final_run_statistics();
@@ -181,6 +193,7 @@ void closeout_and_exit(int rval)
  #ifdef HW_VIT
   free_VIT_HW_RESOURCES();
  #endif // HW_VIT
+  printf("%s\n", last_msg);
   exit(rval);
 }
 
@@ -233,223 +246,246 @@ int read_all(int sock, char* buffer, int xfer_in_bytes)
     total_recvd += valread;
     DBGOUT2(printf("        read %d bytes for %d total bytes of %d\n", valread, total_recvd, message_size));
     if (valread == 0) {
-      printf("  read_all got ZERO bytes -- END of TRANSFER?\n");
+      DBGOUT(printf("  read_all got ZERO bytes -- END of TRANSFER?\n"));
       return total_recvd;
     }
   }
   return total_recvd;
 }
 
-void receive_and_fuse_maps(void* parm_ptr)
+void* receive_and_fuse_maps(void* parm_ptr)
 {
-  // Now we take in a recevied transmission with the other AV's map
+  // Now we take in a received transmission with the other AV's map
   // If we receive a transmission, the process to turn it back into the gridMap is:
   int   n_recvd_in;
   float recvd_in_real[MAX_XMIT_OUTPUTS];
   float recvd_in_imag[MAX_XMIT_OUTPUTS];
-
-  DBGOUT(printf("\nTrying to Receive data on RECV port %u socket\n", RECV_PORT));
  #ifdef INT_TIME
-  gettimeofday(&start_pd_xmit_recv, NULL);
+  gettimeofday(&start_pd_wifi_recv_th, NULL);
  #endif	
-  char r_buffer[10];
-  int valread = read_all(recv_sock, r_buffer, 8);
-  DBGOUT2(printf("  RECV got msg %s\n", r_buffer);
-	  printf("  RECV msg psn %s\n", "01234567890"));
-  if (valread < 8) {
-    if (valread == 0) {
-      printf("  RECV header got ZERO bytes -- END of TRANSFER?\n");
-      closeout_and_exit(-1);
-    } else {
-      printf("  RECV header got TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, 8);
-      closeout_and_exit(-1);
-    }
-  }
-  if(!(r_buffer[0] == 'X' && r_buffer[7] == 'X')) {
-    printf("ERROR: Unexpected message from WiFi...\n");
-    closeout_and_exit(-3);
-  }
-
-  char * ptr;
-  unsigned xfer_in_bytes = strtol(r_buffer+1, &ptr, 10);
-  n_recvd_in = xfer_in_bytes / sizeof(float);
-  DBGOUT(printf("     Recv %u REAL values %u bytes from RECV port %u socket\n", n_recvd_in, xfer_in_bytes, RECV_PORT));
- #ifdef INT_TIME
-  gettimeofday(&start_pd_xmit_recv_rl, NULL);
- #endif	
-  valread = read_all(recv_sock, (char*)recvd_in_real, xfer_in_bytes);
-  if (valread < xfer_in_bytes) {
-    if (valread == 0) {
-      printf("  RECV REAL got ZERO bytes -- END of TRANSFER?\n");
-      closeout_and_exit(-1);
-    } else {
-      printf("  RECV REAL got TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, xfer_in_bytes);
-      closeout_and_exit(-1);
-    }
-  }
-  DBGOUT2(printf("XFER %4u : Dumping RECV-PIPE REAL raw bytes\n", xmit_recv_count);
-	  for (int i = 0; i < n_recvd_in; i++) {
-	    printf("XFER %4u REAL-byte %6u : %f\n", odo_count, i, recvd_in_real[i]);
-	  }
-	  printf("\n"));
-
- #ifdef INT_TIME
-  gettimeofday(&stop_pd_xmit_recv_rl, NULL);
+ #if PARALLEL_PTHREADS
+  while(1) {
  #endif
-  DBGOUT(printf("     Recv %u IMAG values %u bytes from RECV port %u socket\n", n_recvd_in, xfer_in_bytes, RECV_PORT));
-  valread = read_all(recv_sock, (char*)recvd_in_imag, xfer_in_bytes);
-  if (valread < xfer_in_bytes) {
-    if (valread == 0) {
-      printf("  RECV IMAG got ZERO bytes -- END of TRANSFER?\n");
-      closeout_and_exit(-1);
-    } else {
-      printf("  RECV IMAG got TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, xfer_in_bytes);
-      closeout_and_exit(-1);
-    }
-  }
-  DBGOUT2(printf("XFER %4u : Dumping RECV-PIPE IMAG raw bytes\n", xmit_recv_count);
-	  for (int i = 0; i < n_recvd_in; i++) {
-	    printf("XFER %4u IMAG-byte %6u : %f\n", odo_count, i, recvd_in_imag[i]);
-	  }
-	  printf("\n"));
- #ifdef INT_TIME
-  gettimeofday(&stop_pd_xmit_recv, NULL);
-  pd_xmit_recv_sec   += stop_pd_xmit_recv.tv_sec  - start_pd_xmit_recv.tv_sec;
-  pd_xmit_recv_usec  += stop_pd_xmit_recv.tv_usec - start_pd_xmit_recv.tv_usec;
-  pd_xmit_recv_rl_sec   += stop_pd_xmit_recv_rl.tv_sec  - start_pd_xmit_recv_rl.tv_sec;
-  pd_xmit_recv_rl_usec  += stop_pd_xmit_recv_rl.tv_usec - start_pd_xmit_recv_rl.tv_usec;
-  pd_xmit_recv_im_sec   += stop_pd_xmit_recv.tv_sec  - stop_pd_xmit_recv_rl.tv_sec;
-  pd_xmit_recv_im_usec  += stop_pd_xmit_recv.tv_usec - stop_pd_xmit_recv_rl.tv_usec;
- #endif
+    DBGOUT(printf("\nTrying to Receive data on RECV port %u socket\n", RECV_PORT));
+   #ifdef INT_TIME
+    gettimeofday(&start_pd_wifi_recv_wait, NULL);
+   #endif	
+    char r_buffer[10];
+    int valread = read_all(recv_sock, r_buffer, 8);
+    DBGOUT2(printf("  RECV got msg %s\n", r_buffer);
+	    printf("  RECV msg psn %s\n", "01234567890"));
+    if (valread == 8) {
+     #ifdef INT_TIME
+      gettimeofday(&start_pd_wifi_recv_all, NULL);
+     #endif	
+      if(!(r_buffer[0] == 'X' && r_buffer[7] == 'X')) {
+	printf("ERROR: Unexpected message from WiFi...\n");
+	closeout_and_exit("Unexpected WiFi message...", -3);
+      }
 
-  // Now we have the tranmission input data to be decoded...
-  DBGOUT(printf("Calling do_recv_pipeline...\n"));
-  int   recvd_msg_len;
-  unsigned char recvd_msg[1500]; // MAX size of original message in bytes
-  // Fake this with a "loopback" of the xmit message..
- #ifdef INT_TIME
-  gettimeofday(&start_pd_recv_pipe, NULL);
- #endif	
-  do_recv_pipeline(n_recvd_in, recvd_in_real, recvd_in_imag, &recvd_msg_len, recvd_msg);
- #ifdef INT_TIME
-  gettimeofday(&stop_pd_recv_pipe, NULL);
-  pd_recv_pipe_sec   += stop_pd_recv_pipe.tv_sec  - start_pd_recv_pipe.tv_sec;
-  pd_recv_pipe_usec  += stop_pd_recv_pipe.tv_usec - start_pd_recv_pipe.tv_usec;
- #endif
-  //do_recv_pipeline(n_xmit_out, xmit_out_real, xmit_out_imag, &recvd_msg_len, recvd_msg);
+      char * ptr;
+      unsigned xfer_in_bytes = strtol(r_buffer+1, &ptr, 10);
+      n_recvd_in = xfer_in_bytes / sizeof(float);
+      DBGOUT(printf("     Recv %u REAL values %u bytes from RECV port %u socket\n", n_recvd_in, xfer_in_bytes, RECV_PORT));
+     #ifdef INT_TIME
+      gettimeofday(&start_pd_wifi_recv_rl, NULL);
+     #endif	
+      valread = read_all(recv_sock, (char*)recvd_in_real, xfer_in_bytes);
+      if (valread < xfer_in_bytes) {
+	if (valread == 0) {
+	  printf("  RECV REAL got ZERO bytes -- END of TRANSFER?\n");
+	  closeout_and_exit("RECV REAL got zero bytes..", -1);
+	} else {
+	  printf("  RECV REAL got TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, xfer_in_bytes);
+	  closeout_and_exit("RECV REAL got too few bytes..", -1);
+	}
+      }
+      DBGOUT2(printf("XFER %4u : Dumping RECV-PIPE REAL raw bytes\n", xmit_recv_count);
+	      for (int i = 0; i < n_recvd_in; i++) {
+		printf("XFER %4u REAL-byte %6u : %f\n", odo_count, i, recvd_in_real[i]);
+	      }
+	      printf("\n"));
 
-  // Now we decompress the grid received via transmission...
-  DBGOUT(printf("Calling LZ4_decompress_default...\n"));
-  unsigned char uncmp_data[MAX_UNCOMPRESSED_DATA_SIZE];
- #ifdef INT_TIME
-  gettimeofday(&start_pd_lz4_uncmp, NULL);
- #endif
-  DEBUG(printf("Calling LZ4_decompress_safe with %d input bytes...\n", recvd_msg_len));
-  int dec_bytes = LZ4_decompress_safe((char*)recvd_msg, (char*)uncmp_data, recvd_msg_len, MAX_UNCOMPRESSED_DATA_SIZE);
-  if (dec_bytes < 0) {
-    printf("LZ4_decompress_safe ERROR : %d\n", dec_bytes);
-  } DEBUG(else {
-    printf("LZ4_decompress_safe returned %d bytes\n", dec_bytes);
-    });
- #ifdef INT_TIME
-  gettimeofday(&stop_pd_lz4_uncmp, NULL);
-  pd_lz4_uncmp_sec   += stop_pd_lz4_uncmp.tv_sec  - start_pd_lz4_uncmp.tv_sec;
-  pd_lz4_uncmp_usec  += stop_pd_lz4_uncmp.tv_usec - start_pd_lz4_uncmp.tv_usec;
- #endif
-  DEBUG(printf("Recevied %d decoded bytes from the wifi...\n", dec_bytes));
-  Costmap2D* remote_map = (Costmap2D*)&(uncmp_data); // Convert "type" to Costmap2D
-  DBGOUT(printf("  Back from LZ4_decompress_safe with %u decompressed bytes\n", dec_bytes);
-	 printf("  Remote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
-	 printf("                : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
-	 print_ascii_costmap(stdout, remote_map));
+     #ifdef INT_TIME
+      gettimeofday(&stop_pd_wifi_recv_rl, NULL);
+     #endif
+      DBGOUT(printf("     Recv %u IMAG values %u bytes from RECV port %u socket\n", n_recvd_in, xfer_in_bytes, RECV_PORT));
+      valread = read_all(recv_sock, (char*)recvd_in_imag, xfer_in_bytes);
+      if (valread < xfer_in_bytes) {
+	if (valread == 0) {
+	  printf("  RECV IMAG got ZERO bytes -- END of TRANSFER?\n");
+	  closeout_and_exit("RECV IMAG got zero bytes..", -1);
+	} else {
+	  printf("  RECV IMAG got TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, xfer_in_bytes);
+	  closeout_and_exit("RECV IMAG got too few bytes..", -1);
+	}
+      }
+      DBGOUT2(printf("XFER %4u : Dumping RECV-PIPE IMAG raw bytes\n", xmit_recv_count);
+	      for (int i = 0; i < n_recvd_in; i++) {
+		printf("XFER %4u IMAG-byte %6u : %f\n", odo_count, i, recvd_in_imag[i]);
+	      }
+	      printf("\n"));
+     #ifdef INT_TIME
+      gettimeofday(&stop_pd_wifi_recv_all, NULL);
+      pd_wifi_recv_all_sec   += stop_pd_wifi_recv_all.tv_sec  - start_pd_wifi_recv_all.tv_sec;
+      pd_wifi_recv_all_usec  += stop_pd_wifi_recv_all.tv_usec - start_pd_wifi_recv_all.tv_usec;
+      pd_wifi_recv_rl_sec   += stop_pd_wifi_recv_rl.tv_sec  - start_pd_wifi_recv_rl.tv_sec;
+      pd_wifi_recv_rl_usec  += stop_pd_wifi_recv_rl.tv_usec - start_pd_wifi_recv_rl.tv_usec;
+      pd_wifi_recv_im_sec   += stop_pd_wifi_recv_all.tv_sec  - stop_pd_wifi_recv_rl.tv_sec;
+      pd_wifi_recv_im_usec  += stop_pd_wifi_recv_all.tv_usec - stop_pd_wifi_recv_rl.tv_usec;
+     #endif
 
-  // Get the current local-map 
-  Costmap2D* local_map = &(observations[curr_obs].master_costmap);
+      // Now we have the tranmission input data to be decoded...
+      DBGOUT(printf("Calling do_recv_pipeline...\n"));
+      int   recvd_msg_len;
+      unsigned char recvd_msg[1500]; // MAX size of original message in bytes
+      // Fake this with a "loopback" of the xmit message..
+     #ifdef INT_TIME
+      gettimeofday(&start_pd_recv_pipe, NULL);
+     #endif	
+      do_recv_pipeline(n_recvd_in, recvd_in_real, recvd_in_imag, &recvd_msg_len, recvd_msg);
+     #ifdef INT_TIME
+      gettimeofday(&stop_pd_recv_pipe, NULL);
+      pd_recv_pipe_sec   += stop_pd_recv_pipe.tv_sec  - start_pd_recv_pipe.tv_sec;
+      pd_recv_pipe_usec  += stop_pd_recv_pipe.tv_usec - start_pd_recv_pipe.tv_usec;
+     #endif
+      //do_recv_pipeline(n_xmit_out, xmit_out_real, xmit_out_imag, &recvd_msg_len, recvd_msg);
 
-#ifdef WRITE_ASCII_MAP
-  char ascii_file_name[32];
-  snprintf(ascii_file_name, sizeof(char)*32, "%s%04d.txt", ASCII_FN, ascii_counter);
-  FILE *ascii_fp = fopen(ascii_file_name, "w");
+      // Now we decompress the grid received via transmission...
+      DBGOUT(printf("Calling LZ4_decompress_default...\n"));
+      unsigned char uncmp_data[MAX_UNCOMPRESSED_DATA_SIZE];
+     #ifdef INT_TIME
+      gettimeofday(&start_pd_lz4_uncmp, NULL);
+     #endif
+      DEBUG(printf("Calling LZ4_decompress_safe with %d input bytes...\n", recvd_msg_len));
+      int dec_bytes = LZ4_decompress_safe((char*)recvd_msg, (char*)uncmp_data, recvd_msg_len, MAX_UNCOMPRESSED_DATA_SIZE);
+      if (dec_bytes < 0) {
+	printf("LZ4_decompress_safe ERROR : %d\n", dec_bytes);
+      } DEBUG(else {
+	  printf("LZ4_decompress_safe returned %d bytes\n", dec_bytes);
+	});
+     #ifdef INT_TIME
+      gettimeofday(&stop_pd_lz4_uncmp, NULL);
+      pd_lz4_uncmp_sec   += stop_pd_lz4_uncmp.tv_sec  - start_pd_lz4_uncmp.tv_sec;
+      pd_lz4_uncmp_usec  += stop_pd_lz4_uncmp.tv_usec - start_pd_lz4_uncmp.tv_usec;
+     #endif
+      DEBUG(printf("Recevied %d decoded bytes from the wifi...\n", dec_bytes));
+      Costmap2D* remote_map = (Costmap2D*)&(uncmp_data); // Convert "type" to Costmap2D
+      DBGOUT(printf("  Back from LZ4_decompress_safe with %u decompressed bytes\n", dec_bytes);
+	     printf("  Remote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
+	     printf("                : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
+	     print_ascii_costmap(stdout, remote_map));
 
-  //printf("Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
-  fprintf(ascii_fp, "Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
-  fprintf(ascii_fp, "             : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
-  print_ascii_costmap(ascii_fp, local_map);
+      // Get the current local-map 
+      Costmap2D* local_map = &(observations[curr_obs].master_costmap);
 
-  fprintf(ascii_fp, "\n\nRemote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
-  //printf("\n\nRemote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
-  fprintf(ascii_fp, "              : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
-  print_ascii_costmap(ascii_fp, remote_map);
- #endif	
-  // Then we should "Fuse" the received GridMap with our local one
-  //  We need to "peel out" the remote odometry data from somewhere (in the message?)
-  //unsigned char* combineGrids(unsigned char* grid1, unsigned char* grid2, double robot_x1, double robot_y1,
-  DBGOUT(printf("\nCalling combineGrids...\n"));
-  // Note: The direction in which this is called is slightly significant:
-  //  The first map is copied into the second map, in this case remote into local,
-  //  and the x_dim, et.c MUST correspond to that second map (here local)
- #ifdef INT_TIME
-  gettimeofday(&start_pd_combGrids, NULL);
- #endif
+     #ifdef WRITE_ASCII_MAP
+      char ascii_file_name[32];
+      snprintf(ascii_file_name, sizeof(char)*32, "%s%04d.txt", ASCII_FN, ascii_counter);
+      FILE *ascii_fp = fopen(ascii_file_name, "w");
 
-  fuseIntoLocal(local_map, remote_map);
-  /*combineGrids(remote_map->costmap, local_map->costmap,
-  	       remote_map->av_x, remote_map->av_y,
-  	       local_map->av_x, local_map->av_y,
-  	       local_map->x_dim, local_map->y_dim, local_map->cell_size);
-  */
- #ifdef INT_TIME
-  gettimeofday(&stop_pd_combGrids, NULL);
-  pd_combGrids_sec   += stop_pd_combGrids.tv_sec  - start_pd_combGrids.tv_sec;
-  pd_combGrids_usec  += stop_pd_combGrids.tv_usec - start_pd_combGrids.tv_usec;
- #endif
-  DEBUG(printf(fp, "  Fused CostMAP : AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
-	printf(fp, "                : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
-	print_ascii_costmap(stdout, local_map));
+      //printf("Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
+      fprintf(ascii_fp, "Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
+      fprintf(ascii_fp, "             : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
+      print_ascii_costmap(ascii_fp, local_map);
+
+      fprintf(ascii_fp, "\n\nRemote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
+      //printf("\n\nRemote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
+      fprintf(ascii_fp, "              : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map->cell_size, remote_map->x_dim, remote_map->y_dim);
+      print_ascii_costmap(ascii_fp, remote_map);
+     #endif	
+      // Then we should "Fuse" the received GridMap with our local one
+      //  We need to "peel out" the remote odometry data from somewhere (in the message?)
+      //unsigned char* combineGrids(unsigned char* grid1, unsigned char* grid2, double robot_x1, double robot_y1,
+      DBGOUT(printf("\nCalling combineGrids...\n"));
+      // Note: The direction in which this is called is slightly significant:
+      //  The first map is copied into the second map, in this case remote into local,
+      //  and the x_dim, et.c MUST correspond to that second map (here local)
+     #ifdef INT_TIME
+      gettimeofday(&start_pd_combGrids, NULL);
+     #endif
+
+      fuseIntoLocal(local_map, remote_map);
+      /*combineGrids(remote_map->costmap, local_map->costmap,
+	remote_map->av_x, remote_map->av_y,
+	local_map->av_x, local_map->av_y,
+	local_map->x_dim, local_map->y_dim, local_map->cell_size);
+      */
+     #ifdef INT_TIME
+      gettimeofday(&stop_pd_combGrids, NULL);
+      pd_combGrids_sec   += stop_pd_combGrids.tv_sec  - start_pd_combGrids.tv_sec;
+      pd_combGrids_usec  += stop_pd_combGrids.tv_usec - start_pd_combGrids.tv_usec;
+     #endif
+      DEBUG(printf(fp, "  Fused CostMAP : AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
+	    printf(fp, "                : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
+	    print_ascii_costmap(stdout, local_map));
 	  
- #ifdef WRITE_ASCII_MAP
-  fprintf(ascii_fp, "\n\nFused CostMAP : AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
-  //printf("\n\nFused CostMAP : AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
-  fprintf(ascii_fp, "              : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
-  print_ascii_costmap(ascii_fp, local_map);
-  fclose(ascii_fp);
-  ascii_counter++;
- #endif
-  // Write the combined map to a file
- #ifdef WRITE_FUSED_MAPS
-  write_array_to_file(local_map->costmap, COST_MAP_ENTRIES);
- #endif
+     #ifdef WRITE_ASCII_MAP
+      fprintf(ascii_fp, "\n\nFused CostMAP : AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
+      //printf("\n\nFused CostMAP : AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
+      fprintf(ascii_fp, "              : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map->cell_size, local_map->x_dim, local_map->y_dim);
+      print_ascii_costmap(ascii_fp, local_map);
+      fclose(ascii_fp);
+      ascii_counter++;
+     #endif
+      // Write the combined map to a file
+     #ifdef WRITE_FUSED_MAPS
+      write_array_to_file(local_map->costmap, COST_MAP_ENTRIES);
+     #endif
 
-  // This is now the fused map that should be sent to the AV(Car)
-  //  The n values of the (fused) local_map Costmap
-  // Connect to the Car-Socket and send the data...
-#ifdef INT_TIME
-  gettimeofday(&start_pd_xmit_send, NULL);
-#endif	
-  unsigned car_bytes = sizeof(Costmap2D);
-  snprintf(r_buffer, 9, "X%-6uX", car_bytes);
-  DBGOUT(printf("\nCAR-OUT Sending %s on CAR port %u socket\n", r_buffer, CAR_OUT_PORT));
-  send(car_sock, r_buffer, 8, 0);
-  DBGOUT(printf("     Send %u bytes on CAR port %u socket\n", car_bytes, CAR_PORT));
-  char * car_out_chars = (char*)&(local_map);
-  DBGOUT2(printf("CAR-OUT %4u : Dumping XMIT-PIPE REAL raw bytes\n", car_send_count);
-	  for (int i = 0; i < car_bytes; i++) {
-	    unsigned char c = car_out_chars[i];
-	    printf("CAR-OUT %4u REAL-byte %6u : %u\n", car_sendcount, i, c);
-	  }
-	  printf("\n"));
-#ifdef INT_TIME
-  gettimeofday(&start_pd_xmit_car, NULL);
-#endif	
-  send(car_sock, car_out_chars, car_bytes, 0);
-  DBGOUT(printf("     Send %u IMAG values %u bytes on XMIT port %u socket\n", n_xmit_out, xfer_bytes, XMIT_PORT));
-#ifdef INT_TIME
-  gettimeofday(&stop_pd_xmit_car, NULL);
-  pd_xmit_car_sec   += stop_pd_xmit_car.tv_sec  - start_pd_xmit_car.tv_sec;
-  pd_xmit_car_usec  += stop_pd_xmit_car.tv_usec - start_pd_xmit_car.tv_usec;
-#endif
+      // This is now the fused map that should be sent to the AV(Car)
+      //  The n values of the (fused) local_map Costmap
+      // Connect to the Car-Socket and send the data...
+     #ifdef INT_TIME
+      gettimeofday(&start_pd_wifi_send, NULL);
+     #endif	
+      unsigned car_bytes = sizeof(Costmap2D);
+      snprintf(r_buffer, 9, "X%-6uX", car_bytes);
+      DBGOUT(printf("\nCAR-OUT Sending %s on CAR port %u socket\n", r_buffer, CAR_OUT_PORT));
+      send(car_sock, r_buffer, 8, 0);
+      DBGOUT(printf("     Send %u bytes on CAR port %u socket\n", car_bytes, CAR_PORT));
+      char * car_out_chars = (char*)&(local_map);
+      DBGOUT2(printf("CAR-OUT %4u : Dumping XMIT-PIPE REAL raw bytes\n", car_send_count);
+	      for (int i = 0; i < car_bytes; i++) {
+		unsigned char c = car_out_chars[i];
+		printf("CAR-OUT %4u REAL-byte %6u : %u\n", car_sendcount, i, c);
+	      }
+	      printf("\n"));
+     #ifdef INT_TIME
+      gettimeofday(&start_pd_wifi_car, NULL);
+     #endif	
+      send(car_sock, car_out_chars, car_bytes, 0);
+      DBGOUT(printf("     Send %u IMAG values %u bytes on XMIT port %u socket\n", n_xmit_out, xfer_bytes, XMIT_PORT));
+     #ifdef INT_TIME
+      gettimeofday(&stop_pd_wifi_car, NULL);
+      pd_wifi_car_sec   += stop_pd_wifi_car.tv_sec  - start_pd_wifi_car.tv_sec;
+      pd_wifi_car_usec  += stop_pd_wifi_car.tv_usec - start_pd_wifi_car.tv_usec;
+     #endif
+    } else { // if (valread == 8)
+     #ifdef INT_TIME
+      gettimeofday(&stop_pd_wifi_recv_wait, NULL);
+      pd_wifi_recv_wait_sec  += stop_pd_wifi_recv_wait.tv_sec  - start_pd_wifi_recv_wait.tv_sec;
+      pd_wifi_recv_wait_usec += stop_pd_wifi_recv_wait.tv_usec - start_pd_wifi_recv_wait.tv_usec;
+     #endif
+     #if PARALLEL_PTHREADS
+      if (valread == 0) {
+    	printf("  RECV header got ZERO bytes -- END of TRANSFER?\n");
+    	closeout_and_exit("RECV header got zero bytes...", -1);
+      } else {
+    	printf("  RECV header got TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, 8);
+    	closeout_and_exit("RECV header got too few bytes...", -1);
+      }
+     #endif
+    }
+   #ifdef INT_TIME
+    gettimeofday(&stop_pd_wifi_recv_th, NULL);
+    pd_wifi_recv_th_sec  = stop_pd_wifi_recv_th.tv_sec  - start_pd_wifi_recv_th.tv_sec;
+    pd_wifi_recv_th_usec = stop_pd_wifi_recv_th.tv_usec - start_pd_wifi_recv_th.tv_usec;
+   #endif
+ #if PARALLEL_PTHREADS
+  } // while (1)
+ #endif
 }
-
 
 typedef struct lidar_inputs_struct {
   float odometry[3];
@@ -457,9 +493,8 @@ typedef struct lidar_inputs_struct {
   char data[200002];
 } lidar_inputs_t;
   
-void process_data(void* void_parms_ptr)
+void process_lidar_to_occgrid(lidar_inputs_t* lidar_inputs)
 {
-  lidar_inputs_t* lidar_inputs = (lidar_inputs_t*)void_parms_ptr;
   DBGOUT(printf("Calling cloudToOccgrid with odometry %.1f %.1f %.1f\n", lidar_inputs->odometry[0], lidar_inputs->odometry[1], lidar_inputs->odometry[2]));
   int valread = 0;
  #ifdef INT_TIME
@@ -521,13 +556,13 @@ void process_data(void* void_parms_ptr)
   float xmit_out_real[MAX_XMIT_OUTPUTS];
   float xmit_out_imag[MAX_XMIT_OUTPUTS];
  #ifdef INT_TIME
-  gettimeofday(&start_pd_xmit_pipe, NULL);
+  gettimeofday(&start_pd_wifi_pipe, NULL);
  #endif	
   do_xmit_pipeline(n_cmp_bytes, cmp_data, &n_xmit_out, xmit_out_real, xmit_out_imag);
  #ifdef INT_TIME
-  gettimeofday(&stop_pd_xmit_pipe, NULL);
-  pd_xmit_pipe_sec   += stop_pd_xmit_pipe.tv_sec  - start_pd_xmit_pipe.tv_sec;
-  pd_xmit_pipe_usec  += stop_pd_xmit_pipe.tv_usec - start_pd_xmit_pipe.tv_usec;
+  gettimeofday(&stop_pd_wifi_pipe, NULL);
+  pd_wifi_pipe_sec   += stop_pd_wifi_pipe.tv_sec  - start_pd_wifi_pipe.tv_sec;
+  pd_wifi_pipe_usec  += stop_pd_wifi_pipe.tv_usec - start_pd_wifi_pipe.tv_usec;
  #endif
   DBGOUT(printf("  Back from do_xmit_pipeline with %u xmit outputs...\n", n_xmit_out));
 
@@ -536,7 +571,7 @@ void process_data(void* void_parms_ptr)
   // Connect to the Wifi-Socket and send the n_xmit_out
   char w_buffer[10];
  #ifdef INT_TIME
-  gettimeofday(&start_pd_xmit_send, NULL);
+  gettimeofday(&start_pd_wifi_send, NULL);
  #endif	
   unsigned xfer_bytes = n_xmit_out*sizeof(float);
   snprintf(w_buffer, 9, "X%-6uX", xfer_bytes);
@@ -549,7 +584,7 @@ void process_data(void* void_parms_ptr)
 	  }
 	  printf("\n"));
  #ifdef INT_TIME
-  gettimeofday(&start_pd_xmit_send_rl, NULL);
+  gettimeofday(&start_pd_wifi_send_rl, NULL);
  #endif	
   send(xmit_sock, (char*)(xmit_out_real), n_xmit_out*sizeof(float), 0);
   DBGOUT(printf("     Send %u IMAG values %u bytes on XMIT port %u socket\n", n_xmit_out, xfer_bytes, XMIT_PORT));
@@ -559,23 +594,25 @@ void process_data(void* void_parms_ptr)
 	  }
 	  printf("\n"));
  #ifdef INT_TIME
-  gettimeofday(&stop_pd_xmit_send_rl, NULL);
+  gettimeofday(&stop_pd_wifi_send_rl, NULL);
  #endif
   send(xmit_sock, (char*)(xmit_out_imag), n_xmit_out*sizeof(float), 0);
  #ifdef INT_TIME
-  gettimeofday(&stop_pd_xmit_send, NULL);
-  pd_xmit_send_sec   += stop_pd_xmit_send.tv_sec  - start_pd_xmit_send.tv_sec;
-  pd_xmit_send_usec  += stop_pd_xmit_send.tv_usec - start_pd_xmit_send.tv_usec;
-  pd_xmit_send_rl_sec   += stop_pd_xmit_send_rl.tv_sec  - start_pd_xmit_send_rl.tv_sec;
-  pd_xmit_send_rl_usec  += stop_pd_xmit_send_rl.tv_usec - start_pd_xmit_send_rl.tv_usec;
-  pd_xmit_send_im_sec   += stop_pd_xmit_send.tv_sec  - stop_pd_xmit_send_rl.tv_sec;
-  pd_xmit_send_im_usec  += stop_pd_xmit_send.tv_usec - stop_pd_xmit_send_rl.tv_usec;
+  gettimeofday(&stop_pd_wifi_send, NULL);
+  pd_wifi_send_sec   += stop_pd_wifi_send.tv_sec  - start_pd_wifi_send.tv_sec;
+  pd_wifi_send_usec  += stop_pd_wifi_send.tv_usec - start_pd_wifi_send.tv_usec;
+  pd_wifi_send_rl_sec   += stop_pd_wifi_send_rl.tv_sec  - start_pd_wifi_send_rl.tv_sec;
+  pd_wifi_send_rl_usec  += stop_pd_wifi_send_rl.tv_usec - start_pd_wifi_send_rl.tv_usec;
+  pd_wifi_send_im_sec   += stop_pd_wifi_send.tv_sec  - stop_pd_wifi_send_rl.tv_sec;
+  pd_wifi_send_im_usec  += stop_pd_wifi_send.tv_usec - stop_pd_wifi_send_rl.tv_usec;
  #endif
 
+ #if PARALLEL_PTHREADS
+  ; // nothing to do here...
+ #else
   receive_and_fuse_maps(NULL);
-
-  DBGOUT(printf("Returning from process_data\n"));
-  fflush(stdout);
+ #endif
+  DBGOUT(printf("Returning from process_lidat_to_occgrid\n"); fflush(stdout));
 }
 
 int main(int argc, char *argv[])
@@ -601,6 +638,7 @@ int main(int argc, char *argv[])
   xmit_pipe_init(); // Initialize the IEEE SDR Transmit Pipeline
 
   signal(SIGINT, INThandler);
+  signal(SIGPIPE, SIGPIPE_handler);
 
   // Use getopt to read in run-time options
   // put ':' in the starting of the
@@ -744,22 +782,23 @@ int main(int argc, char *argv[])
       break;
     }
   }
-  
+ #if PARALLEL_PTHREADS
   // Now set up the processing threads - 1 for Lidar input, one for WiFi RECV processing (fusion)
-  /*
-  pthread_t form_occmap_thread;
+  pthread_attr_t  pt_attr;
+  pthread_attr_init(&pt_attr);
+  //pthread_t form_occmap_thread;
   pthread_t fuse_occmap_thread;
-  int pt_ret = pthread_create(&form_occmap_thread, &pt_attr, process_lidar_to_occgrid, NULL);
-  if (pt_ret != 0) {
-    printf("Could not start the scheduler pthread... return value %d\n", pt_ret);
-    cleanup_and_exit(-1);
-  }
+  /* int pt_ret = pthread_create(&form_occmap_thread, &pt_attr, process_lidar_to_occgrid, NULL); */
+  /* if (pt_ret != 0) { */
+  /*   printf("Could not start the scheduler pthread... return value %d\n", pt_ret); */
+  /*   closeout_and_exit(-1); */
+  /* } */
   int pt_ret = pthread_create(&fuse_occmap_thread, &pt_attr, receive_and_fuse_maps, NULL);
   if (pt_ret != 0) {
     printf("Could not start the scheduler pthread... return value %d\n", pt_ret);
-    cleanup_and_exit(-1);
+    closeout_and_exit("Couldn't allocate fuse_occmap_thread...", -1);
   }
-  */
+ #endif
  #ifdef INT_TIME
   gettimeofday(&start_prog, NULL);
  #endif
@@ -783,7 +822,7 @@ int main(int argc, char *argv[])
 	hit_eof = true;
       } else {
 	printf("  TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, 10);
-	closeout_and_exit(-1);
+	closeout_and_exit("Top read got too few bytes...", -1);
       }
     }
 
@@ -800,10 +839,10 @@ int main(int argc, char *argv[])
       if (total_bytes_read < message_size) {
 	if (total_bytes_read == 0) {
 	  printf("  Lidar read got ZERO bytes -- END of TRANSFER?\n");
-	  closeout_and_exit(-1);
+	  closeout_and_exit("Lidar read got zero bytes...", -1);
 	} else {
 	  printf("  Lidar read got TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", total_bytes_read, message_size);
-	  closeout_and_exit(-1);
+	  closeout_and_exit("Lidar read got too few bytes...", -1);
 	}
       }
       if (total_bytes_read > message_size) {
@@ -813,13 +852,13 @@ int main(int argc, char *argv[])
       lidar_inputs.odometry[1] = odometry[1];
       lidar_inputs.odometry[2] = odometry[2];
       lidar_inputs.data_size = total_bytes_read;
-      DBGOUT(printf("Calling process_data for %d total bytes\n", total_bytes_read));
+      DBGOUT(printf("Calling process_lidar_to_occgrid for %d total bytes\n", total_bytes_read));
       printf("Processing Lidar msg %4u data\n", lidar_count);
      #ifdef INT_TIME
       gettimeofday(&start_proc_data, NULL);
      #endif
-      process_data((void*)(&lidar_inputs)); // buffer, total_bytes_read);
-      DBGOUT(printf("Back from process_data for Lidar\n"); fflush(stdout));
+      process_lidar_to_occgrid((void*)(&lidar_inputs)); // buffer, total_bytes_read);
+      DBGOUT(printf("Back from process_lidar_to_occgrid for Lidar\n"); fflush(stdout));
       lidar_count++;
      #ifdef INT_TIME
       gettimeofday(&stop_proc_lidar, NULL);
@@ -846,10 +885,10 @@ int main(int argc, char *argv[])
       if (valread < message_size) {
 	if (valread == 0) {
 	  printf("  Odo read got ZERO bytes -- END of TRANSFER?\n");
-	  closeout_and_exit(-1);
+	  closeout_and_exit("Odometry read got zero bytes...", -1);
 	} else {
 	  printf("  Odo read got TOO FEW bytes %u vs %u : INTERRUPTED TRANSFER?\n", valread, message_size);
-	  closeout_and_exit(-1);
+	  closeout_and_exit("Odometry read got too few bytes...", -1);
 	}
       }
 
@@ -899,17 +938,19 @@ void dump_final_run_statistics()
 
   uint64_t pd_cloud2grid = (uint64_t)(pd_cloud2grid_sec)  * 1000000 + (uint64_t)(pd_cloud2grid_usec);
   uint64_t pd_lz4_cmp    = (uint64_t)(pd_lz4_cmp_sec)  * 1000000 + (uint64_t)(pd_lz4_cmp_usec);
-  uint64_t pd_xmit_pipe  = (uint64_t)(pd_xmit_pipe_sec)  * 1000000 + (uint64_t)(pd_xmit_pipe_usec);
-  uint64_t pd_xmit_send  = (uint64_t)(pd_xmit_send_sec)  * 1000000 + (uint64_t)(pd_xmit_send_usec);
-  uint64_t pd_xmit_send_rl = (uint64_t)(pd_xmit_send_rl_sec) * 1000000 + (uint64_t)(pd_xmit_send_rl_usec);
-  uint64_t pd_xmit_send_im = (uint64_t)(pd_xmit_send_im_sec) * 1000000 + (uint64_t)(pd_xmit_send_im_usec);
-  uint64_t pd_xmit_recv  = (uint64_t)(pd_xmit_recv_sec)  * 1000000 + (uint64_t)(pd_xmit_recv_usec);
-  uint64_t pd_xmit_recv_rl = (uint64_t)(pd_xmit_recv_rl_sec) * 1000000 + (uint64_t)(pd_xmit_recv_rl_usec);
-  uint64_t pd_xmit_recv_im = (uint64_t)(pd_xmit_recv_im_sec) * 1000000 + (uint64_t)(pd_xmit_recv_im_usec);
+  uint64_t pd_wifi_pipe  = (uint64_t)(pd_wifi_pipe_sec)  * 1000000 + (uint64_t)(pd_wifi_pipe_usec);
+  uint64_t pd_wifi_send  = (uint64_t)(pd_wifi_send_sec)  * 1000000 + (uint64_t)(pd_wifi_send_usec);
+  uint64_t pd_wifi_send_rl = (uint64_t)(pd_wifi_send_rl_sec) * 1000000 + (uint64_t)(pd_wifi_send_rl_usec);
+  uint64_t pd_wifi_send_im = (uint64_t)(pd_wifi_send_im_sec) * 1000000 + (uint64_t)(pd_wifi_send_im_usec);
+  uint64_t pd_wifi_recv_th   = (uint64_t)(pd_wifi_recv_th_sec)  * 1000000 + (uint64_t)(pd_wifi_recv_th_usec);
+  uint64_t pd_wifi_recv_wait = (uint64_t)(pd_wifi_recv_wait_sec)  * 1000000 + (uint64_t)(pd_wifi_recv_wait_usec);
+  uint64_t pd_wifi_recv_all  = (uint64_t)(pd_wifi_recv_all_sec)  * 1000000 + (uint64_t)(pd_wifi_recv_all_usec);
+  uint64_t pd_wifi_recv_rl = (uint64_t)(pd_wifi_recv_rl_sec) * 1000000 + (uint64_t)(pd_wifi_recv_rl_usec);
+  uint64_t pd_wifi_recv_im = (uint64_t)(pd_wifi_recv_im_sec) * 1000000 + (uint64_t)(pd_wifi_recv_im_usec);
   uint64_t pd_recv_pipe  = (uint64_t)(pd_recv_pipe_sec)  * 1000000 + (uint64_t)(pd_recv_pipe_usec);
   uint64_t pd_lz4_uncmp  = (uint64_t)(pd_lz4_uncmp_sec)  * 1000000 + (uint64_t)(pd_lz4_uncmp_usec);
   uint64_t pd_combGrids  = (uint64_t)(pd_combGrids_sec)  * 1000000 + (uint64_t)(pd_combGrids_usec);
-  uint64_t pd_carSend    = (uint64_t)(pd_xmit_car_sec)  * 1000000 + (uint64_t)(pd_xmit_car_usec);
+  uint64_t pd_carSend    = (uint64_t)(pd_wifi_car_sec)  * 1000000 + (uint64_t)(pd_wifi_car_usec);
 
   // This is the xmit_pipe.c breakdown
   uint64_t x_pipe      = (uint64_t)(x_pipe_sec)  * 1000000 + (uint64_t)(x_pipe_usec);
@@ -950,7 +991,7 @@ void dump_final_run_statistics()
   printf("     Total proc Data          : %10lu usec\n", proc_data);
   printf("       Total pd cloud2grid      : %10lu usec\n", pd_cloud2grid);
   printf("       Total pd lz4_cmp         : %10lu usec\n", pd_lz4_cmp);
-  printf("       Total pd xmit_pipe       : %10lu usec\n", pd_xmit_pipe);
+  printf("       Total pd xmit_pipe       : %10lu usec\n", pd_wifi_pipe);
   printf("         X-Pipe Total Time        : %10lu usec\n", x_pipe);
   printf("         X-Pipe GenMacFr Time     : %10lu usec\n", x_genmacfr);
   printf("         X-Pipe doMapWk Time      : %10lu usec\n", x_domapwk);
@@ -959,31 +1000,33 @@ void dump_final_run_statistics()
   printf("         X-Pipe CarAlloc Time     : %10lu usec\n", x_ocaralloc);
   printf("         X-Pipe Xm-FFT Time       : %10lu usec\n", x_fft);
   printf("         X-Pipe CycPrefix Time    : %10lu usec\n", x_ocycpref);
-  printf("       Total pd xmit_send       : %10lu usec\n", pd_xmit_send);
-  printf("         Total pd xmit_send_rl    : %10lu usec\n", pd_xmit_send_rl);
-  printf("         Total pd xmit_send_im    : %10lu usec\n", pd_xmit_send_im);
-  printf("       Total pd xmit_recv       : %10lu usec\n", pd_xmit_recv);
-  printf("         Total pd xmit_recv_rl    : %10lu usec\n", pd_xmit_recv_rl);
-  printf("         Total pd xmit_recv_im    : %10lu usec\n", pd_xmit_recv_im);
+  printf("       Total pd xmit_send       : %10lu usec\n", pd_wifi_send);
+  printf("         Total pd xmit_send_rl    : %10lu usec\n", pd_wifi_send_rl);
+  printf("         Total pd xmit_send_im    : %10lu usec\n", pd_wifi_send_im);
+  printf("       Total pd xmit_recv_th    : %10lu usec\n", pd_wifi_recv_th);
+  printf("         Total pd xmit_recv_wait  : %10lu usec\n", pd_wifi_recv_wait);
+  printf("         Total pd xmit_recv_all   : %10lu usec\n", pd_wifi_recv_all);
+  printf("           Total pd xmit_recv_rl    : %10lu usec\n", pd_wifi_recv_rl);
+  printf("           Total pd xmit_recv_im    : %10lu usec\n", pd_wifi_recv_im);
   printf("       Total pd recv_pipe       : %10lu usec\n", pd_recv_pipe);
-  printf("         R-Pipe Total Time      : %10lu usec\n", r_pipe);
-  printf("         R-Pipe CmplCnjg Time   : %10lu usec\n", r_cmpcnj);
-  printf("         R-Pipe CmplMult Time   : %10lu usec\n", r_cmpmpy);
-  printf("         R-Pipe FIRC Time       : %10lu usec\n", r_firc);
-  printf("         R-Pipe CmplMag Time    : %10lu usec\n", r_cmpmag);
-  printf("         R-Pipe CmplMag^2 Time  : %10lu usec\n", r_cmpmag2);
-  printf("         R-Pipe FIR Time        : %10lu usec\n", r_fir);
-  printf("         R-Pipe DIV Time        : %10lu usec\n", r_div);
-  printf("         R-Pipe SyncShort Time  : %10lu usec\n", r_sshort);
-  printf("         R-Pipe SyncLong Time   : %10lu usec\n", r_slong);
-  printf("         R-Pipe Rc-FFT Time     : %10lu usec\n", r_fft);
-  printf("         R-Pipe Equalize Time   : %10lu usec\n", r_eqlz);
-  printf("         R-Pipe DecSignal Time  : %10lu usec\n", r_decsignl);
-  printf("           R-Dec Total Time     : %10lu usec\n", rdec_total);
-  printf("           R-Dec Map-BitR Time  : %10lu usec\n", rdec_map_bitr);
-  printf("           R-Dec Get-Bits Time  : %10lu usec\n", rdec_get_bits);
-  printf("           R-Dec Decode Call    : %10lu usec\n", rdec_dec_call);
-  printf("         R-Pipe DeScramble Time : %10lu usec\n", r_descrmbl);
+  printf("         R-Pipe Total Time        : %10lu usec\n", r_pipe);
+  printf("         R-Pipe CmplCnjg Time     : %10lu usec\n", r_cmpcnj);
+  printf("         R-Pipe CmplMult Time     : %10lu usec\n", r_cmpmpy);
+  printf("         R-Pipe FIRC Time         : %10lu usec\n", r_firc);
+  printf("         R-Pipe CmplMag Time      : %10lu usec\n", r_cmpmag);
+  printf("         R-Pipe CmplMag^2 Time    : %10lu usec\n", r_cmpmag2);
+  printf("         R-Pipe FIR Time          : %10lu usec\n", r_fir);
+  printf("         R-Pipe DIV Time          : %10lu usec\n", r_div);
+  printf("         R-Pipe SyncShort Time    : %10lu usec\n", r_sshort);
+  printf("         R-Pipe SyncLong Time     : %10lu usec\n", r_slong);
+  printf("         R-Pipe Rc-FFT Time       : %10lu usec\n", r_fft);
+  printf("         R-Pipe Equalize Time     :  %10lu usec\n", r_eqlz);
+  printf("         R-Pipe DecSignal Time    : %10lu usec\n", r_decsignl);
+  printf("           R-Dec Total Time         : %10lu usec\n", rdec_total);
+  printf("           R-Dec Map-BitR Time      : %10lu usec\n", rdec_map_bitr);
+  printf("           R-Dec Get-Bits Time      : %10lu usec\n", rdec_get_bits);
+  printf("           R-Dec Decode Call        : %10lu usec\n", rdec_dec_call);
+  printf("         R-Pipe DeScramble Time   : %10lu usec\n", r_descrmbl);
   printf("       Total pd lz4_uncmp       : %10lu usec\n", pd_lz4_uncmp);
   printf("       Total pd combGrids       : %10lu usec\n", pd_combGrids);
   printf("       Total pd carSend         : %10lu usec\n", pd_carSend);

@@ -66,11 +66,12 @@ void print_usage(char * pname) {
 
 
 // This cleans up the state before exit
-void closeout_and_exit(int rval)
+void closeout_and_exit(char* last_msg, int rval)
 {
  #ifdef HW_VIT
   free_VIT_HW_RESOURCES();
  #endif // HW_VIT
+  printf("%s\n", last_msg);
   exit(rval);
 }
 

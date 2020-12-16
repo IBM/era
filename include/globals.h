@@ -10,6 +10,6 @@
 #define CHECK(x) x  // Uncomment for RUN-TIME CHECK logic
 //#define CHECK(x)  // Uncomment for NO RUN-TIME CHECK logic
 
-void closeout_and_exit(int rv);
+void closeout_and_exit(char* last_msg, int rv);
 
 #endif // GLOBALS_H_
