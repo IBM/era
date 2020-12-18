@@ -266,7 +266,9 @@ void* receive_and_fuse_maps(void* parm_ptr)
   int   n_recvd_in;
   float recvd_in_real[MAX_XMIT_OUTPUTS];
   float recvd_in_imag[MAX_XMIT_OUTPUTS];
+ #if PARALLEL_PTHREADS
   printf("The receive_and_fuse_maps routine is started: lmap_count = %u\n", lmap_count);
+ #endif
  #ifdef INT_TIME
   gettimeofday(&start_pd_wifi_recv_th, NULL);
  #endif
