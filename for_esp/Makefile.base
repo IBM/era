@@ -18,7 +18,7 @@ ifdef COMPILE_TO_ESP
 INCDIR += -I$(ESP_DRIVERS)/include
 endif
 
-CFLAGS ?= -O2
+CFLAGS ?= -O2 -g
 CFLAGS += $(INCDIR)
 CFLAGS += -DINT_TIME
 CFLAGS += -DGRID_MAP_X_DIM=$(CONFIG_GRID_MAP_X_DIM)
@@ -226,6 +226,9 @@ clean:
 	$(RM) -r obj_era1 obj_era2 obj_pera1 obj_pera2 obj_recv obj_xmit
 
 clobber: clean
+	$(RM) $(TARGET_ERA1).exe $(TARGET_ERA2).exe
+	$(RM) $(TARGET_PERA1).exe $(TARGET_PERA2).exe
+	$(RM) $(TARGET_RECV).exe $(TARGET_XMIT).exe
 
 
 obj_era1:

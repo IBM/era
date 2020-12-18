@@ -32,7 +32,7 @@ CONFIG_ESP_INTERFACE=y
 #CONFIG_FUSED_MAP=y
 
 # This turns on output of ASCII maps into files
-CONFIG_ASCII_MAP=y
+#CONFIG_ASCII_MAP=y
 
 # This MAY add some more messages..
 # CONFIG_VERBOSE is not set

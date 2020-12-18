@@ -63,7 +63,7 @@ def main():
                 if not header :
                         print('... end of run on message %d.' % msg_count)
                         break
-		#print('Wifi msg %d received %d bytes from port %d' % (msg_count, len(header), RPORT))
+		#print('Wifi in-msg %d received header %d bytes from port %d' % (msg_count, len(header), RPORT))
                 #print('   msg: "%s"' % str(header))
 
                 d_len = int(header[1:7])
@@ -72,22 +72,31 @@ def main():
                 if not d_real :
                         print('... end of run on d_real of message %d.' % msg_count)
                         break
-		#print('Wifi msg %d received %d bytes from port %d' % (msg_count, len(d_real), RPORT))
+		#print(  '  Wifi in-msg %d received d_real %d bytes from port %d' % (msg_count, len(d_real), RPORT))
                 #print('   msg: "%s"' % str(d_real))
 
 		d_imag = recvall(conn1, d_len) # conn1.recv(d_len)
                 if not d_imag :
                         print('... end of run on d_imag of message %d.' % msg_count)
                         break
-		#print('Wifi msg %d received %d bytes from port %d' % (msg_count, len(d_imag), RPORT))
+		#print('  Wifi in-msg %d received d_imag %d bytes from port %d' % (msg_count, len(d_imag), RPORT))
                 #print('   msg: "%s"' % str(d_imag))
-                print('Wifi received all msg-set %d from port %d payload %d bytes' % (msg_count, RPORT, len(d_real)))
+                print('Wifi received all in-msg %d from port %d payload %d bytes' % (msg_count, RPORT, len(d_real)))
 		#print('Wifi sending messages %d to port %d' % (msg_count, XPORT))
                 conn2.sendall(header)
-                conn2.sendall(d_real)
-                conn2.sendall(d_imag)
-		print('Wifi sent all messages %d to port %d' %(msg_count, XPORT))
-                msg_count += 1
+		#print('  Wifi sent header message %d to port %d' % (msg_count, XPORT))
+		resp = recvall(conn2, 2)
+		#print('  received reply "%s"' % resp)
+		if resp == 'OK' :
+                        #print('  Sending Lidar message of %d bytes' % len(msg.resp))
+                        conn2.sendall(d_real)
+		        #print('  Wifi sent d_real message %d to port %d' % (msg_count, XPORT))
+                        conn2.sendall(d_imag)
+                        print('Wifi sent all out-msg %d to port %d payload %d bytes' % (msg_count, XPORT, len(d_real)))
+		        #print('Wifi sent all messages %d to port %d' %(msg_count, XPORT))
+                        msg_count += 1
+                else :
+                        print('Send header receive odd response "%s"\n' % resp)
 
 if __name__ == "__main__":
 	main()
