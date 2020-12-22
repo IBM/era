@@ -347,6 +347,8 @@ void* receive_and_fuse_maps(void* parm_ptr)
 	      printf("\n"));
      #ifdef INT_TIME
       gettimeofday(&stop_pd_wifi_recv_all, NULL);
+      pd_wifi_recv_wait_sec  += start_pd_wifi_recv_all.tv_sec  - start_pd_wifi_recv_wait.tv_sec;
+      pd_wifi_recv_wait_usec += start_pd_wifi_recv_all.tv_usec - start_pd_wifi_recv_wait.tv_usec;
       pd_wifi_recv_all_sec   += stop_pd_wifi_recv_all.tv_sec  - start_pd_wifi_recv_all.tv_sec;
       pd_wifi_recv_all_usec  += stop_pd_wifi_recv_all.tv_usec - start_pd_wifi_recv_all.tv_usec;
       pd_wifi_recv_rl_sec   += stop_pd_wifi_recv_rl.tv_sec  - start_pd_wifi_recv_rl.tv_sec;
