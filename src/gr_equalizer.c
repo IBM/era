@@ -378,8 +378,8 @@ void gr_equalize( float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_I
     do_LS_equalize(current_symbol, d_current_symbol, symbols, &(outputs[ out_sym * 48])); // BPSK , d_frame_mod);
    #ifdef INT_TIME
     gettimeofday(&reql_lseq_call_stop, NULL);
-    reql_lseq_call_sec  += reql_lseq_call_stop.tv_sec  - reql_total_start.tv_sec;
-    reql_lseq_call_usec += reql_lseq_call_stop.tv_usec - reql_total_start.tv_usec;
+    reql_lseq_call_sec  += reql_lseq_call_stop.tv_sec  - reql_lseq_call_start.tv_sec;
+    reql_lseq_call_usec += reql_lseq_call_stop.tv_usec - reql_lseq_call_start.tv_usec;
    #endif
     
     // signal field -- IF good parirty/checksum, then good to go...
