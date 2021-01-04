@@ -131,8 +131,8 @@ void decode_signal( unsigned num_inputs, fx_pt constellation[DECODE_IN_SIZE_MAX]
   rdec_dec_call_sec  += rdec_dec_call_stop.tv_sec  - rdec_get_bits_stop.tv_sec;
   rdec_dec_call_usec += rdec_dec_call_stop.tv_usec - rdec_get_bits_stop.tv_usec;
 
-  rdec_total_sec  += rdec_dec_call_stop.tv_sec  - rdec_get_bits_stop.tv_sec;
-  rdec_total_usec += rdec_dec_call_stop.tv_usec - rdec_get_bits_stop.tv_usec;
+  rdec_total_sec  += rdec_dec_call_stop.tv_sec  - rdec_total_start.tv_sec;
+  rdec_total_usec += rdec_dec_call_stop.tv_usec - rdec_total_start.tv_usec;
  #endif
 
   DEBUG(printf("  done and leaving ofdm.c\n"));

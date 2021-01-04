@@ -1,6 +1,7 @@
 #include <complex.h>
 #include <math.h>
 #include <stdio.h>
+#include <sys/time.h>
 
 #include "debug.h"
 #include "complex_ops.h"
@@ -13,6 +14,25 @@ typedef float fx_pt1_ext1;
 typedef float fx_pt1_ext2;
 typedef float complex fx_pt_ext1;
 typedef float complex fx_pt_ext2;
+
+#ifdef INT_TIME
+/* This is RECV-Synch-Long internal Timing information (gathering resources) */
+struct timeval sylg_total_stop, sylg_total_start;
+uint64_t sylg_total_sec  = 0LL;
+uint64_t sylg_total_usec = 0LL;
+
+struct timeval sylg_firG_stop, sylg_firG_start;
+uint64_t sylg_firG_sec  = 0LL;
+uint64_t sylg_firG_usec = 0LL;
+
+struct timeval sylg_search_stop, sylg_search_start;
+uint64_t sylg_search_sec  = 0LL;
+uint64_t sylg_search_usec = 0LL;
+
+struct timeval sylg_outgen_stop, sylg_outgen_start;
+uint64_t sylg_outgen_sec  = 0LL;
+uint64_t sylg_outgen_usec = 0LL;
+#endif
 
 /*********************************************************************************
  * I'm going ot add some comments about how I think this works, but I am no 
@@ -28,6 +48,9 @@ typedef float complex fx_pt_ext2;
 void sync_long( unsigned num_inputs, fx_pt* input, fx_pt* input_delayed, float* freq_offset_out, unsigned* num_outputs, fx_pt* output )
 {
   DEBUG(printf("In synch_long with %u inputs\n", num_inputs));
+ #ifdef INT_TIME
+  gettimeofday(&sylg_total_start, NULL);
+ #endif
   /**
   const fx_pt_ext coeff[COEFF_LENGTH] = { fx_pt_ext( fx_pt1_ext(-0.0455),fx_pt1_ext(-1.0679) ),
 					  fx_pt_ext( fx_pt1_ext(0.3528), fx_pt1_ext(-0.9865) ),
@@ -188,7 +211,15 @@ void sync_long( unsigned num_inputs, fx_pt* input, fx_pt* input_delayed, float* 
 
   // If we have more than the "SYNC_LENGTH" (320 in this case) samples, we can search for the start of the frames (must be in there)
   DEBUG(printf(" calling firG_using_cmp_volk with num_inputs = %u\n", num_inputs));
+ #ifdef INT_TIME
+  gettimeofday(&sylg_firG_start, NULL);
+ #endif
   firG_using_cmp_volk( filtered, toBfiltered, rev_coeff);
+ #ifdef INT_TIME
+  gettimeofday(&sylg_firG_stop, NULL);
+  sylg_firG_sec  += sylg_firG_stop.tv_sec  - sylg_firG_start.tv_sec;
+  sylg_firG_usec += sylg_firG_stop.tv_usec - sylg_firG_start.tv_usec;
+ #endif
   DEBUG(for (int ti = 0; ti < SYNC_LENGTH; ti++) {
       printf(" CMP_VOLK_FIRG_FIN %2u : IN_2BFILT %12.8f + %12.8f i : CORR_FILT %12.8f %12.8f\n", ti, crealf(toBfiltered[ti]), cimagf(toBfiltered[ti]), crealf(filtered[ti]), cimagf(filtered[ti]));
     });
@@ -206,6 +237,9 @@ void sync_long( unsigned num_inputs, fx_pt* input, fx_pt* input_delayed, float* 
   //  At the end, the highest correlation is in first_pick and the second-highest is in second_pick
   //  Then we assume those give the proper d_frame_start (and are 64 apart)
   DEBUG(printf(" Starting the search_d_frame_start...  SYNC_LENGTH = %u\n", SYNC_LENGTH));
+ #ifdef INT_TIME
+  gettimeofday(&sylg_search_start, NULL);
+ #endif
   for (unsigned i = 1; i < SYNC_LENGTH; i++) { // Scan the first SYNCH_LENGTH entries
     fx_pt1_ext comp1 = (fx_pt1_ext)abs_c(first_pick)  - (fx_pt1_ext)abs_c(filtered[i]);  // compare the correlations
     fx_pt1_ext comp2 = (fx_pt1_ext)abs_c(second_pick) - (fx_pt1_ext)abs_c(filtered[i] ); // compare the correlations
@@ -221,6 +255,11 @@ void sync_long( unsigned num_inputs, fx_pt* input, fx_pt* input_delayed, float* 
       idx2 = i;		    // and save the index of the second-best pick
     }
   }
+ #ifdef INT_TIME
+  gettimeofday(&sylg_search_stop, NULL);
+  sylg_search_sec  += sylg_search_stop.tv_sec  - sylg_search_start.tv_sec;
+  sylg_search_usec += sylg_search_stop.tv_usec - sylg_search_start.tv_usec;
+ #endif
 
   fx_pt first  = 0 + 0 * I;
   fx_pt second = 0 + 0 * I;
@@ -260,6 +299,9 @@ void sync_long( unsigned num_inputs, fx_pt* input, fx_pt* input_delayed, float* 
 
   unsigned out_idx = 0;
   /* freq_correct: */
+ #ifdef INT_TIME
+  gettimeofday(&sylg_outgen_start, NULL);
+ #endif
   for (unsigned i = 0; i < num_inputs /*SYNC_S_MAX_OUT_SIZE*/; i++) {
     int rel = d_offset_ui - (int)d_frame_start; // the relative index
     d_offset_ui++;
@@ -277,5 +319,12 @@ void sync_long( unsigned num_inputs, fx_pt* input, fx_pt* input_delayed, float* 
   } // for ( i = 0 .. samples )
   *num_outputs = out_idx;
   DEBUG(printf(" synch_long set num_outputs to %u\n", *num_outputs));
+ #ifdef INT_TIME
+  gettimeofday(&sylg_total_stop, NULL);
+  sylg_total_sec  += sylg_total_stop.tv_sec  - sylg_total_start.tv_sec;
+  sylg_total_usec += sylg_total_stop.tv_usec - sylg_total_start.tv_usec;
+  sylg_outgen_sec  += sylg_total_stop.tv_sec  - sylg_outgen_start.tv_sec;
+  sylg_outgen_usec += sylg_total_stop.tv_usec - sylg_outgen_start.tv_usec;
+ #endif
 }
 

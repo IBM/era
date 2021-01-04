@@ -989,6 +989,14 @@ void dump_final_run_statistics()
   uint64_t x_fft       = (uint64_t)(x_fft_sec)  * 1000000 + (uint64_t)(x_fft_usec);
   uint64_t x_ocycpref  = (uint64_t)(x_ocycpref_sec)  * 1000000 + (uint64_t)(x_ocycpref_usec);
 
+  // This is the Xmit doMapWork breakdown
+  uint64_t xdmw_total   = (uint64_t)(xdmw_total_sec)   * 1000000 + (uint64_t)(xdmw_total_usec);
+  uint64_t xdmw_cnvEnc  = (uint64_t)(xdmw_cnvEnc_sec)  * 1000000 + (uint64_t)(xdmw_cnvEnc_usec);
+  uint64_t xdmw_punct   = (uint64_t)(xdmw_punct_sec)   * 1000000 + (uint64_t)(xdmw_punct_usec);
+  uint64_t xdmw_intlv   = (uint64_t)(xdmw_intlv_sec)   * 1000000 + (uint64_t)(xdmw_intlv_usec);
+  uint64_t xdmw_symbols = (uint64_t)(xdmw_symbls_sec)  * 1000000 + (uint64_t)(xdmw_symbls_usec);
+  uint64_t xdmw_mapout  = (uint64_t)(xdmw_mapout_sec)  * 1000000 + (uint64_t)(xdmw_mapout_usec);
+  
   // This is the recv_pipe.c breakdown
   uint64_t r_pipe     = (uint64_t)(r_pipe_sec)  * 1000000 + (uint64_t)(r_pipe_usec);
   uint64_t r_cmpcnj   = (uint64_t)(r_cmpcnj_sec)  * 1000000 + (uint64_t)(r_cmpcnj_usec);
@@ -1005,6 +1013,22 @@ void dump_final_run_statistics()
   uint64_t r_decsignl = (uint64_t)(r_decsignl_sec)  * 1000000 + (uint64_t)(r_decsignl_usec);
   uint64_t r_descrmbl = (uint64_t)(r_descrmbl_sec)  * 1000000 + (uint64_t)(r_descrmbl_usec);
 
+  // This is the sync_short.c "equalize" breakdown
+  uint64_t rssh_total    = (uint64_t)(sysh_total_sec)     * 1000000 + (uint64_t)(sysh_total_usec);
+  uint64_t rssh_search   = (uint64_t)(sysh_search_sec)    * 1000000 + (uint64_t)(sysh_search_usec);
+  uint64_t rssh_frame    = (uint64_t)(sysh_frame_sec)     * 1000000 + (uint64_t)(sysh_frame_usec);
+  
+  // This is the synch_long.c "equalize" breakdown
+  uint64_t rslg_total    = (uint64_t)(sylg_total_sec)    * 1000000 + (uint64_t)(sylg_total_usec);
+  uint64_t rslg_firG     = (uint64_t)(sylg_firG_sec)     * 1000000 + (uint64_t)(sylg_firG_usec);
+  uint64_t rslg_search   = (uint64_t)(sylg_search_sec)   * 1000000 + (uint64_t)(sylg_search_usec);
+  uint64_t rslg_outgen   = (uint64_t)(sylg_outgen_sec)   * 1000000 + (uint64_t)(sylg_outgen_usec);
+
+  // This is the gr_equalizer.c "equalize" breakdown
+  uint64_t reql_total    = (uint64_t)(reql_total_sec)     * 1000000 + (uint64_t)(reql_total_usec);
+  uint64_t reql_ls_eql   = (uint64_t)(reql_lseq_call_sec) * 1000000 + (uint64_t)(reql_lseq_call_usec);
+  uint64_t reql_ds_fld   = (uint64_t)(reql_decsig_sec)    * 1000000 + (uint64_t)(reql_decsig_usec);
+  
   // This is the ofdm.c decode-signal breakdown
   uint64_t rdec_total    = (uint64_t)(rdec_total_sec)  * 1000000 + (uint64_t)(rdec_total_usec);
   uint64_t rdec_map_bitr = (uint64_t)(rdec_map_bitr_sec)  * 1000000 + (uint64_t)(rdec_map_bitr_usec);
@@ -1022,6 +1046,12 @@ void dump_final_run_statistics()
   printf("         X-Pipe Total Time        : %10lu usec\n", x_pipe);
   printf("         X-Pipe GenMacFr Time     : %10lu usec\n", x_genmacfr);
   printf("         X-Pipe doMapWk Time      : %10lu usec\n", x_domapwk);
+  printf("           XdoMW Total Time         : %10lu usec\n", xdmw_total);
+  printf("           XdoMW ConvEncode Time    : %10lu usec\n", xdmw_cnvEnc);
+  printf("           XdoMW Puncture Time      : %10lu usec\n", xdmw_punct);
+  printf("           XdoMW Interleave Time    : %10lu usec\n", xdmw_intlv);
+  printf("           XdoMW Gen-Symbols Time   : %10lu usec\n", xdmw_symbols);
+  printf("           XdoMW Gen-Map-Out Time   : %10lu usec\n", xdmw_mapout);
   printf("         X-Pipe PckHdrGen Time    : %10lu usec\n", x_phdrgen);
   printf("         X-Pipe Chnk2Sym Time     : %10lu usec\n", x_ck2sym);
   printf("         X-Pipe CarAlloc Time     : %10lu usec\n", x_ocaralloc);
@@ -1046,9 +1076,19 @@ void dump_final_run_statistics()
   printf("         R-Pipe FIR Time          : %10lu usec\n", r_fir);
   printf("         R-Pipe DIV Time          : %10lu usec\n", r_div);
   printf("         R-Pipe SyncShort Time    : %10lu usec\n", r_sshort);
+  printf("           R-SySht Total Time         : %10lu usec\n", rssh_total);
+  printf("           R-SySht Search Time        : %10lu usec\n", rssh_search);
+  printf("           R-SySht Frame Time         : %10lu usec\n", rssh_frame);
   printf("         R-Pipe SyncLong Time     : %10lu usec\n", r_slong);
+  printf("           R-SyLng Total Time         : %10lu usec\n", rslg_total);
+  printf("           R-SyLng FIR-G Time         : %10lu usec\n", rslg_firG);
+  printf("           R-SyLng Search Time        : %10lu usec\n", rslg_search);
+  printf("           R-SyLng OutGen Time        : %10lu usec\n", rslg_outgen);
   printf("         R-Pipe Rc-FFT Time       : %10lu usec\n", r_fft);
   printf("         R-Pipe Equalize Time     :  %10lu usec\n", r_eqlz);
+  printf("           R-Eql Total Time         : %10lu usec\n", reql_total);
+  printf("           R-Eql LS-EQ Time         : %10lu usec\n", reql_ls_eql);
+  printf("           R-Eql DecSigFld Time     : %10lu usec\n", reql_ds_fld);
   printf("         R-Pipe DecSignal Time    : %10lu usec\n", r_decsignl);
   printf("           R-Dec Total Time         : %10lu usec\n", rdec_total);
   printf("           R-Dec Map-BitR Time      : %10lu usec\n", rdec_map_bitr);

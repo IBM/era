@@ -19,7 +19,10 @@
 #define _RECV_PIPE_H
 
 #include "sdr_base.h"
-#include "ofdm.h"
+#include "gr_equalizer.h"  // for INT_TIME extern declarations
+#include "sync_short.h"    // for INT_TIME extern declarations
+#include "sync_long.h"     // for INT_TIME extern declarations
+#include "ofdm.h"          // for INT_TIME extern declarations
 
 #ifdef INT_TIME
 /* This is RECV PIPE internal Timing information (gathering resources) */

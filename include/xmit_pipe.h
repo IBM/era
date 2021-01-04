@@ -31,6 +31,33 @@ extern uint64_t x_genmacfr_usec;
 extern uint64_t x_domapwk_sec;
 extern uint64_t x_domapwk_usec;
 
+extern uint64_t xdmw_total_sec;
+extern uint64_t xdmw_total_usec;
+
+extern uint64_t xdmw_genDF_sec;
+extern uint64_t xdmw_genDF_usec;
+
+extern uint64_t xdmw_scrmbl_sec;
+extern uint64_t xdmw_scrmbl_usec;
+
+extern uint64_t xdmw_total_sec;
+extern uint64_t xdmw_total_usec;
+
+extern uint64_t xdmw_cnvEnc_sec;
+extern uint64_t xdmw_cnvEnc_usec;
+
+extern uint64_t xdmw_punct_sec;
+extern uint64_t xdmw_punct_usec;
+
+extern uint64_t xdmw_intlv_sec;
+extern uint64_t xdmw_intlv_usec;
+
+extern uint64_t xdmw_symbls_sec;
+extern uint64_t xdmw_symbls_usec;
+
+extern uint64_t xdmw_mapout_sec;
+extern uint64_t xdmw_mapout_usec;
+
 extern uint64_t x_phdrgen_sec;
 extern uint64_t x_phdrgen_usec;
 

@@ -1,6 +1,7 @@
 #include <complex.h>
 #include <math.h>
 #include <stdio.h>
+#include <sys/time.h>
 
 #include "debug.h"
 #include "sync_short.h"
@@ -12,6 +13,21 @@
 typedef float fx_pt1_ext1;
 typedef float fx_pt1_ext2;
 
+#ifdef INT_TIME
+/* This is RECV-Synch-Short internal Timing information (gathering resources) */
+struct timeval sysh_total_stop, sysh_total_start;
+uint64_t sysh_total_sec  = 0LL;
+uint64_t sysh_total_usec = 0LL;
+
+struct timeval sysh_search_stop, sysh_search_start;
+uint64_t sysh_search_sec  = 0LL;
+uint64_t sysh_search_usec = 0LL;
+
+struct timeval sysh_frame_stop, sysh_frame_start;
+uint64_t sysh_frame_sec  = 0LL;
+uint64_t sysh_frame_usec = 0LL;
+#endif
+
 void sync_short( unsigned num_inputs, fx_pt input_sample[SYNC_S_MAX_IN_SIZE], fx_pt input_abs[SYNC_S_MAX_ABS_SIZE], fx_pt1 correlation[SYNC_S_MAX_COR_SIZE], float* freq_offset_out, unsigned* num_outputs, fx_pt* output)
 {
   unsigned c_plateau = 0;
@@ -20,6 +36,9 @@ void sync_short( unsigned num_inputs, fx_pt input_sample[SYNC_S_MAX_IN_SIZE], fx
   fx_pt1_ext1 d_freq_offset = 0;
   DEBUG(printf("In sync_short with %u inputs\n", num_inputs));
   //if (frame == false) {
+ #ifdef INT_TIME
+  gettimeofday(&sysh_total_start, NULL);
+ #endif
   for (unsigned i = 0; i < num_inputs /*SYNC_S_MAX_COR_SIZE*/; i++) {
     DEBUG2(printf("S_S_IN %5u : IN %12.8f %12.8f ABS %12.8f %12.8f CORR %12.8f : CP %u\n", i, crealf(input_sample[i]), cimagf(input_sample[i]), crealf(input_abs[i]), cimagf(input_abs[i]), correlation[i], c_plateau));
     if ( correlation[i] > (fx_pt1)0.56 ) { // 0.56 == d_threshold == "sensitivity" parameter
@@ -41,13 +60,18 @@ void sync_short( unsigned num_inputs, fx_pt input_sample[SYNC_S_MAX_IN_SIZE], fx
     }
   } //frame for every sample
   // } // end of if (frame)
+   #ifdef INT_TIME
+    gettimeofday(&sysh_search_stop, NULL);
+    sysh_search_sec  += sysh_search_stop.tv_sec  - sysh_total_start.tv_sec;
+    sysh_search_usec += sysh_search_stop.tv_usec - sysh_total_start.tv_usec;
+   #endif
   
   if (frame) {
     DEBUG(printf(" S_S : frame_start: %d\n", frame_start));
     //static fx_pt1_ext1 pos = 1;
     //static fx_pt1_ext2 pos_ext = 1.0;
 
-    DEBUG(printf(" S_S : d_freq_offset = %12.8f\n",d_freq_offset));
+    DEBUG(printf(" S_S : d_freq_offset = %12.8f\n", d_freq_offset));
     /* c_freq_corr: */
     unsigned out_idx = 0;
     for (unsigned k = frame_start; (k < num_inputs /*SYNC_S_MAX_ABS_SIZE*/) && (out_idx < MAX_SAMPLES); k++) {
@@ -75,4 +99,11 @@ void sync_short( unsigned num_inputs, fx_pt input_sample[SYNC_S_MAX_IN_SIZE], fx
     printf("ERROR: Couldn't find the start_Frame in sync_short... never crossed threshold?\n");
     exit(-9);
   } // if (frame)
+ #ifdef INT_TIME
+  gettimeofday(&sysh_total_stop, NULL);
+  sysh_total_sec  += sysh_total_stop.tv_sec  - sysh_total_start.tv_sec;
+  sysh_total_usec += sysh_total_stop.tv_usec - sysh_total_start.tv_usec;
+  sysh_frame_sec  += sysh_total_stop.tv_sec  - sysh_search_stop.tv_sec;
+  sysh_frame_usec += sysh_total_stop.tv_usec - sysh_search_stop.tv_usec;
+ #endif
 }

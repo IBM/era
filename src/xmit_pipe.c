@@ -59,6 +59,38 @@ struct timeval x_domapwk_stop; /*, x_domapwk_start;*/
 uint64_t x_domapwk_sec  = 0LL;
 uint64_t x_domapwk_usec = 0LL;
 
+struct timeval xdmw_total_stop, xdmw_total_start;
+uint64_t xdmw_total_sec  = 0LL;
+uint64_t xdmw_total_usec = 0LL;
+
+struct timeval xdmw_genDF_stop, xdmw_genDF_start;
+uint64_t xdmw_genDF_sec  = 0LL;
+uint64_t xdmw_genDF_usec = 0LL;
+
+struct timeval xdmw_scrmbl_stop, xdmw_scrmbl_start;
+uint64_t xdmw_scrmbl_sec  = 0LL;
+uint64_t xdmw_scrmbl_usec = 0LL;
+
+struct timeval xdmw_cnvEnc_stop, xdmw_cnvEnc_start;
+uint64_t xdmw_cnvEnc_sec  = 0LL;
+uint64_t xdmw_cnvEnc_usec = 0LL;
+
+struct timeval xdmw_punct_stop, xdmw_punct_start;
+uint64_t xdmw_punct_sec  = 0LL;
+uint64_t xdmw_punct_usec = 0LL;
+
+struct timeval xdmw_intlv_stop, xdmw_intlv_start;
+uint64_t xdmw_intlv_sec  = 0LL;
+uint64_t xdmw_intlv_usec = 0LL;
+
+struct timeval xdmw_symbls_stop, xdmw_symbls_start;
+uint64_t xdmw_symbls_sec  = 0LL;
+uint64_t xdmw_symbls_usec = 0LL;
+
+struct timeval xdmw_mapout_stop, xdmw_mapout_start;
+uint64_t xdmw_mapout_sec  = 0LL;
+uint64_t xdmw_mapout_usec = 0LL;
+
 struct timeval x_phdrgen_stop; /*, x_phdrgen_start;*/
 uint64_t x_phdrgen_sec  = 0LL;
 uint64_t x_phdrgen_usec = 0LL;
@@ -352,6 +384,9 @@ char symbols[24528];          // = (char*)calloc((frame.n_encoded_bits / d_ofdm.
 
 int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items, gr_vector_const_void_star& input_items, gr_vector_void_star& output_items )
 {
+ #ifdef INT_TIME
+  gettimeofday(&xdmw_total_start, NULL);
+ #endif
   /* frame_param frame(d_ofdm, psdu_length); */
   d_frame.psdu_size = psdu_length;
   // number of symbols (17-11)
@@ -375,6 +410,9 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
   //generate the WIFI data field, adding service field and pad bits
   //     generate_bits(psdu, data_bits, frame);
   //     void generate_bits(const char *psdu, char *data_bits, frame_param &frame)
+ #ifdef INT_TIME
+  gettimeofday(&xdmw_genDF_start, NULL);
+ #endif
   {
     // first 16 bits are zero (SERVICE/DATA field)
     //memset(data_bits, 0, 16);
@@ -403,6 +441,11 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
       }
       printf("\n\n");
     });
+ #ifdef INT_TIME
+  gettimeofday(&xdmw_genDF_stop, NULL);
+  xdmw_genDF_sec  += xdmw_genDF_stop.tv_sec  - xdmw_genDF_start.tv_sec;
+  xdmw_genDF_usec += xdmw_genDF_stop.tv_usec - xdmw_genDF_start.tv_usec;
+ #endif
 	
   // scrambling
   //     scramble(     data_bits, scrambled_data,              frame,      d_scrambler++);
@@ -447,6 +490,11 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
       }
       printf("\n\n");
     });
+ #ifdef INT_TIME
+  gettimeofday(&xdmw_scrmbl_stop, NULL);
+  xdmw_scrmbl_sec  += xdmw_scrmbl_stop.tv_sec  - xdmw_genDF_stop.tv_sec;
+  xdmw_scrmbl_usec += xdmw_scrmbl_stop.tv_usec - xdmw_genDF_stop.tv_usec;
+ #endif
 	
   // encoding
   //     convolutional_encoding(scrambled_data, encoded_data, frame);
@@ -476,6 +524,11 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
       }
       printf("\n\n");
     });
+ #ifdef INT_TIME
+  gettimeofday(&xdmw_cnvEnc_stop, NULL);
+  xdmw_cnvEnc_sec  += xdmw_cnvEnc_stop.tv_sec  - xdmw_scrmbl_stop.tv_sec;
+  xdmw_cnvEnc_usec += xdmw_cnvEnc_stop.tv_usec - xdmw_scrmbl_stop.tv_usec;
+ #endif
     
   // puncturing
   //puncturing(encoded_data, punctured_data, frame, d_ofdm);
@@ -533,7 +586,12 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
       }
       printf("\n\n");
     });
-	
+ #ifdef INT_TIME
+  gettimeofday(&xdmw_punct_stop, NULL);
+  xdmw_punct_sec  += xdmw_punct_stop.tv_sec  - xdmw_cnvEnc_stop.tv_sec;
+  xdmw_punct_usec += xdmw_punct_stop.tv_usec - xdmw_cnvEnc_stop.tv_usec;
+ #endif
+    	
   //std::cout << "punctured" << std::endl;
   // interleaving
   //     interleave(punctured_data, interleaved_data, frame, d_ofdm);
@@ -554,7 +612,12 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
       }
       printf("\n\n");
     });
-
+ #ifdef INT_TIME
+  gettimeofday(&xdmw_intlv_stop, NULL);
+  xdmw_intlv_sec  += xdmw_intlv_stop.tv_sec  - xdmw_punct_stop.tv_sec;
+  xdmw_intlv_usec += xdmw_intlv_stop.tv_usec - xdmw_punct_stop.tv_usec;
+ #endif
+    
   // one byte per symbol
   //     split_symbols(interleaved_data, symbols, frame, d_ofdm);
   //     void split_symbols(const char *in, char *out, frame_param &frame, ofdm_param &ofdm)
@@ -574,7 +637,6 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
   d_symbols_len = d_frame.n_sym * 48; // 24528
   //assert(d_symbols_len == 24528);
   DEBUG(printf("d_symbols_len = %u * 48 = %u\n", d_frame.n_sym, d_symbols_len); fflush(stdout));
-
       	  
   /* d_symbols = (char*)calloc(d_symbols_len, 1); */
   /* std::memcpy(d_symbols, symbols, d_symbols_len); */
@@ -596,7 +658,11 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
       }
       printf("\n\n");
     });
-
+ #ifdef INT_TIME
+  gettimeofday(&xdmw_symbls_stop, NULL);
+  xdmw_symbls_sec  += xdmw_symbls_stop.tv_sec  - xdmw_intlv_stop.tv_sec;
+  xdmw_symbls_usec += xdmw_symbls_stop.tv_usec - xdmw_intlv_stop.tv_usec;
+ #endif
       
   int i = d_symbols_len - d_symbols_offset;
   DEBUG(printf("output i = %u :  d_sym = %p and d_sym_off = %u\n", i, (void*)d_symbols, d_symbols_offset));
@@ -626,6 +692,14 @@ int do_mapper_work(int psdu_length) // int noutput, gr_vector_int& ninput_items,
       printf("\n");
       fflush(stdout);
     });
+ #ifdef INT_TIME
+  gettimeofday(&xdmw_mapout_stop, NULL);
+  //gettimeofday(&xdmw_stop, NULL);
+  xdmw_mapout_sec  += xdmw_mapout_stop.tv_sec  - xdmw_symbls_stop.tv_sec;
+  xdmw_mapout_usec += xdmw_mapout_stop.tv_usec - xdmw_symbls_stop.tv_usec;
+  xdmw_total_sec  += xdmw_mapout_stop.tv_sec  - xdmw_total_start.tv_sec;
+  xdmw_total_usec += xdmw_mapout_stop.tv_usec - xdmw_total_start.tv_usec;
+ #endif
   return i;
 }
 

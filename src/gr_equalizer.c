@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <complex.h>
 #include <math.h>
+#include <sys/time.h>
 
 /* #ifndef DEBUG_MODE */
 /*  #define DEBUG_MODE */
@@ -52,9 +53,29 @@ int d_frame_encoding;
 int d_frame_symbols;
 int d_frame_mod;
 
+
+#ifdef INT_TIME
+/* This is RECV-Equalize internal Timing information (gathering resources) */
+struct timeval reql_total_stop, reql_total_start;
+uint64_t reql_total_sec  = 0LL;
+uint64_t reql_total_usec = 0LL;
+
+struct timeval reql_lseq_call_stop, reql_lseq_call_start;
+uint64_t reql_lseq_call_sec  = 0LL;
+uint64_t reql_lseq_call_usec = 0LL;
+
+struct timeval reql_decsig_stop, reql_decsig_start;
+uint64_t reql_decsig_sec  = 0LL;
+uint64_t reql_decsig_usec = 0LL;
+#endif
+
 bool
 decode_signal_field(uint8_t *rx_bits, unsigned* msg_psdu) {
   DEBUG(printf("In decode_signal_field - DSF...\n"));
+ #ifdef INT_TIME
+  gettimeofday(&reql_decsig_start, NULL);
+ #endif
+  bool ret_val = true;
   ofdm_param ofdm = {   BPSK_1_2, //  encoding   : 0 = BPSK_1_2
 			13,       //             : rate field of SIGNAL header //Taken constant
 			1,        //  n_bpsc     : coded bits per subcarrier
@@ -122,6 +143,11 @@ decode_signal_field(uint8_t *rx_bits, unsigned* msg_psdu) {
 
   if (parity != decoded_bits[17]) {
     printf("SIGNAL: wrong parity %u vs %u -- bad message!\n", parity, decoded_bits[17]);  fflush(stdout);
+   #ifdef INT_TIME
+    gettimeofday(&reql_decsig_stop, NULL);
+    reql_decsig_sec  += reql_decsig_stop.tv_sec  - reql_total_start.tv_sec;
+    reql_decsig_usec += reql_decsig_stop.tv_usec - reql_total_start.tv_usec;
+   #endif
     return false;
   }
 
@@ -149,65 +175,78 @@ decode_signal_field(uint8_t *rx_bits, unsigned* msg_psdu) {
     d_frame_symbols = (int) ceil((16 + 8 * d_frame_bytes + 6) / (double) 36);
     //d_frame_mod = d_bpsk;
     DEBUG(printf("Encoding: 4.5 Mbit/s   \n"));
-    return false;
+    //return false;
+    ret_val = false;
     break;
   case 10:
     d_frame_encoding = 2;
     d_frame_symbols = (int) ceil((16 + 8 * d_frame_bytes + 6) / (double) 48);
     //d_frame_mod = d_qpsk;
     DEBUG(printf("Encoding: 6 Mbit/s   \n"));
-    return false;
+    //return false;
+    ret_val = false;
     break;
   case 14:
     d_frame_encoding = 3;
     d_frame_symbols = (int) ceil((16 + 8 * d_frame_bytes + 6) / (double) 72);
     //d_frame_mod = d_qpsk;
     DEBUG(printf("Encoding: 9 Mbit/s   \n"));
-    return false;
+    //return false;
+    ret_val = false;
     break;
   case 9:
     d_frame_encoding = 4;
     d_frame_symbols = (int) ceil((16 + 8 * d_frame_bytes + 6) / (double) 96);
     //d_frame_mod = d_16qam;
     DEBUG(printf("Encoding: 12 Mbit/s   \n"));
-    return false;
+    //return false;
+    ret_val = false;
     break;
   case 13:
     d_frame_encoding = 5;
     d_frame_symbols = (int) ceil((16 + 8 * d_frame_bytes + 6) / (double) 144);
     //d_frame_mod = d_16qam;
     DEBUG(printf("Encoding: 18 Mbit/s   \n"));
-    return false;
+    //return false;
+    ret_val = false;
     break;
   case 8:
     d_frame_encoding = 6;
     d_frame_symbols = (int) ceil((16 + 8 * d_frame_bytes + 6) / (double) 192);
     //d_frame_mod = d_64qam;
     DEBUG(printf("Encoding: 24 Mbit/s   \n"));
-    return false;
+    //return false;
+    ret_val = false;
     break;
   case 12:
     d_frame_encoding = 7;
     d_frame_symbols = (int) ceil((16 + 8 * d_frame_bytes + 6) / (double) 216);
     //d_frame_mod = d_64qam;
     DEBUG(printf("Encoding: 27 Mbit/s   \n"));
-    return false;
+    //return false;
+    ret_val = false;
     break;
   default:
     printf("unknown encoding\n");
-    return false;
+    //return false;
+    ret_val = false;
   }
 
   //   mylog(boost::format("encoding: %1% - length: %2% - symbols: %3%")
   // 	  % d_frame_encoding % d_frame_bytes % d_frame_symbols);
-  DEBUG(printf("\nDSF : RETURNING TRUE -- A GOOD RUN!\n"));
-  return true;
+ #ifdef INT_TIME
+  gettimeofday(&reql_decsig_stop, NULL);
+  reql_decsig_sec  += reql_decsig_stop.tv_sec  - reql_total_start.tv_sec;
+  reql_decsig_usec += reql_decsig_stop.tv_usec - reql_total_start.tv_usec;
+ #endif
+  DEBUG(printf("\nDSF : RETURNING %b\n", ret_val));
+  return ret_val;
 }
 
 fx_pt d_H[64];
 
 //void do_LS_equalize(fx_pt in[64], unsigned n, fx_pt symbols[48], fx_pt* output)  // BPSK , d_frame_mod)
-void do_LS_equalize(fx_pt *in, int n, fx_pt *symbols, uint8_t *bits) // BPSK , boost::shared_ptr<gr::digital::constellation> mod) {
+inline void do_LS_equalize(fx_pt *in, int n, fx_pt *symbols, uint8_t *bits) // BPSK , boost::shared_ptr<gr::digital::constellation> mod) {
 {
   if(n == 0) {
     for (int ii = 0; ii < 64; ii++) {
@@ -261,6 +300,9 @@ void gr_equalize( float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_I
 		  unsigned* num_out_sym, fx_pt out_symbols[FRAME_EQ_OUT_MAX_SIZE] )
 {
   DEBUG(printf("\nIn gr_equalize with %u inputs\n", num_inputs));
+ #ifdef INT_TIME
+  gettimeofday(&reql_total_start, NULL);
+ #endif
   const fx_pt POLARITY[127] = { 1 , 1, 1, 1,-1,-1,-1, 1,-1,-1,-1,-1, 1, 1,-1, 1,
 				-1,-1, 1, 1,-1, 1, 1,-1, 1, 1, 1, 1, 1, 1,-1, 1,
 				1 , 1,-1, 1, 1,-1,-1, 1, 1, 1,-1, 1,-1,-1,-1, 1,
@@ -329,13 +371,20 @@ void gr_equalize( float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_I
       d_er = (1-alpha) * d_er + alpha * er;
     }
 
+   #ifdef INT_TIME
+    gettimeofday(&reql_lseq_call_start, NULL);
+   #endif
     // do equalization -- This uses "LS" Algorithm
     do_LS_equalize(current_symbol, d_current_symbol, symbols, &(outputs[ out_sym * 48])); // BPSK , d_frame_mod);
+   #ifdef INT_TIME
+    gettimeofday(&reql_lseq_call_stop, NULL);
+    reql_lseq_call_sec  += reql_lseq_call_stop.tv_sec  - reql_total_start.tv_sec;
+    reql_lseq_call_usec += reql_lseq_call_stop.tv_usec - reql_total_start.tv_usec;
+   #endif
     
     // signal field -- IF good parirty/checksum, then good to go...
     if (d_current_symbol == 2) {
-      // ASSUME GOOD PARITY FOR NOW ?!?
-      // Otherwise, I think we decode this frame, and do some checking, etc... in the decode_signal_field (above)
+      // decode this frame, and do some checking, etc... in the decode_signal_field (above)
       DEBUG(printf("Calling decode_signal_field with out_sym = %u and d_current_symbol = %u\n", out_sym, d_current_symbol));
       if (!decode_signal_field(&(outputs[out_sym * 48]), msg_psdu)) {
         printf("ERROR : Bad decode_signal_field return value ...\n");
@@ -359,4 +408,9 @@ void gr_equalize( float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_I
   *num_out_bits = out_sym * 48;
   *num_out_sym  = out_sym;
   DEBUG(printf(" gr_equalize setting %u in symbols, %u out symbols and %u out bits\n", num_inp_sym, *num_out_sym, *num_out_bits));
+ #ifdef INT_TIME
+  gettimeofday(&reql_total_stop, NULL);
+  reql_total_sec  += reql_total_stop.tv_sec  - reql_total_start.tv_sec;
+  reql_total_usec += reql_total_stop.tv_usec - reql_total_start.tv_usec;
+ #endif
 }
