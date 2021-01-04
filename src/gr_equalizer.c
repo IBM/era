@@ -153,8 +153,8 @@ decode_signal_field(uint8_t *rx_bits, unsigned* msg_psdu) {
     printf("SIGNAL: wrong parity %u vs %u -- bad message!\n", parity, decoded_bits[17]);  fflush(stdout);
    #ifdef INT_TIME
     gettimeofday(&reql_decSF_stop, NULL);
-    reql_decSF_sec  += reql_decSF_stop.tv_sec  - reql_total_start.tv_sec;
-    reql_decSF_usec += reql_decSF_stop.tv_usec - reql_total_start.tv_usec;
+    reql_decSF_sec  += reql_decSF_stop.tv_sec  - reql_decSF_start.tv_sec;
+    reql_decSF_usec += reql_decSF_stop.tv_usec - reql_decSF_start.tv_usec;
    #endif
     return false;
   }
@@ -391,8 +391,8 @@ void gr_equalize( float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_I
     do_LS_equalize(current_symbol, d_current_symbol, symbols, &(outputs[ out_sym * 48])); // BPSK , d_frame_mod);
    #ifdef INT_TIME
     gettimeofday(&reql_lseq_call_stop, NULL);
-    reql_lseq_call_sec  += reql_lseq_call_stop.tv_sec  - reql_symset_start.tv_sec;
-    reql_lseq_call_usec += reql_lseq_call_stop.tv_usec - reql_symset_start.tv_usec;
+    reql_lseq_call_sec  += reql_lseq_call_stop.tv_sec  - reql_symset_stop.tv_sec;
+    reql_lseq_call_usec += reql_lseq_call_stop.tv_usec - reql_symset_stop.tv_usec;
    #endif
     
     // signal field -- IF good parirty/checksum, then good to go...
@@ -406,6 +406,9 @@ void gr_equalize( float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_I
       DEBUG(printf("Back from decode_signal_field...\n"));
     }
   
+   #ifdef INT_TIME
+    gettimeofday(&reql_outsym_start, NULL);
+   #endif
     if(d_current_symbol > 2) {
       // Just put this into the output stream...
       for (int ii = 0; ii < 48; ii++) {
@@ -417,8 +420,8 @@ void gr_equalize( float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_I
     }
    #ifdef INT_TIME
     gettimeofday(&reql_outsym_stop, NULL);
-    reql_outsym_sec  += reql_outsym_stop.tv_sec  - reql_lseq_call_stop.tv_sec;
-    reql_outsym_usec += reql_outsym_stop.tv_usec - reql_lseq_call_stop.tv_usec;
+    reql_outsym_sec  += reql_outsym_stop.tv_sec  - reql_outsym_start.tv_sec;
+    reql_outsym_usec += reql_outsym_stop.tv_usec - reql_outsym_start.tv_usec;
    #endif
 
     d_current_symbol++;
