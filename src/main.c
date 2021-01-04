@@ -1027,8 +1027,10 @@ void dump_final_run_statistics()
 
   // This is the gr_equalizer.c "equalize" breakdown
   uint64_t reql_total    = (uint64_t)(reql_total_sec)     * 1000000 + (uint64_t)(reql_total_usec);
+  uint64_t reql_sym_set  = (uint64_t)(reql_symset_sec)    * 1000000 + (uint64_t)(reql_symset_usec);
   uint64_t reql_ls_eql   = (uint64_t)(reql_lseq_call_sec) * 1000000 + (uint64_t)(reql_lseq_call_usec);
-  uint64_t reql_ds_fld   = (uint64_t)(reql_decsig_sec)    * 1000000 + (uint64_t)(reql_decsig_usec);
+  uint64_t reql_out_sym  = (uint64_t)(reql_outsym_sec)    * 1000000 + (uint64_t)(reql_outsym_usec);
+  uint64_t reql_ds_fld   = (uint64_t)(reql_decSF_sec)     * 1000000 + (uint64_t)(reql_decSF_usec);
   
   // This is the ofdm.c decode-signal breakdown
   uint64_t rdec_total    = (uint64_t)(rdec_total_sec)  * 1000000 + (uint64_t)(rdec_total_usec);
@@ -1088,7 +1090,9 @@ void dump_final_run_statistics()
   printf("         R-Pipe Rc-FFT Time       : %10lu usec\n", r_fft);
   printf("         R-Pipe Equalize Time     :  %10lu usec\n", r_eqlz);
   printf("           R-Eql Total Time         : %10lu usec\n", reql_total);
+  printf("           R-Eql Set-Symbol Time    : %10lu usec\n", reql_sym_set);
   printf("           R-Eql LS-EQ Time         : %10lu usec\n", reql_ls_eql);
+  printf("           R-Eql Output-Sym Time    : %10lu usec\n", reql_out_sym);
   printf("           R-Eql DecSigFld Time     : %10lu usec\n", reql_ds_fld);
   printf("         R-Pipe DecSignal Time    : %10lu usec\n", r_decsignl);
   printf("           R-Dec Total Time         : %10lu usec\n", rdec_total);

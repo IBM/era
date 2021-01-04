@@ -60,20 +60,28 @@ struct timeval reql_total_stop, reql_total_start;
 uint64_t reql_total_sec  = 0LL;
 uint64_t reql_total_usec = 0LL;
 
+struct timeval reql_symset_stop, reql_symset_start;
+uint64_t reql_symset_sec  = 0LL;
+uint64_t reql_symset_usec = 0LL;
+
 struct timeval reql_lseq_call_stop, reql_lseq_call_start;
 uint64_t reql_lseq_call_sec  = 0LL;
 uint64_t reql_lseq_call_usec = 0LL;
 
-struct timeval reql_decsig_stop, reql_decsig_start;
-uint64_t reql_decsig_sec  = 0LL;
-uint64_t reql_decsig_usec = 0LL;
+struct timeval reql_outsym_stop, reql_outsym_start;
+uint64_t reql_outsym_sec  = 0LL;
+uint64_t reql_outsym_usec = 0LL;
+
+struct timeval reql_decSF_stop, reql_decSF_start;
+uint64_t reql_decSF_sec  = 0LL;
+uint64_t reql_decSF_usec = 0LL;
 #endif
 
 bool
 decode_signal_field(uint8_t *rx_bits, unsigned* msg_psdu) {
   DEBUG(printf("In decode_signal_field - DSF...\n"));
  #ifdef INT_TIME
-  gettimeofday(&reql_decsig_start, NULL);
+  gettimeofday(&reql_decSF_start, NULL);
  #endif
   bool ret_val = true;
   ofdm_param ofdm = {   BPSK_1_2, //  encoding   : 0 = BPSK_1_2
@@ -144,9 +152,9 @@ decode_signal_field(uint8_t *rx_bits, unsigned* msg_psdu) {
   if (parity != decoded_bits[17]) {
     printf("SIGNAL: wrong parity %u vs %u -- bad message!\n", parity, decoded_bits[17]);  fflush(stdout);
    #ifdef INT_TIME
-    gettimeofday(&reql_decsig_stop, NULL);
-    reql_decsig_sec  += reql_decsig_stop.tv_sec  - reql_total_start.tv_sec;
-    reql_decsig_usec += reql_decsig_stop.tv_usec - reql_total_start.tv_usec;
+    gettimeofday(&reql_decSF_stop, NULL);
+    reql_decSF_sec  += reql_decSF_stop.tv_sec  - reql_total_start.tv_sec;
+    reql_decSF_usec += reql_decSF_stop.tv_usec - reql_total_start.tv_usec;
    #endif
     return false;
   }
@@ -235,9 +243,9 @@ decode_signal_field(uint8_t *rx_bits, unsigned* msg_psdu) {
   //   mylog(boost::format("encoding: %1% - length: %2% - symbols: %3%")
   // 	  % d_frame_encoding % d_frame_bytes % d_frame_symbols);
  #ifdef INT_TIME
-  gettimeofday(&reql_decsig_stop, NULL);
-  reql_decsig_sec  += reql_decsig_stop.tv_sec  - reql_total_start.tv_sec;
-  reql_decsig_usec += reql_decsig_stop.tv_usec - reql_total_start.tv_usec;
+  gettimeofday(&reql_decSF_stop, NULL);
+  reql_decSF_sec  += reql_decSF_stop.tv_sec  - reql_total_start.tv_sec;
+  reql_decSF_usec += reql_decSF_stop.tv_usec - reql_total_start.tv_usec;
  #endif
   DEBUG(printf("\nDSF : RETURNING %b\n", ret_val));
   return ret_val;
@@ -335,6 +343,9 @@ void gr_equalize( float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_I
   for (inp_sym = 0; inp_sym < num_inp_sym ; inp_sym++) {
     // Set up the values for the current symbols and compensate sampling offset
     DEBUG(printf("Setting up initial current_symbol : i = %u\n", inp_sym));
+   #ifdef INT_TIME
+    gettimeofday(&reql_symset_start, NULL);
+   #endif
     for (int ii = 0; ii < 64; ii++) {
       current_symbol[ii] = inputs[64*inp_sym + ii] * exp((fx_pt)(0 + I * 2*M_PI*d_current_symbol*80*(d_epsilon0 + d_er)*(ii-32)/64));
       DEBUG(printf(" compensate: sym %2u from %5u : %12.8f %12.8f -> %12.8f %12.8f \n", ii, (64*inp_sym + ii), crealf(inputs[64*inp_sym + ii]), cimagf(inputs[64*inp_sym + ii]), crealf(current_symbol[ii]), cimagf(current_symbol[ii])));
@@ -372,14 +383,16 @@ void gr_equalize( float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_I
     }
 
    #ifdef INT_TIME
-    gettimeofday(&reql_lseq_call_start, NULL);
+    gettimeofday(&reql_symset_stop, NULL);
+    reql_symset_sec  += reql_symset_stop.tv_sec  - reql_symset_start.tv_sec;
+    reql_symset_usec += reql_symset_stop.tv_usec - reql_symset_start.tv_usec;
    #endif
     // do equalization -- This uses "LS" Algorithm
     do_LS_equalize(current_symbol, d_current_symbol, symbols, &(outputs[ out_sym * 48])); // BPSK , d_frame_mod);
    #ifdef INT_TIME
     gettimeofday(&reql_lseq_call_stop, NULL);
-    reql_lseq_call_sec  += reql_lseq_call_stop.tv_sec  - reql_lseq_call_start.tv_sec;
-    reql_lseq_call_usec += reql_lseq_call_stop.tv_usec - reql_lseq_call_start.tv_usec;
+    reql_lseq_call_sec  += reql_lseq_call_stop.tv_sec  - reql_symset_start.tv_sec;
+    reql_lseq_call_usec += reql_lseq_call_stop.tv_usec - reql_symset_start.tv_usec;
    #endif
     
     // signal field -- IF good parirty/checksum, then good to go...
@@ -402,6 +415,11 @@ void gr_equalize( float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_I
       DEBUG(printf("\n"));
       out_sym++;
     }
+   #ifdef INT_TIME
+    gettimeofday(&reql_outsym_stop, NULL);
+    reql_outsym_sec  += reql_outsym_stop.tv_sec  - reql_lseq_call_stop.tv_sec;
+    reql_outsym_usec += reql_outsym_stop.tv_usec - reql_lseq_call_stop.tv_usec;
+   #endif
 
     d_current_symbol++;
   } //  for (inp_sym = 0; loop through input symbols

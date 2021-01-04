@@ -11,11 +11,17 @@
 extern uint64_t reql_total_sec;
 extern uint64_t reql_total_usec;
 
+extern uint64_t reql_symset_sec;
+extern uint64_t reql_symset_usec;
+
 extern uint64_t reql_lseq_call_sec;
 extern uint64_t reql_lseq_call_usec;
 
-extern uint64_t reql_decsig_sec;
-extern uint64_t reql_decsig_usec;
+extern uint64_t reql_outsym_sec;
+extern uint64_t reql_outsym_usec;
+
+extern uint64_t reql_decSF_sec;
+extern uint64_t reql_decSF_usec;
 #endif
 
 void gr_equalize( float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_IN_MAX_SIZE],
