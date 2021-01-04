@@ -951,7 +951,8 @@ int main(int argc, char *argv[])
 
 void dump_final_run_statistics()
 {
-  printf("\nFinal Run Stats, %u Lidar Steps, %u by %u grid, res %lf ray_r %u\n", lidar_count, GRID_MAP_X_DIM, GRID_MAP_Y_DIM, GRID_MAP_RESLTN, RAYTR_RANGE);
+  printf("\nFinal Run Stats, %u, Odo, %u, Lidar, %u, LMAP, %u, XMIT, %u, RECV, %u, CAR-SEND\n", odo_count, lidar_count, lmap_count, xmit_count, recv_count, car_send_count);
+  printf("Occ-Map Dimensions, %u, by, %u, grid, res, %lf, ray_r, %u\n", GRID_MAP_X_DIM, GRID_MAP_Y_DIM, GRID_MAP_RESLTN, RAYTR_RANGE);
 
   printf("Timing (in usec):\n");
  #ifdef INT_TIME
