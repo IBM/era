@@ -246,7 +246,7 @@ decode_signal_field(uint8_t *rx_bits, unsigned* msg_psdu) {
 fx_pt d_H[64];
 
 //void do_LS_equalize(fx_pt in[64], unsigned n, fx_pt symbols[48], fx_pt* output)  // BPSK , d_frame_mod)
-inline void do_LS_equalize(fx_pt *in, int n, fx_pt *symbols, uint8_t *bits) // BPSK , boost::shared_ptr<gr::digital::constellation> mod) {
+static inline void do_LS_equalize(fx_pt *in, int n, fx_pt *symbols, uint8_t *bits) // BPSK , boost::shared_ptr<gr::digital::constellation> mod) {
 {
   if(n == 0) {
     for (int ii = 0; ii < 64; ii++) {

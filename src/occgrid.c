@@ -52,7 +52,7 @@ bool rotating_window;
 
 /*************** HELPER FUNCTIONS ******************/
 
-inline double hypot(double x, double y) {
+static inline double hypot_dist(double x, double y) {
   return sqrt(x * x + y * y);
 }
 
@@ -61,36 +61,36 @@ inline double hypot(double x, double y) {
 #define MMAX(x, y) (((x) > (y)) ? (x)  : (y))
 #define MSIGN(x)   (((x) > 0) ? 1 : -1);
 
-/*inline int max(int num1, int num2) {
+/*static inline int max(int num1, int num2) {
   return (num1 > num2) ? num1 : num2;
   }*/
 
-/*inline int min(int num1, int num2) {
+/*static inline int min(int num1, int num2) {
   return (num1 < num2) ? num1 : num2;
   }*/
 
-/*inline int sign (int x) {
+/*static inline int sign (int x) {
   return x > 0 ? 1.0 : -1.0;
 }*/
 
-/*inline void touch(double x, double y, double* min_x, double* min_y, double* max_x, double* max_y) {
+/*static inline void touch(double x, double y, double* min_x, double* min_y, double* max_x, double* max_y) {
   *min_x = MMIN(x, *min_x);
   *min_y = MMIN(y, *min_y);
   *max_x = MMAX(x, *max_x);
   *max_y = MMAX(y, *max_y);
   }*/
 
-inline unsigned int cellDistance(Observation* obs_ptr, double world_dist) {
+static inline unsigned int cellDistance(Observation* obs_ptr, double world_dist) {
   double cells_dist = MMAX(0.0, ceil(world_dist/obs_ptr->master_resolution));
   return (unsigned int) cells_dist;
 }
 
-inline unsigned int getIndex(Observation* obs_ptr, unsigned int i, unsigned int j) {
+static inline unsigned int getIndex(Observation* obs_ptr, unsigned int i, unsigned int j) {
   //printf("x_dim * j + i = %d * %d + %d = %d", obs_ptr->master_costmap.x_dim, j, i, obs_ptr->master_costmap.x_dim * j + i);
   return (obs_ptr->master_costmap.x_dim / obs_ptr->master_resolution) * j + i;
 }
 
-inline void markCell(Observation* obs_ptr, unsigned char value, unsigned int offset) {
+static inline void markCell(Observation* obs_ptr, unsigned char value, unsigned int offset) {
   //printf("OFFSET -> %d\n", offset);
   CHECK(if (offset >= COST_MAP_ENTRIES) {
       printf("ERROR : updateBounds : offset is too large at %d vs %d\n", offset, COST_MAP_ENTRIES);
@@ -100,7 +100,7 @@ inline void markCell(Observation* obs_ptr, unsigned char value, unsigned int off
 
 
 //Calculate world coordinates relative to origin (and not robot's odometry)
-inline bool worldToMapCell(Observation* obs_ptr, double owx, double owy, double robot_x, double robot_y, int* nwx, int* nwy) {
+static inline bool worldToMapCell(Observation* obs_ptr, double owx, double owy, double robot_x, double robot_y, int* nwx, int* nwy) {
   double owx_rel_origin = owx + robot_x;
   double owy_rel_origin = owy + robot_y;
   //printf("World To Map (Relative to Origin) = (%d, %d)\n", (int)((owx_rel_origin - obs_ptr->master_origin.x) / obs_ptr->master_resolution), (int)((owy_rel_origin - obs_ptr->master_origin.y) / obs_ptr->master_resolution));
@@ -698,7 +698,7 @@ void raytraceLine(Observation* obs_ptr, unsigned int x0, unsigned int y0, unsign
   //printf("offset -> %d \n", offset);
 
   // we need to chose how much to scale our dominant dimension, based on the maximum length of the line
-  double dist = hypot(dx, dy);
+  double dist = hypot_dist(dx, dy);
   double scale = (dist == 0.0) ? 1.0 : MMIN(1.0, max_length / dist);
 
   // if x is dominant
