@@ -1,8 +1,53 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <stdint.h>
+#include <sys/time.h>
 
 #include "globals.h"
 #include "occgrid.h"
+
+#ifdef INT_TIME
+/* This is OCC-GRID Internal Timing information (gathering resources) */
+struct timeval /*ocgr_c2g_total_stop,*/ ocgr_c2g_total_start;
+uint64_t ocgr_c2g_total_sec  = 0LL;
+uint64_t ocgr_c2g_total_usec = 0LL;
+
+struct timeval ocgr_c2g_initCM_stop; /*, ocgr_c2g_initCM_start;*/
+uint64_t ocgr_c2g_initCM_sec  = 0LL;
+uint64_t ocgr_c2g_initCM_usec = 0LL;
+
+struct timeval ocgr_c2g_updOrig_stop; /*, ocgr_c2g_updOrig_start;*/
+uint64_t ocgr_c2g_updOrig_sec  = 0LL;
+uint64_t ocgr_c2g_updOrig_usec = 0LL;
+
+struct timeval ocgr_c2g_updBnds_stop; /*, ocgr_c2g_updBnds_start;*/
+uint64_t ocgr_c2g_updBnds_sec  = 0LL;
+uint64_t ocgr_c2g_updBnds_usec = 0LL;
+
+
+struct timeval ocgr_upBd_total_stop, ocgr_upBd_total_start;
+uint64_t ocgr_upBd_total_sec  = 0LL;
+uint64_t ocgr_upBd_total_usec = 0LL;
+
+struct timeval ocgr_upBd_rayFSp_stop; /*, ocgr_upBd_rayFSp_start;*/
+uint64_t ocgr_upBd_rayFSp_sec  = 0LL;
+uint64_t ocgr_upBd_rayFSp_usec = 0LL;
+
+/*struct timeval ocgr_upBd_regObst_stop, ocgr_upBd_regObst_start;*/
+uint64_t ocgr_upBd_regObst_sec  = 0LL;
+uint64_t ocgr_upBd_regObst_usec = 0LL;
+
+
+struct timeval ocgr_ryFS_total_stop, ocgr_ryFS_total_start;
+uint64_t ocgr_ryFS_total_sec  = 0LL;
+uint64_t ocgr_ryFS_total_usec = 0LL;
+
+struct timeval ocgr_ryFS_rtLine_stop, ocgr_ryFS_rtLine_start;
+uint64_t ocgr_ryFS_rtLine_sec  = 0LL;
+uint64_t ocgr_ryFS_rtLine_usec = 0LL;
+
+#endif
 
 /** FORWARD DECLARATIONS **/
 //void touch(double x, double y, double* min_x, double* min_y, double* max_x, double* max_y);
@@ -28,8 +73,7 @@ void copyMapRegion(Observation* obs_ptr, unsigned char* source_map, unsigned int
 
 void raytraceLine(Observation* obs_ptr, unsigned int x0, unsigned int y0, unsigned int x1, unsigned int y1, unsigned int max_length); //TODO: Default max argument for max_length is UNIT_MAX
 
-void bresenham2D(Observation* obs_ptr, unsigned int abs_da, unsigned int abs_db, int error_b, int offset_a,
-                        int offset_b, unsigned int offset, unsigned int max_length);
+//void bresenham2D(Observation* obs_ptr, unsigned int abs_da, unsigned int abs_db, int error_b, int offset_a, int offset_b, unsigned int offset, unsigned int max_length);
 
 //void markCell(Observation* obs_ptr, unsigned char value, unsigned int offset);
 
@@ -93,7 +137,7 @@ static inline unsigned int getIndex(Observation* obs_ptr, unsigned int i, unsign
 static inline void markCell(Observation* obs_ptr, unsigned char value, unsigned int offset) {
   //printf("OFFSET -> %d\n", offset);
   CHECK(if (offset >= COST_MAP_ENTRIES) {
-      printf("ERROR : updateBounds : offset is too large at %d vs %d\n", offset, COST_MAP_ENTRIES);
+      printf("ERROR : markCell : offset is too large at %d vs %d\n", offset, COST_MAP_ENTRIES);
     });
   obs_ptr->master_costmap.costmap[offset] = value;
 }
@@ -401,7 +445,15 @@ unsigned char* cloudToOccgrid(Observation* obs_ptr,
 			      unsigned int x_dim, unsigned int y_dim, double resolution/*,
 			      unsigned char default_value*/ ) {
   DBGOUT(printf("In cloudToOccgrid with Odometry %.1f %.1f %.f1\n", robot_x, robot_y, robot_z));
+ #ifdef INT_TIME
+  gettimeofday(&ocgr_c2g_total_start, NULL);
+ #endif  
   initCostmap(obs_ptr, rolling_window, min_obstacle_height, max_obstacle_height, raytrace_range, x_dim, y_dim, resolution, /*default_value,*/ robot_x, robot_y, robot_z);
+ #ifdef INT_TIME
+  gettimeofday(&ocgr_c2g_initCM_stop, NULL);
+  ocgr_c2g_initCM_sec  += ocgr_c2g_initCM_stop.tv_sec  - ocgr_c2g_total_start.tv_sec;
+  ocgr_c2g_initCM_usec += ocgr_c2g_initCM_stop.tv_usec - ocgr_c2g_total_start.tv_usec;
+ #endif
 
   //printf("(1) Number of elements : %d ... ", data_size);
   //printf("First Coordinate = <%f, %f>\n", *data, *(data+1));
@@ -414,6 +466,11 @@ unsigned char* cloudToOccgrid(Observation* obs_ptr,
     double new_origin_y = robot_y - obs_ptr->master_costmap.y_dim / 2;
     updateOrigin(obs_ptr, new_origin_x, new_origin_y);
   }
+ #ifdef INT_TIME
+  gettimeofday(&ocgr_c2g_updOrig_stop, NULL);
+  ocgr_c2g_updOrig_sec  += ocgr_c2g_updOrig_stop.tv_sec  - ocgr_c2g_initCM_stop.tv_sec;
+  ocgr_c2g_updOrig_usec += ocgr_c2g_updOrig_stop.tv_usec - ocgr_c2g_initCM_stop.tv_usec;
+ #endif
 
   double min_x = 1e30;
   double min_y = 1e30;
@@ -427,6 +484,14 @@ unsigned char* cloudToOccgrid(Observation* obs_ptr,
   updateBounds(obs_ptr, data, data_size, robot_x, robot_y, robot_z, robot_yaw, &min_x, &min_y, &max_x, &max_y);
 
   //printMap();
+ #ifdef INT_TIME
+  gettimeofday(&ocgr_c2g_updBnds_stop, NULL);
+  ocgr_c2g_updBnds_sec  += ocgr_c2g_updBnds_stop.tv_sec  - ocgr_c2g_updOrig_stop.tv_sec;
+  ocgr_c2g_updBnds_usec += ocgr_c2g_updBnds_stop.tv_usec - ocgr_c2g_updOrig_stop.tv_usec;
+
+  ocgr_c2g_total_sec  += ocgr_c2g_updBnds_stop.tv_sec  - ocgr_c2g_total_start.tv_sec;
+  ocgr_c2g_total_usec += ocgr_c2g_updBnds_stop.tv_usec - ocgr_c2g_total_start.tv_usec;
+ #endif
   return obs_ptr->master_costmap.costmap;
 }
 
@@ -554,8 +619,16 @@ void updateBounds(Observation* obs_ptr, float* data, unsigned int data_size, dou
   //printf("(1) Number of elements : %d ... ", data_size);
   //printf("First Coordinate = <%f, %f>\n", *data, *(data+1));
 
+ #ifdef INT_TIME
+  gettimeofday(&ocgr_upBd_total_start, NULL);
+ #endif  
   //raytrace free space
   raytraceFreespace(obs_ptr, data, data_size, min_x, min_y, max_x, max_y, robot_x, robot_y, robot_z, robot_yaw); //TODO: Reconfigure for 'cloud' parameter
+ #ifdef INT_TIME
+  gettimeofday(&ocgr_upBd_rayFSp_stop, NULL);
+  ocgr_upBd_rayFSp_sec  += ocgr_upBd_rayFSp_stop.tv_sec  - ocgr_upBd_total_start.tv_sec;
+  ocgr_upBd_rayFSp_usec += ocgr_upBd_rayFSp_stop.tv_usec - ocgr_upBd_total_start.tv_usec;
+ #endif
 
   //printf("Number of elements : %d\n", sizeof(cloud.data) / sizeof(cloud.data[0]));
 
@@ -590,6 +663,14 @@ void updateBounds(Observation* obs_ptr, float* data, unsigned int data_size, dou
       //touch(px, py, min_x, min_y, max_x, max_y);
     }
   }
+ #ifdef INT_TIME
+  gettimeofday(&ocgr_upBd_total_stop, NULL);
+  ocgr_upBd_regObst_sec  += ocgr_upBd_total_stop.tv_sec  - ocgr_upBd_rayFSp_stop.tv_sec;
+  ocgr_upBd_regObst_usec += ocgr_upBd_total_stop.tv_usec - ocgr_upBd_rayFSp_stop.tv_usec;
+
+  ocgr_upBd_total_sec  += ocgr_upBd_total_stop.tv_sec  - ocgr_upBd_total_start.tv_sec;
+  ocgr_upBd_total_usec += ocgr_upBd_total_stop.tv_usec - ocgr_upBd_total_start.tv_usec;
+ #endif
 }
 
 /* Issues:
@@ -601,7 +682,9 @@ void raytraceFreespace(Observation* obs_ptr, float* data, unsigned int data_size
 		       double robot_x, double robot_y, double robot_z, double robot_yaw) {
   //printf("(1) Number of elements : %d ... ", data_size);
   //printf("First Coordinate = <%f, %f>\n", *data, *(data+1));
-
+   #ifdef INT_TIME
+    gettimeofday(&ocgr_ryFS_total_start, NULL);
+   #endif  
   //Retrieve observation origin (i.e. origin of the pointcloud)
   double ox = robot_x;
   double oy = robot_y;
@@ -622,6 +705,11 @@ void raytraceFreespace(Observation* obs_ptr, float* data, unsigned int data_size
 
   //touch(ox, oy, min_x, min_y, max_x, max_y);
 
+  const double sin_yaw = sin(robot_yaw);
+  const double cos_yaw = cos(robot_yaw);
+  const double mo_x = obs_ptr->master_origin.x;
+  const double mo_y = obs_ptr->master_origin.y;
+  
   for (int i = 0; i < data_size; i = i + 3) {
     double wx = (double) *(data + i);
     double wy = (double) *(data + i + 1);
@@ -629,25 +717,31 @@ void raytraceFreespace(Observation* obs_ptr, float* data, unsigned int data_size
 
     //if window rotates, then inversely rotate points
     if (rotating_window) {
-      wx = wx*cos(robot_yaw) - wy*sin(robot_yaw);
-      wy = wx*sin(robot_yaw) + wy*cos(robot_yaw);
+      //wx = wx*cos(robot_yaw) - wy*sin(robot_yaw);
+      wx = wx*cos_yaw - wy*sin_yaw;
+      //wy = wx*sin(robot_yaw) + wy*cos(robot_yaw);
+      wy = wx*sin_yaw + wy*cos_yaw;
     }
-
+    
     // now we also need to make sure that the enpoint we're raytracing
     // to isn't off the costmap and scale if necessary
     double a = wx - ox;
     double b = wy - oy;
-
-    if (wx < obs_ptr->master_origin.x) {
-      double t = (obs_ptr->master_origin.x - ox) / a;
-      wx = obs_ptr->master_origin.x;
+    
+    if (wx < mo_x) { // obs_ptr->master_origin.x) {
+      //double t = (obs_ptr->master_origin.x - ox) / a;
+      double t = (mo_x - ox) / a;
+      //wx = obs_ptr->master_origin.x;
+      wx = mo_x;
       wy = oy + b * t;
     }
 
-    if (wy < obs_ptr->master_origin.y) {
-      double t = (obs_ptr->master_origin.y - oy) / b;
+    if (wy < mo_y) { // obs_ptr->master_origin.y) {
+      //double t = (obs_ptr->master_origin.y - oy) / b;
+      double t = (mo_y - oy) / b;
       wx = ox + a * t;
-      wy = obs_ptr->master_origin.y;
+      //wy = obs_ptr->master_origin.y;
+      wy = mo_y;
     }
 
     // the maximum value to raytrace to is the end of the map
@@ -670,11 +764,42 @@ void raytraceFreespace(Observation* obs_ptr, float* data, unsigned int data_size
     //printf(">>> Cell Raytrace Range -> %d\n", cell_raytrace_range);
 
     // and finally... we can execute our trace to clear obstacles along that line
+   #ifdef INT_TIME
+    gettimeofday(&ocgr_ryFS_rtLine_start, NULL);
+   #endif  
     raytraceLine(obs_ptr, x0, y0, x1, y1, cell_raytrace_range);
+   #ifdef INT_TIME
+    gettimeofday(&ocgr_ryFS_rtLine_stop, NULL);
+    ocgr_ryFS_rtLine_sec  += ocgr_ryFS_rtLine_stop.tv_sec  - ocgr_ryFS_rtLine_start.tv_sec;
+    ocgr_ryFS_rtLine_usec += ocgr_ryFS_rtLine_stop.tv_usec - ocgr_ryFS_rtLine_start.tv_usec;
+   #endif
 
     /* No apparent effect
-       updateRaytraceBounds(ox, oy, wx, wy, obs_ptr->raytrace_range, min_x, min_y, max_x, max_y);*/
+       updateRaytraceBounds(ox, oy, wx, wy, obs_ptr->raytrace_range, min_x, min_y, max_x, max_y);
+    */
   }
+ #ifdef INT_TIME
+  gettimeofday(&ocgr_ryFS_total_stop, NULL);
+  ocgr_ryFS_total_sec  += ocgr_ryFS_total_stop.tv_sec  - ocgr_ryFS_total_start.tv_sec;
+  ocgr_ryFS_total_usec += ocgr_ryFS_total_stop.tv_usec - ocgr_ryFS_total_start.tv_usec;
+ #endif
+}
+
+
+static inline void bresenham2D(Observation* obs_ptr, unsigned int abs_da, unsigned int abs_db, int error_b,
+			       int offset_a, int offset_b, unsigned int offset, unsigned int max_length) {
+  unsigned int end = MMIN(max_length, abs_da);
+  //printf("\n\n abs_da, end -> %d, %d\n", abs_da, end);
+  for (unsigned int i = 0; i < end; ++i) {
+    markCell(obs_ptr, CMV_FREE_SPACE, offset);
+    offset += offset_a;
+    error_b += abs_db;
+    if ((unsigned int)error_b >= abs_da) {
+      offset += offset_b;
+      error_b -= abs_da;
+    }
+  }
+  markCell(obs_ptr, CMV_FREE_SPACE, offset);
 }
 
 
@@ -705,28 +830,11 @@ void raytraceLine(Observation* obs_ptr, unsigned int x0, unsigned int y0, unsign
   if (abs_dx >= abs_dy) {
     int error_y = abs_dx / 2;
     bresenham2D(obs_ptr, abs_dx, abs_dy, error_y, offset_dx, offset_dy, offset, (unsigned int)(scale * abs_dx));
-    return;
+  } else {
+    // otherwise y is dominant
+    int error_x = abs_dy / 2;
+    bresenham2D(obs_ptr, abs_dy, abs_dx, error_x, offset_dy, offset_dx, offset, (unsigned int)(scale * abs_dy));
   }
-
-  // otherwise y is dominant
-  int error_x = abs_dy / 2;
-  bresenham2D(obs_ptr, abs_dy, abs_dx, error_x, offset_dy, offset_dx, offset, (unsigned int)(scale * abs_dy));
-}
-
-void bresenham2D(Observation* obs_ptr, unsigned int abs_da, unsigned int abs_db, int error_b, int offset_a,
-		 int offset_b, unsigned int offset, unsigned int max_length) {
-  unsigned int end = MMIN(max_length, abs_da);
-  //printf("\n\n abs_da, end -> %d, %d\n", abs_da, end);
-  for (unsigned int i = 0; i < end; ++i) {
-    markCell(obs_ptr, CMV_FREE_SPACE, offset);
-    offset += offset_a;
-    error_b += abs_db;
-    if ((unsigned int)error_b >= abs_da) {
-      offset += offset_b;
-      error_b -= abs_da;
-    }
-  }
-  markCell(obs_ptr, CMV_FREE_SPACE, offset);
 }
 
 // Interestingly, we comput min_x, min_y, etc. via touch() calls and this updateRayTraceBounds

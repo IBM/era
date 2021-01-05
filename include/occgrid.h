@@ -8,6 +8,39 @@
 #ifndef OCCGRID_H
 #define OCCGRID_H
 
+#ifdef INT_TIME
+/* This is OCC-GRID Internal Timing information (gathering resources) */
+extern uint64_t ocgr_c2g_total_sec;
+extern uint64_t ocgr_c2g_total_usec;
+
+extern uint64_t ocgr_c2g_initCM_sec;
+extern uint64_t ocgr_c2g_initCM_usec;
+
+extern uint64_t ocgr_c2g_updOrig_sec;
+extern uint64_t ocgr_c2g_updOrig_usec;
+
+extern uint64_t ocgr_c2g_updBnds_sec;
+extern uint64_t ocgr_c2g_updBnds_usec;
+
+
+extern uint64_t ocgr_upBd_total_sec;
+extern uint64_t ocgr_upBd_total_usec;
+
+extern uint64_t ocgr_upBd_rayFSp_sec;
+extern uint64_t ocgr_upBd_rayFSp_usec;
+
+extern uint64_t ocgr_upBd_regObst_sec;
+extern uint64_t ocgr_upBd_regObst_usec;
+
+
+extern uint64_t ocgr_ryFS_total_sec;
+extern uint64_t ocgr_ryFS_total_usec;
+
+extern uint64_t ocgr_ryFS_rtLine_sec;
+extern uint64_t ocgr_ryFS_rtLine_usec;
+
+#endif
+
 //Define Costmap values
 //  Note: Order is significant -- combineGrids takes a "MAX" value from the two maps
 #define CMV_NO_INFORMATION      0

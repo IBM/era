@@ -980,6 +980,19 @@ void dump_final_run_statistics()
   uint64_t pd_combGrids  = (uint64_t)(pd_combGrids_sec)  * 1000000 + (uint64_t)(pd_combGrids_usec);
   uint64_t pd_carSend    = (uint64_t)(pd_wifi_car_sec)  * 1000000 + (uint64_t)(pd_wifi_car_usec);
 
+  // This is the cloud2grid breakdown
+  uint64_t ocgr_cl2g_total   = (uint64_t)(ocgr_c2g_total_sec)   * 1000000 + (uint64_t)(ocgr_c2g_total_usec);
+  uint64_t ocgr_cl2g_initCM  = (uint64_t)(ocgr_c2g_initCM_sec)  * 1000000 + (uint64_t)(ocgr_c2g_initCM_usec);
+  uint64_t ocgr_cl2g_updOrig = (uint64_t)(ocgr_c2g_updOrig_sec) * 1000000 + (uint64_t)(ocgr_c2g_updOrig_usec);
+  uint64_t ocgr_cl2g_updBnds = (uint64_t)(ocgr_c2g_updBnds_sec) * 1000000 + (uint64_t)(ocgr_c2g_updBnds_usec);
+
+  uint64_t ocgr_upBd_total   = (uint64_t)(ocgr_upBd_total_sec)   * 1000000 + (uint64_t)(ocgr_upBd_total_usec);
+  uint64_t ocgr_upBd_rayFSp  = (uint64_t)(ocgr_upBd_rayFSp_sec)  * 1000000 + (uint64_t)(ocgr_upBd_rayFSp_usec);
+  uint64_t ocgr_upBd_regObst = (uint64_t)(ocgr_upBd_regObst_sec) * 1000000 + (uint64_t)(ocgr_upBd_regObst_usec);
+
+  uint64_t ocgr_ryFS_total  = (uint64_t)(ocgr_ryFS_total_sec)  * 1000000 + (uint64_t)(ocgr_ryFS_total_usec);
+  uint64_t ocgr_ryFS_rtLine = (uint64_t)(ocgr_ryFS_rtLine_sec) * 1000000 + (uint64_t)(ocgr_ryFS_rtLine_usec);
+
   // This is the xmit_pipe.c breakdown
   uint64_t x_pipe      = (uint64_t)(x_pipe_sec)  * 1000000 + (uint64_t)(x_pipe_usec);
   uint64_t x_genmacfr  = (uint64_t)(x_genmacfr_sec)  * 1000000 + (uint64_t)(x_genmacfr_usec);
@@ -1044,6 +1057,14 @@ void dump_final_run_statistics()
   printf("   Total proc Lidar         : %10lu usec\n", proc_lidar);
   printf("     Total proc Data          : %10lu usec\n", proc_data);
   printf("       Total pd cloud2grid      : %10lu usec\n", pd_cloud2grid);
+  printf("         Ocgr_Cl2gr Total Time         : %10lu usec\n", ocgr_cl2g_total);
+  printf("         Ocgr_Cl2gr InitCM Time        : %10lu usec\n", ocgr_cl2g_initCM);
+  printf("         Ocgr_Cl2gr Upd-Origin Time    : %10lu usec\n", ocgr_cl2g_updOrig);
+  printf("         Ocgr_Cl2gr Upd-Bounds Time    : %10lu usec\n", ocgr_cl2g_updBnds);
+  printf("           Ocgr_UpBnds Total Time        : %10lu usec\n", ocgr_upBd_total);
+  printf("           Ocgr_UpBnds Ray_FreeSp Time   : %10lu usec\n", ocgr_upBd_rayFSp);
+  printf("             Ocgr_RyFSp Total Time         : %10lu usec\n", ocgr_ryFS_total);
+  printf("             Ocgr_RyFSp RayTrace-Line      : %10lu usec\n", ocgr_ryFS_rtLine);
   printf("       Total pd lz4_cmp         : %10lu usec\n", pd_lz4_cmp);
   printf("       Total pd xmit_pipe       : %10lu usec\n", pd_wifi_pipe);
   printf("         X-Pipe Total Time        : %10lu usec\n", x_pipe);
