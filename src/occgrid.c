@@ -39,14 +39,15 @@ uint64_t ocgr_upBd_regObst_sec  = 0LL;
 uint64_t ocgr_upBd_regObst_usec = 0LL;
 
 
-struct timeval ocgr_ryFS_total_stop, ocgr_ryFS_total_start;
-uint64_t ocgr_ryFS_total_sec  = 0LL;
-uint64_t ocgr_ryFS_total_usec = 0LL;
-
-struct timeval ocgr_ryFS_rtLine_stop, ocgr_ryFS_rtLine_start;
-uint64_t ocgr_ryFS_rtLine_sec  = 0LL;
-uint64_t ocgr_ryFS_rtLine_usec = 0LL;
-
+/** No need to do this here -- provides no more info than exterior measure, really
+    struct timeval ocgr_ryFS_total_stop, ocgr_ryFS_total_start;
+    uint64_t ocgr_ryFS_total_sec  = 0LL;
+    uint64_t ocgr_ryFS_total_usec = 0LL;
+    
+    struct timeval ocgr_ryFS_rtLine_stop, ocgr_ryFS_rtLine_start;
+    uint64_t ocgr_ryFS_rtLine_sec  = 0LL;
+    uint64_t ocgr_ryFS_rtLine_usec = 0LL;
+**/
 #endif
 
 /** FORWARD DECLARATIONS **/
@@ -682,9 +683,10 @@ void raytraceFreespace(Observation* obs_ptr, float* data, unsigned int data_size
 		       double robot_x, double robot_y, double robot_z, double robot_yaw) {
   //printf("(1) Number of elements : %d ... ", data_size);
   //printf("First Coordinate = <%f, %f>\n", *data, *(data+1));
-   #ifdef INT_TIME
-    gettimeofday(&ocgr_ryFS_total_start, NULL);
-   #endif  
+  /** No need to do this here -- provides no more info than exterior measure, really
+      #ifdef INT_TIME
+      gettimeofday(&ocgr_ryFS_total_start, NULL);
+      #endif  **/
   //Retrieve observation origin (i.e. origin of the pointcloud)
   double ox = robot_x;
   double oy = robot_y;
@@ -722,7 +724,7 @@ void raytraceFreespace(Observation* obs_ptr, float* data, unsigned int data_size
       //wy = wx*sin(robot_yaw) + wy*cos(robot_yaw);
       wy = wx*sin_yaw + wy*cos_yaw;
     }
-    
+
     // now we also need to make sure that the enpoint we're raytracing
     // to isn't off the costmap and scale if necessary
     double a = wx - ox;
@@ -764,25 +766,28 @@ void raytraceFreespace(Observation* obs_ptr, float* data, unsigned int data_size
     //printf(">>> Cell Raytrace Range -> %d\n", cell_raytrace_range);
 
     // and finally... we can execute our trace to clear obstacles along that line
-   #ifdef INT_TIME
-    gettimeofday(&ocgr_ryFS_rtLine_start, NULL);
-   #endif  
+    /** We cannot do this here -- WAY TOO MUCH OVERHEAD!! 
+	#ifdef INT_TIME
+	gettimeofday(&ocgr_ryFS_rtLine_start, NULL);
+	#endif  **/
     raytraceLine(obs_ptr, x0, y0, x1, y1, cell_raytrace_range);
-   #ifdef INT_TIME
-    gettimeofday(&ocgr_ryFS_rtLine_stop, NULL);
-    ocgr_ryFS_rtLine_sec  += ocgr_ryFS_rtLine_stop.tv_sec  - ocgr_ryFS_rtLine_start.tv_sec;
-    ocgr_ryFS_rtLine_usec += ocgr_ryFS_rtLine_stop.tv_usec - ocgr_ryFS_rtLine_start.tv_usec;
-   #endif
+    /** We cannot do this here -- WAY TOO MUCH OVERHEAD!! 
+	#ifdef INT_TIME
+	gettimeofday(&ocgr_ryFS_rtLine_stop, NULL);
+	ocgr_ryFS_rtLine_sec  += ocgr_ryFS_rtLine_stop.tv_sec  - ocgr_ryFS_rtLine_start.tv_sec;
+	ocgr_ryFS_rtLine_usec += ocgr_ryFS_rtLine_stop.tv_usec - ocgr_ryFS_rtLine_start.tv_usec;
+	#endif  **/
 
     /* No apparent effect
        updateRaytraceBounds(ox, oy, wx, wy, obs_ptr->raytrace_range, min_x, min_y, max_x, max_y);
     */
   }
- #ifdef INT_TIME
-  gettimeofday(&ocgr_ryFS_total_stop, NULL);
-  ocgr_ryFS_total_sec  += ocgr_ryFS_total_stop.tv_sec  - ocgr_ryFS_total_start.tv_sec;
-  ocgr_ryFS_total_usec += ocgr_ryFS_total_stop.tv_usec - ocgr_ryFS_total_start.tv_usec;
- #endif
+  /** No need to do this here -- provides no more info than exterior measure, really
+      #ifdef INT_TIME
+      gettimeofday(&ocgr_ryFS_total_stop, NULL);
+      ocgr_ryFS_total_sec  += ocgr_ryFS_total_stop.tv_sec  - ocgr_ryFS_total_start.tv_sec;
+      ocgr_ryFS_total_usec += ocgr_ryFS_total_stop.tv_usec - ocgr_ryFS_total_start.tv_usec;
+      #endif  **/
 }
 
 

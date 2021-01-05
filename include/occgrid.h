@@ -33,12 +33,13 @@ extern uint64_t ocgr_upBd_regObst_sec;
 extern uint64_t ocgr_upBd_regObst_usec;
 
 
-extern uint64_t ocgr_ryFS_total_sec;
-extern uint64_t ocgr_ryFS_total_usec;
-
-extern uint64_t ocgr_ryFS_rtLine_sec;
-extern uint64_t ocgr_ryFS_rtLine_usec;
-
+/** No need to do this here -- provides no more info than exterior measure, really
+    extern uint64_t ocgr_ryFS_total_sec;
+    extern uint64_t ocgr_ryFS_total_usec;
+    
+    extern uint64_t ocgr_ryFS_rtLine_sec;
+    extern uint64_t ocgr_ryFS_rtLine_usec;
+**/
 #endif
 
 //Define Costmap values

@@ -42,7 +42,6 @@ int next_obs = 0;
 Observation observations[2];
 
 // These variables capture "time" spent in various parts ofthe workload
-#ifdef INT_TIME
 struct timeval stop_prog, start_prog;
 
 struct timeval stop_proc_odo, start_proc_odo;
@@ -61,6 +60,7 @@ struct timeval stop_proc_data, start_proc_data;
 uint64_t proc_data_sec  = 0LL;
 uint64_t proc_data_usec = 0LL;
 
+#ifdef INT_TIME
 struct timeval stop_pd_cloud2grid, start_pd_cloud2grid;
 uint64_t pd_cloud2grid_sec  = 0LL;
 uint64_t pd_cloud2grid_usec = 0LL;
@@ -825,22 +825,22 @@ int main(int argc, char *argv[])
     closeout_and_exit("Couldn't allocate fuse_occmap_thread...", -1);
   }
  #endif
- #ifdef INT_TIME
+  //#ifdef INT_TIME
   gettimeofday(&start_prog, NULL);
- #endif
+  //#endif
   bool hit_eof = false;
   while ((!hit_eof) && (lidar_count < max_time_steps)) {
     DBGOUT(printf("Calling read_all on the BAG socket...\n"); fflush(stdout));
     //int valread = read(bag_sock , l_buffer, 10);
-   #ifdef INT_TIME
+    //#ifdef INT_TIME
     gettimeofday(&start_proc_rdbag, NULL);
-   #endif
+    //#endif
     int valread = read_all(bag_sock, l_buffer, 10);
-   #ifdef INT_TIME
+    //#ifdef INT_TIME
     gettimeofday(&stop_proc_rdbag, NULL);
     proc_rdbag_sec   += stop_proc_rdbag.tv_sec  - start_proc_rdbag.tv_sec;
     proc_rdbag_usec  += stop_proc_rdbag.tv_usec - start_proc_rdbag.tv_usec;
-   #endif
+    //#endif
     DBGOUT(printf("Top: read %d bytes\n", valread));
     if (valread < 10) {
       if (valread == 0) {
@@ -853,9 +853,9 @@ int main(int argc, char *argv[])
     }
 
     if(l_buffer[0] == 'L' && l_buffer[9] == 'L') {
-   #ifdef INT_TIME
+      //#ifdef INT_TIME
       gettimeofday(&start_proc_lidar, NULL);
-   #endif
+      //#endif
       char * ptr;
       int message_size = strtol(l_buffer+1, &ptr, 10);
       DBGOUT(printf("Lidar: expecting message size: %d\n", message_size));
@@ -880,19 +880,19 @@ int main(int argc, char *argv[])
       lidar_inputs.data_size = total_bytes_read;
       DBGOUT(printf("Calling process_lidar_to_occgrid for %d total bytes\n", total_bytes_read));
       printf("Processing Lidar msg %4u data\n", lidar_count);
-     #ifdef INT_TIME
+      //#ifdef INT_TIME
       gettimeofday(&start_proc_data, NULL);
-     #endif
+      //#endif
       process_lidar_to_occgrid((void*)(&lidar_inputs)); // buffer, total_bytes_read);
       DBGOUT(printf("Back from process_lidar_to_occgrid for Lidar\n"); fflush(stdout));
       lidar_count++;
-     #ifdef INT_TIME
+      //#ifdef INT_TIME
       gettimeofday(&stop_proc_lidar, NULL);
       proc_data_sec   += stop_proc_lidar.tv_sec  - start_proc_data.tv_sec;
       proc_data_usec  += stop_proc_lidar.tv_usec - start_proc_data.tv_usec;
       proc_lidar_sec  += stop_proc_lidar.tv_sec  - start_proc_lidar.tv_sec;
       proc_lidar_usec += stop_proc_lidar.tv_usec - start_proc_lidar.tv_usec;
-     #endif
+      //#endif
     }
     else if(l_buffer[0] == 'O' && l_buffer[9] == 'O') {
      #ifdef INT_TIME
@@ -955,7 +955,7 @@ void dump_final_run_statistics()
   printf("Occ-Map Dimensions, %u, by, %u, grid, res, %lf, ray_r, %u\n", GRID_MAP_X_DIM, GRID_MAP_Y_DIM, GRID_MAP_RESLTN, RAYTR_RANGE);
 
   printf("Timing (in usec):\n");
- #ifdef INT_TIME
+
   gettimeofday(&stop_prog, NULL);
   uint64_t total_exec = (uint64_t)(stop_prog.tv_sec - start_prog.tv_sec) * 1000000 + (uint64_t)(stop_prog.tv_usec - start_prog.tv_usec);
   uint64_t proc_rdbag = (uint64_t)(proc_rdbag_sec)  * 1000000 + (uint64_t)(proc_rdbag_usec);
@@ -963,6 +963,7 @@ void dump_final_run_statistics()
   uint64_t proc_lidar = (uint64_t)(proc_lidar_sec)  * 1000000 + (uint64_t)(proc_lidar_usec);
   uint64_t proc_data  = (uint64_t)(proc_data_sec)  * 1000000 + (uint64_t)(proc_data_usec);
 
+ #ifdef INT_TIME
   uint64_t pd_cloud2grid = (uint64_t)(pd_cloud2grid_sec)  * 1000000 + (uint64_t)(pd_cloud2grid_usec);
   uint64_t pd_lz4_cmp    = (uint64_t)(pd_lz4_cmp_sec)  * 1000000 + (uint64_t)(pd_lz4_cmp_usec);
   uint64_t pd_wifi_pipe  = (uint64_t)(pd_wifi_pipe_sec)  * 1000000 + (uint64_t)(pd_wifi_pipe_usec);
@@ -990,8 +991,9 @@ void dump_final_run_statistics()
   uint64_t ocgr_upBd_rayFSp  = (uint64_t)(ocgr_upBd_rayFSp_sec)  * 1000000 + (uint64_t)(ocgr_upBd_rayFSp_usec);
   uint64_t ocgr_upBd_regObst = (uint64_t)(ocgr_upBd_regObst_sec) * 1000000 + (uint64_t)(ocgr_upBd_regObst_usec);
 
-  uint64_t ocgr_ryFS_total  = (uint64_t)(ocgr_ryFS_total_sec)  * 1000000 + (uint64_t)(ocgr_ryFS_total_usec);
-  uint64_t ocgr_ryFS_rtLine = (uint64_t)(ocgr_ryFS_rtLine_sec) * 1000000 + (uint64_t)(ocgr_ryFS_rtLine_usec);
+  /** No need to do this here -- provides no more info than exterior measure, really
+      uint64_t ocgr_ryFS_total  = (uint64_t)(ocgr_ryFS_total_sec)  * 1000000 + (uint64_t)(ocgr_ryFS_total_usec);
+      uint64_t ocgr_ryFS_rtLine = (uint64_t)(ocgr_ryFS_rtLine_sec) * 1000000 + (uint64_t)(ocgr_ryFS_rtLine_usec); **/
 
   // This is the xmit_pipe.c breakdown
   uint64_t x_pipe      = (uint64_t)(x_pipe_sec)  * 1000000 + (uint64_t)(x_pipe_usec);
@@ -1050,12 +1052,13 @@ void dump_final_run_statistics()
   uint64_t rdec_map_bitr = (uint64_t)(rdec_map_bitr_sec)  * 1000000 + (uint64_t)(rdec_map_bitr_usec);
   uint64_t rdec_get_bits = (uint64_t)(rdec_get_bits_sec)  * 1000000 + (uint64_t)(rdec_get_bits_usec);
   uint64_t rdec_dec_call = (uint64_t)(rdec_dec_call_sec)  * 1000000 + (uint64_t)(rdec_dec_call_usec);
-  
+#endif  
   printf(" Total workload main-loop : %10lu usec\n", total_exec);
   printf("   Total proc Read-Bag      : %10lu usec\n", proc_rdbag);
   printf("   Total proc Odometry      : %10lu usec\n", proc_odo);
   printf("   Total proc Lidar         : %10lu usec\n", proc_lidar);
   printf("     Total proc Data          : %10lu usec\n", proc_data);
+#ifdef INT_TIME
   printf("       Total pd cloud2grid      : %10lu usec\n", pd_cloud2grid);
   printf("         Ocgr_Cl2gr Total Time         : %10lu usec\n", ocgr_cl2g_total);
   printf("         Ocgr_Cl2gr InitCM Time        : %10lu usec\n", ocgr_cl2g_initCM);
@@ -1063,8 +1066,9 @@ void dump_final_run_statistics()
   printf("         Ocgr_Cl2gr Upd-Bounds Time    : %10lu usec\n", ocgr_cl2g_updBnds);
   printf("           Ocgr_UpBnds Total Time        : %10lu usec\n", ocgr_upBd_total);
   printf("           Ocgr_UpBnds Ray_FreeSp Time   : %10lu usec\n", ocgr_upBd_rayFSp);
-  printf("             Ocgr_RyFSp Total Time         : %10lu usec\n", ocgr_ryFS_total);
-  printf("             Ocgr_RyFSp RayTrace-Line      : %10lu usec\n", ocgr_ryFS_rtLine);
+  /** No need to do this here -- provides no more info than exterior measure, really
+      printf("             Ocgr_RyFSp Total Time         : %10lu usec\n", ocgr_ryFS_total);
+      printf("             Ocgr_RyFSp RayTrace-Line      : %10lu usec\n", ocgr_ryFS_rtLine); **/
   printf("       Total pd lz4_cmp         : %10lu usec\n", pd_lz4_cmp);
   printf("       Total pd xmit_pipe       : %10lu usec\n", pd_wifi_pipe);
   printf("         X-Pipe Total Time        : %10lu usec\n", x_pipe);
@@ -1126,7 +1130,7 @@ void dump_final_run_statistics()
   printf("       Total pd carSend         : %10lu usec\n", pd_carSend);
   printf("\n");
  #else
-  printf(" NO Timing information on this run...\n");
+  printf(" NO more detailed timing information on this run...\n");
  #endif
   printf("\nDone with the run...\n");
 }
