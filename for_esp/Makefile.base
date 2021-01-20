@@ -5,8 +5,9 @@ CROSS_COMPILE ?= riscv64-unknown-linux-gnu-
 endif
 
 ifdef COMPILE_TO_ESP
-ESP_ROOT ?= ../../esp
-ESP_DRIVERS ?= $(ESP_ROOT)/soft/$(CPU)/drivers
+ESP_ROOT ?= $(realpath ../../esp)
+ESP_DRIVERS ?= $(ESP_ROOT)/soft/common/drivers
+ESP_DRV_LINUX  = $(ESP_DRIVERS)/linux
 endif
 
 CC = gcc -std=c99
@@ -15,7 +16,8 @@ CC = gcc -std=c99
 INCDIR ?=
 INCDIR += -I./include
 ifdef COMPILE_TO_ESP
-INCDIR += -I$(ESP_DRIVERS)/include
+INCDIR += -I$(ESP_DRIVERS)/common/include
+INCDIR += -I$(ESP_DRIVERS)/linux/include
 endif
 
 CFLAGS ?= -O2 -g
@@ -32,7 +34,6 @@ CFLAGS += -DUSE_ESP_INTERFACE
 #   endif
 
 
- 
 ifdef CONFIG_FFT_EN
 CFLAGS += -DHW_FFT
 CFLAGS += -DUSE_FFT_FX=$(CONFIG_FFT_FX)
@@ -73,9 +74,9 @@ endif
 
 LDLIBS ?=
 ifdef COMPILE_TO_ESP
-LDLIBS += -L$(ESP_DRIVERS)/contig_alloc
-LDLIBS += -L$(ESP_DRIVERS)/test
-LDLIBS += -L$(ESP_DRIVERS)/libesp
+LDLIBS += -L$(ESP_BUILD_DRIVERS)/contig_alloc
+LDLIBS += -L$(ESP_BUILD_DRIVERS)/test
+LDLIBS += -L$(ESP_BUILD_DRIVERS)/libesp
 endif
 
 LDFLAGS ?=
@@ -132,9 +133,38 @@ TARGET_TXMIT=t_do_xmit_pipe
 ALL_OBJ_DIR=obj_era1 obj_era2 obj_pera1 obj_pera2 obj_recv obj_xmit obj_tera1 obj_tera2 obj_tpera1 obj_tpera2 obj_trecv obj_txmit
 
 
-all: $(ALL_OBJ_DIR) $(TARGET_ERA1) $(TARGET_ERA2) $(TARGET_PERA1) $(TARGET_PERA2) $(TARGET_RECV) $(TARGET_XMIT) $(TARGET_TERA1) $(TARGET_TERA2) $(TARGET_TPERA1) $(TARGET_TPERA2) $(TARGET_TRECV) $(TARGET_TXMIT)
+all: esp-libs $(ALL_OBJ_DIR) $(TARGET_ERA1) $(TARGET_ERA2) $(TARGET_PERA1) $(TARGET_PERA2) $(TARGET_RECV) $(TARGET_XMIT) $(TARGET_TERA1) $(TARGET_TERA2) $(TARGET_TPERA1) $(TARGET_TPERA2) $(TARGET_TRECV) $(TARGET_TXMIT)
 
+ESP_BUILD_DRIVERS     = esp-build/drivers
 
+esp-build:
+	@mkdir -p $(ESP_BUILD_DRIVERS)/contig_alloc
+	@mkdir -p $(ESP_BUILD_DRIVERS)/esp
+	@mkdir -p $(ESP_BUILD_DRIVERS)/esp_cache
+	@mkdir -p $(ESP_BUILD_DRIVERS)/libesp
+	@mkdir -p $(ESP_BUILD_DRIVERS)/probe
+	@mkdir -p $(ESP_BUILD_DRIVERS)/test
+	@mkdir -p $(ESP_BUILD_DRIVERS)/utils/baremetal
+	@mkdir -p $(ESP_BUILD_DRIVERS)/utils/linux
+	@ln -sf $(ESP_DRV_LINUX)/contig_alloc/* $(ESP_BUILD_DRIVERS)/contig_alloc
+	@ln -sf $(ESP_DRV_LINUX)/esp/* $(ESP_BUILD_DRIVERS)/esp
+	@ln -sf $(ESP_DRV_LINUX)/esp_cache/* $(ESP_BUILD_DRIVERS)/esp_cache
+	@ln -sf $(ESP_DRV_LINUX)/driver.mk $(ESP_BUILD_DRIVERS)
+	@ln -sf $(ESP_DRV_LINUX)/include $(ESP_BUILD_DRIVERS)
+	@ln -sf $(ESP_DRV_LINUX)/../common $(ESP_BUILD_DRIVERS)/../common
+
+esp-build-clean:
+
+esp-build-distclean: esp-build-clean
+	$(QUIET_CLEAN)$(RM) -rf esp-build
+
+esp-libs: esp-build
+	  CROSS_COMPILE=$(CROSS_COMPILE) DRIVERS=$(ESP_DRV_LINUX) $(MAKE) -C $(ESP_BUILD_DRIVERS)/contig_alloc/ libcontig.a
+	  cd $(ESP_BUILD_DRIVERS)/test; CROSS_COMPILE=$(CROSS_COMPILE) BUILD_PATH=$$PWD $(MAKE) -C $(ESP_DRV_LINUX)/test
+	  cd $(ESP_BUILD_DRIVERS)/libesp; CROSS_COMPILE=$(CROSS_COMPILE) BUILD_PATH=$$PWD $(MAKE) -C $(ESP_DRV_LINUX)/libesp
+	  cd $(ESP_BUILD_DRIVERS)/utils; CROSS_COMPILE=$(CROSS_COMPILE) BUILD_PATH=$$PWD $(MAKE) -C $(ESP_DRV_LINUX)/utils
+
+.PHONY: esp-build-clean esp-build-distclean esp-libs
 
 
 obj_era1/%.o: %.c
@@ -252,100 +282,40 @@ $(TARGET_TXMIT): obj_xmit $(TARGET_TXMIT).exe
 
 
 $(TARGET_ERA1).exe: $(OBJ_ERA1)
-ifdef COMPILE_TO_ESP
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/libesp
-endif
-	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS) 
+	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
 
 $(TARGET_ERA2).exe: $(OBJ_ERA2)
-ifdef COMPILE_TO_ESP
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/libesp
-endif
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
 
 $(TARGET_PERA1).exe: $(OBJ_PERA1)
-ifdef COMPILE_TO_ESP
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/libesp
-endif
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
 
 $(TARGET_PERA2).exe: $(OBJ_PERA2)
-ifdef COMPILE_TO_ESP
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/libesp
-endif
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
 
 $(TARGET_RECV).exe: $(OBJ_RECV)
-ifdef COMPILE_TO_ESP
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/libesp
-endif
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
 
 $(TARGET_XMIT).exe: $(OBJ_XMIT)
-ifdef COMPILE_TO_ESP
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/libesp
-endif
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
 
 
 $(TARGET_TERA1).exe: $(OBJ_TERA1)
-ifdef COMPILE_TO_ESP
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/libesp
-endif
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
 
 $(TARGET_TERA2).exe: $(OBJ_TERA2)
-ifdef COMPILE_TO_ESP
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/libesp
-endif
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
 
 $(TARGET_TPERA1).exe: $(OBJ_TPERA1)
-ifdef COMPILE_TO_ESP
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/libesp
-endif
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
 
 $(TARGET_TPERA2).exe: $(OBJ_TPERA2)
-ifdef COMPILE_TO_ESP
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/libesp
-endif
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
 
 $(TARGET_TRECV).exe: $(OBJ_TRECV)
-ifdef COMPILE_TO_ESP
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/libesp
-endif
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
 
 $(TARGET_TXMIT).exe: $(OBJ_TXMIT)
-ifdef COMPILE_TO_ESP
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/contig_alloc/ libcontig.a
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/test
-	CROSS_COMPILE=$(CROSS_COMPILE) $(MAKE) -C $(ESP_DRIVERS)/libesp
-endif
 	$(CROSS_COMPILE)$(CC) $(LDLIBS) $^ -o $@ $(LDFLAGS)
 
 

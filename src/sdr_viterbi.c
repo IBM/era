@@ -189,7 +189,7 @@ uint8_t* depuncture(uint8_t *in) {
 
 #ifdef HW_VIT
 // These are Viterbi Harware Accelerator Variables, etc.
-char* vitAccelName = "/dev/vitdodec.0"; //, "/dev/vitdodec.1", "/dev/vitdodec.2", "/dev/vitdodec.3", "/dev/vitdodec.4", "/dev/vitdodec.5"};
+char* vitAccelName = "/dev/vitdodec_stratus.0"; //, "/dev/vitdodec.1", "/dev/vitdodec.2", "/dev/vitdodec.3", "/dev/vitdodec.4", "/dev/vitdodec.5"};
 int vitHW_fd;
 contig_handle_t vitHW_mem;
 vitHW_token_t *vitHW_lmem;   // Pointer to local view of contig memory
