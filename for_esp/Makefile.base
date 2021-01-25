@@ -37,7 +37,7 @@ CFLAGS += -DUSE_ESP_INTERFACE
 ifdef CONFIG_FFT_EN
  CFLAGS += -DHW_FFT
  CFLAGS += -DUSE_FFT_FX=$(CONFIG_FFT_FX)
- CFLAGS += -DFFT_DEV_BASE='"$(FFT_DEVICE_BASE)"'
+ CFLAGS += -DFFT_DEV_BASE='"$(FFT_DEVICE_BASE).0"'
 endif
 ifdef CONFIG_FFT_BITREV
  CFLAGS += -DHW_FFT_BITREV
@@ -46,7 +46,7 @@ $(info $$FFT_DEVICE_BASE is [${FFT_DEVICE_BASE}])
 
 ifdef CONFIG_VITERBI_EN
  CFLAGS += -DHW_VIT
- CFLAGS += -DVIT_DEV_BASE='"$(VIT_DEVICE_BASE)"'
+ CFLAGS += -DVIT_DEV_BASE='"$(VIT_DEVICE_BASE).0"'
  ifdef CONFIG_HW_SM_DECODE
   CFLAGS += -DDEC_SIG_FIELD_ON_HW=$(CONFIG_HW_SM_DECODE)
  else 
@@ -262,10 +262,10 @@ $(TARGET_ERA1): obj_era1 $(TARGET_ERA1).exe
 $(TARGET_ERA2): obj_era2 $(TARGET_ERA2).exe
 	echo "Done building $@"
 
-$(TARGET_PERA1): obj_era1 $(TARGET_PERA1).exe
+$(TARGET_PERA1): obj_pera1 $(TARGET_PERA1).exe
 	echo "Done building $@"
 
-$(TARGET_PERA2): obj_era2 $(TARGET_PERA2).exe
+$(TARGET_PERA2): obj_pera2 $(TARGET_PERA2).exe
 	echo "Done building $@"
 
 $(TARGET_RECV): obj_recv $(TARGET_RECV).exe
@@ -275,22 +275,22 @@ $(TARGET_XMIT): obj_xmit $(TARGET_XMIT).exe
 	echo "Done building $@"
 
 
-$(TARGET_TERA1): obj_era1 $(TARGET_TERA1).exe
+$(TARGET_TERA1): obj_tera1 $(TARGET_TERA1).exe
 	echo "Done building $@"
 
-$(TARGET_TERA2): obj_era2 $(TARGET_TERA2).exe
+$(TARGET_TERA2): obj_tera2 $(TARGET_TERA2).exe
 	echo "Done building $@"
 
-$(TARGET_TPERA1): obj_era1 $(TARGET_TPERA1).exe
+$(TARGET_TPERA1): obj_tpera1 $(TARGET_TPERA1).exe
 	echo "Done building $@"
 
-$(TARGET_TPERA2): obj_era2 $(TARGET_TPERA2).exe
+$(TARGET_TPERA2): obj_tpera2 $(TARGET_TPERA2).exe
 	echo "Done building $@"
 
-$(TARGET_TRECV): obj_recv $(TARGET_TRECV).exe
+$(TARGET_TRECV): obj_trecv $(TARGET_TRECV).exe
 	echo "Done building $@"
 
-$(TARGET_TXMIT): obj_xmit $(TARGET_TXMIT).exe
+$(TARGET_TXMIT): obj_txmit $(TARGET_TXMIT).exe
 	echo "Done building $@"
 
 

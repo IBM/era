@@ -124,7 +124,7 @@ decode_signal_field(uint8_t *rx_bits, unsigned* msg_psdu) {
   uint8_t decoded_bits[48]; 
   int n_bits;
   DEBUG(printf("DSF: Calling decode...\n"));
-  sdr_decode(&ofdm, &frame, d_deinterleaved, &n_bits, decoded_bits);
+  sdr_decode(DEC_SIG_FIELD_ON_HW, &ofdm, &frame, d_deinterleaved, &n_bits, decoded_bits);
   DEBUG(printf("\nDSF: Back from decode\n");
 	for (int i = 0; i < 48; i++) {
 	  printf("DSF: decoded_bits[%u] = %u\n", i, decoded_bits[i]);

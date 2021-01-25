@@ -189,7 +189,8 @@ uint8_t* depuncture(uint8_t *in) {
 
 #ifdef HW_VIT
 // These are Viterbi Harware Accelerator Variables, etc.
-char* vitAccelName = "/dev/vitdodec_stratus.0"; //, "/dev/vitdodec.1", "/dev/vitdodec.2", "/dev/vitdodec.3", "/dev/vitdodec.4", "/dev/vitdodec.5"};
+//char* vitAccelName = "/dev/vitdodec_stratus.0"; //, "/dev/vitdodec.1", "/dev/vitdodec.2", "/dev/vitdodec.3", "/dev/vitdodec.4", "/dev/vitdodec.5"};
+char* vitAccelName = VIT_DEV_BASE;
 int vitHW_fd;
 contig_handle_t vitHW_mem;
 vitHW_token_t *vitHW_lmem;   // Pointer to local view of contig memory
@@ -788,7 +789,7 @@ void sdr_reset() {
 //    in     : INPUT  : uint8_t Array [ MAX_ENCODED_BITS == 24780 ]
 //  <return> : OUTPUT : uint8_t Array [ MAX_ENCODED_BITS * 3 / 4 == 18585 ] : The decoded data stream
 
-void sdr_decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_char, uint8_t* output) {
+void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_char, uint8_t* output) {
 
   d_ofdm = ofdm;
   d_frame = frame;
@@ -886,14 +887,18 @@ void sdr_decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_ch
     gettimeofday(&dodec_start, NULL);
    #endif
    #ifdef HW_VIT
-    vitHW_desc.cbps = ofdm->n_cbps;
-    vitHW_desc.ntraceback = d_ntraceback;
-    vitHW_desc.data_bits = frame->n_data_bits;
-    do_sdr_decoding_hw(&vitHW_fd, &vitHW_desc);
-   #else
-    // Call the viterbi_butterfly2_generic function using ESP interface
-    DEBUG(printf("ESP_INTFC: Calling do_sdr_decoding with frame->n_data_bits = %u  ofdm->n_cbps = %u d_ntraceback = %u \n", frame->n_data_bits, ofdm->n_cbps, d_ntraceback));
-    do_sdr_decoding(frame->n_data_bits, ofdm->n_cbps, d_ntraceback, inMemory, outMemory);
+    if (use_hw_accel) {
+      vitHW_desc.cbps = ofdm->n_cbps;
+      vitHW_desc.ntraceback = d_ntraceback;
+      vitHW_desc.data_bits = frame->n_data_bits;
+      do_sdr_decoding_hw(&vitHW_fd, &vitHW_desc);
+    } else
+#else
+    {
+      // Call the viterbi_butterfly2_generic function using ESP interface
+      DEBUG(printf("ESP_INTFC: Calling do_sdr_decoding with frame->n_data_bits = %u  ofdm->n_cbps = %u d_ntraceback = %u \n", frame->n_data_bits, ofdm->n_cbps, d_ntraceback));
+      do_sdr_decoding(frame->n_data_bits, ofdm->n_cbps, d_ntraceback, inMemory, outMemory);
+    }
    #endif
    #ifdef INT_TIME
     gettimeofday(&dodec_stop, NULL);
