@@ -25,22 +25,26 @@
  #define DO_VERBOSE(x)
 #endif
 
+//#define DO_LIMITS
+#ifdef DO_LIMITS
+ #define DO_LIMITS_ANALYSIS(x) x
+#else
+ #define DO_LIMITS_ANALYSIS(x)
 #endif
-
 
 /*
-#ifdef DEBUG_MODE
- #define DEBUG(X) X
- #define VERBOSE_MODE
-#else 
- #define DEBUG(X)
-#endif
-
-#ifdef VERBOSE_MODE
- #define VERBOSE(X) X
-#else
- #define VERBOSE(X) 
-#endif
-
-
+  #ifdef DEBUG_MODE
+  #define DEBUG(X) X
+  #define VERBOSE_MODE
+  #else 
+  #define DEBUG(X)
+  #endif
+  
+  #ifdef VERBOSE_MODE
+  #define VERBOSE(X) X
+  #else
+  #define VERBOSE(X) 
+  #endif
 */
+
+#endif

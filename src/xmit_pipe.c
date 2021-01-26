@@ -1397,6 +1397,9 @@ do_xmit_fft_work(int n_inputs, float scale, float *input_real, float * input_ima
   if (swap_odd_signs) {
     recluster[1] = -1.0;
   }
+
+  DO_LIMITS_ANALYSIS(float min_input = 3.0e+038;
+		     float max_input = -1.17e-038);
   DEBUG(printf("Starting do_xmit_fft_work with size %u inverse %u shift %u on n_inputs %u\n", size, inverse, shift, n_inputs));
   for (int k = 0; k < (n_inputs+(size-1)); k += size) {
 
@@ -1405,9 +1408,17 @@ do_xmit_fft_work(int n_inputs, float scale, float *input_real, float * input_ima
     if (shift) {
       for (int i = 0; i < size/2; i++) {
 	fft_in_real[32+i] = input_real[k + i] * scale;    // Copy  0 .. 31 into 32 .. 63
+	DO_LIMITS_ANALYSIS(if (fft_in_real[32+i] < min_input) { min_input = fft_in_real[32+i]; } 
+			   if (fft_in_real[32+i] > max_input) { max_input = fft_in_real[32+i]; } );
 	fft_in_imag[32+i] = input_imag[k + i] * scale;    // Copy  0 .. 31 into 32 .. 63
+	DO_LIMITS_ANALYSIS(if (fft_in_imag[32+i] < min_input) { min_input = fft_in_imag[32+i]; } 
+			   if (fft_in_imag[32+i] > max_input) { max_input = fft_in_imag[32+i]; });
 	fft_in_real[i] = input_real[k + 32 + i] * scale;  // Copy 32 .. 63 into  0 .. 31
+	DO_LIMITS_ANALYSIS(if (fft_in_real[i] < min_input) { min_input = fft_in_real[i]; } 
+			   if (fft_in_real[i] > max_input) { max_input = fft_in_real[i]; });
 	fft_in_imag[i] = input_imag[k + 32 + i] * scale;  // Copy 32 .. 63 into  0 .. 31
+	DO_LIMITS_ANALYSIS(if (fft_in_imag[i] < min_input) { min_input = fft_in_imag[i]; } 
+			   if (fft_in_imag[i] > max_input) { max_input = fft_in_imag[i]; });
 	DEBUG(if (k == 0) {
 	    printf("  set %u IN[ %2u ] = %11.8f * ( %11.8f + %11.8f i) = %11.8f + %11.8f i\n", k, 32+i, scale, input_real[k+i], input_imag[k+i], fft_in_real[32+i], fft_in_imag[32+i]);
 	    printf("  set %u IN[ %2u ] = %11.8f * ( %11.8f + %11.8f i) = %11.8f + %11.8f i\n", k, i, scale, input_real[k+32+i], input_imag[k+32+i], fft_in_real[i], fft_in_imag[i]);
@@ -1445,6 +1456,7 @@ do_xmit_fft_work(int n_inputs, float scale, float *input_real, float * input_ima
 
     DEBUG(if (k < 4) { printf("\n");} );
   }
+  DO_LIMITS_ANALYSIS(printf("DO_XMIT_FFT_WORK : min_input = %.15g  max_input = %.15g\n", min_input, max_input));
   DEBUG(printf(" Done with fft calls... output:\n"));
 }
 

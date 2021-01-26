@@ -137,6 +137,8 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
   // Here we do the FFT calls in 64-sample chunks... using a "window.rectangluar(64)" and forward fft with "Shift = true"
 
   unsigned num_fft_outs = 0;
+  DO_LIMITS_ANALYSIS(float min_input = 3.0e+038;
+		     float max_input = -1.17e-038);  
   if (num_fft_frames > MAX_FFT_FRAMES) {
     printf("ERROR : FFT generated %u frames which exceeds current MAX_FFT_FRAMES %u\n", num_fft_frames, MAX_FFT_FRAMES);
     exit(-7);
@@ -165,6 +167,10 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
 	  fftSample = d_sync_long_out_frames[64*i + j]; // 64 * invocations + offset_j
 	  fft_in_real[j] = (float)crealf(fftSample);
 	  fft_in_imag[j] = (float)cimagf(fftSample);
+	  DO_LIMITS_ANALYSIS(if (fft_in_real[j] < min_input) { min_input = fft_in_real[j]; } 
+			     if (fft_in_real[j] > max_input) { max_input = fft_in_real[j]; }
+			     if (fft_in_imag[j] < min_input) { min_input = fft_in_imag[j]; } 
+			     if (fft_in_imag[j] > max_input) { max_input = fft_in_imag[j]; } );
 	}
       }
       // Now we have the data ready -- invoke the FFT function
@@ -172,7 +178,7 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
 	    for (unsigned j = 0; j < 64; j++) {
 	      printf("   FFT_IN %4u %2u : %6u %12.8f %12.8f\n", i, j, 64*i+j, fft_in_real[j], fft_in_imag[j]);
 	    });
-      fft_ri(fft_in_real, fft_in_imag, false, true, 64, 6); // not-inverse, not-shifting
+      fft_ri(fft_in_real, fft_in_imag, false, true, 64, 6); // not-inverse, but shifting
       DEBUG(printf("  FFT Output %4u \n", i);
 	    for (unsigned j = 0; j < 64; j++) {
 	      printf("   FFT_OUT %4u %2u : %6u %12.8f %12.8f\n", i, j, 64*i+j, fft_in_real[j], fft_in_imag[j]);
@@ -192,6 +198,7 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
 	}
 	printf("\n"));
 
+  DO_LIMITS_ANALYSIS(printf("DO_RECV_FFT_WORK : min_input = %.15g  max_input = %.15g\n", min_input, max_input));
   return num_fft_outs;
 }
 
