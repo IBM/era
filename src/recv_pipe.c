@@ -380,7 +380,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
 
   fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE];
   fx_pt1 fft_ar_i[FRAME_EQ_IN_MAX_SIZE];
-  unsigned num_fft_frames = num_sync_long_vals / 64;
+  unsigned num_fft_frames = (num_sync_long_vals+63) / 64;
   DEBUG(printf("FFT_COMP : num_fft_frames = %u / 64 = %u So %u values\n", num_sync_long_vals,  num_fft_frames, (num_fft_frames * 64)));
  #ifdef INT_TIME
   gettimeofday(&r_fft_start, NULL);
