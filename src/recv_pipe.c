@@ -234,7 +234,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
 	});
 
   unsigned num_del16_vals = num_inputs + 16;
-  DEBUG(printf("Calling delay IN %u OUT %u\n", num_inputs, num_del16_vals););
+  DO_NUM_IOS_ANALYSIS(printf("Calling delay IN %u OUT %u\n", num_inputs, num_del16_vals));
   // We don't need to make this call now -- we've done the effect in the memory array already
   // delay(delay16_out, num_inputs, input_data);  
   DEBUG(for (int ti = 0; ti < num_del16_vals; ti++) {
@@ -242,7 +242,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
     });
   
   unsigned num_cconj_vals = num_del16_vals;
-  DEBUG(printf("Calling complex_conjugate: IN %u OUT %u\n", num_del16_vals, num_cconj_vals));
+  DO_NUM_IOS_ANALYSIS(printf("Calling complex_conjugate: IN %u OUT %u\n", num_del16_vals, num_cconj_vals));
  #ifdef INT_TIME
   gettimeofday(&r_cmpcnj_start, NULL);
  #endif
@@ -252,7 +252,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
     });
   
   unsigned num_cmult_vals = num_cconj_vals;
-  DEBUG(printf("Calling complex_mult: IN %u OUT %u\n", num_cconj_vals, num_cmult_vals));
+  DO_NUM_IOS_ANALYSIS(printf("Calling complex_mult: IN %u OUT %u\n", num_cconj_vals, num_cmult_vals));
  #ifdef INT_TIME
   gettimeofday(&r_cmpmpy_start, NULL);
   r_cmpcnj_sec  += r_cmpmpy_start.tv_sec  - r_cmpcnj_start.tv_sec;
@@ -264,7 +264,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
     });
   
   unsigned num_cmpcorr_vals = num_cmult_vals;
-  DEBUG(printf("Calling firc (Moving Average 48) : IN %u OUT %u\n", num_cmult_vals, num_cmpcorr_vals));
+  DO_NUM_IOS_ANALYSIS(printf("Calling firc (Moving Average 48) : IN %u OUT %u\n", num_cmult_vals, num_cmpcorr_vals));
  #ifdef INT_TIME
   gettimeofday(&r_firc_start, NULL);
   r_cmpmpy_sec  += r_firc_start.tv_sec  - r_cmpmpy_start.tv_sec;
@@ -277,7 +277,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
     });
   
   unsigned num_cmag_vals = num_cmpcorr_vals;
-  DEBUG(printf("Calling complex_to_magnitude: IN %u OUT %u\n", num_cmpcorr_vals, num_cmag_vals));
+  DO_NUM_IOS_ANALYSIS(printf("Calling complex_to_magnitude: IN %u OUT %u\n", num_cmpcorr_vals, num_cmag_vals));
  #ifdef INT_TIME
   gettimeofday(&r_cmpmag_start, NULL);
   r_firc_sec  += r_cmpmag_start.tv_sec  - r_firc_start.tv_sec;
@@ -289,7 +289,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
     });
   
   unsigned num_cmag2_vals = num_inputs;
-  DEBUG(printf("Calling complex_to_mag_squared (signal_power): IN %u OUT %u\n", num_inputs, num_cmag2_vals));
+  DO_NUM_IOS_ANALYSIS(printf("Calling complex_to_mag_squared (signal_power): IN %u OUT %u\n", num_inputs, num_cmag2_vals));
  #ifdef INT_TIME
   gettimeofday(&r_cmpmag2_start, NULL);
   r_cmpmag_sec  += r_cmpmag2_start.tv_sec  - r_cmpmag_start.tv_sec;
@@ -311,7 +311,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
   					    1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,   //  56
   					    1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 }; //  64
   unsigned num_mavg64_vals = num_cmag2_vals;
-  DEBUG(printf("Calling fir (Moving Average 64) : IN %u OUT %u\n", num_cmag2_vals, num_mavg64_vals));
+  DO_NUM_IOS_ANALYSIS(printf("Calling fir (Moving Average 64) : IN %u OUT %u\n", num_cmag2_vals, num_mavg64_vals));
  #ifdef INT_TIME
   gettimeofday(&r_fir_start, NULL);
   r_cmpmag2_sec  += r_fir_start.tv_sec  - r_cmpmag2_start.tv_sec;
@@ -324,7 +324,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
     });
   
   unsigned num_cdiv_vals = num_mavg64_vals; // num_cmpcorr_vals;
-  DEBUG(printf("Calling division: IN %u OUT %u : CMAG %u \n", num_mavg64_vals,  num_cdiv_vals, num_cmag_vals));
+  DO_NUM_IOS_ANALYSIS(printf("Calling division: IN %u OUT %u : CMAG %u \n", num_mavg64_vals,  num_cdiv_vals, num_cmag_vals));
   // Ensure we've picked the MIN(num_mavg64_vals, num_cmag_vals) -- should have an a-priori known relationship!
   if (num_mavg64_vals > num_cmag_vals) {
     printf("ERROR : num_mavg64_vals = %u > %u = num_cmag_vals\n", num_mavg64_vals, num_cmag_vals);
@@ -340,7 +340,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
     printf(" TOP_DIV_OUT %5u : CORRZ %12.8f : CORRL %12.8f : SPA %12.8f\n", ti, the_correlation[ti], correlation[ti], avg_signal_power[ti]);
     });
   
-  DEBUG(printf("Calling sync_short: IN %u\n", num_cdiv_vals));
+  DO_NUM_IOS_ANALYSIS(printf("Calling sync_short: IN %u\n", num_cdiv_vals));
   float ss_freq_offset;
   unsigned num_sync_short_vals;
  #ifdef INT_TIME
@@ -349,13 +349,13 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
   r_div_usec += r_sshort_start.tv_usec - r_div_start.tv_usec;
  #endif
   sync_short(num_cdiv_vals, delay16_out, correlation_complex, the_correlation, &ss_freq_offset, &num_sync_short_vals, sync_short_out_frames);
-  DEBUG(printf("Back from sync_short: OUT num_sync_short_vals = %u\n", num_sync_short_vals));
+  DO_NUM_IOS_ANALYSIS(printf("Back from sync_short: OUT num_sync_short_vals = %u\n", num_sync_short_vals));
   DEBUG(printf(" ss_freq_offset = %12.8f  and num sync_short_values = %u\n", ss_freq_offset, num_sync_short_vals);
 	for (int ti = 0; ti < num_sync_short_vals; ti++) {
 	  printf(" S_S_OUT %5u : TMPBUF %12.8f %12.8f : CORR_CMP %12.8f %12.8f : CORRZ %12.8f : SS_FRAME %12.8f %12.8f\n", ti, crealf(delay16_out[ti]), cimagf(delay16_out[ti]), crealf(correlation_complex[ti]), cimagf(correlation_complex[ti]), the_correlation[ti], crealf(sync_short_out_frames[ti]), cimagf(sync_short_out_frames[ti])); 
 	});
 
-  DEBUG(printf("Calling delay320: IN %u OUT %u\n", num_sync_short_vals, 320+num_sync_short_vals));
+  DO_NUM_IOS_ANALYSIS(printf("Calling delay320: IN %u OUT %u\n", num_sync_short_vals, 320+num_sync_short_vals));
   // We've used a similar memory-placement trick to avoid having to do the delay320 function; sync_short_out_frames = &(frame_d[320])
   //delay320(frame_d, synch_short_out_frames);
   DEBUG(for (int ti = 0; ti < 320+num_sync_short_vals; ti++) {
@@ -363,7 +363,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
     });
   
 
-  DEBUG(printf("Calling sync_long: IN %u\n", num_sync_short_vals));
+  DO_NUM_IOS_ANALYSIS(printf("Calling sync_long: IN %u\n", num_sync_short_vals));
   float sl_freq_offset;
   unsigned num_sync_long_vals;
  #ifdef INT_TIME
@@ -372,7 +372,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
   r_sshort_usec += r_slong_start.tv_usec - r_sshort_start.tv_usec;
  #endif
   sync_long(num_sync_short_vals, sync_short_out_frames, frame_d, &sl_freq_offset, &num_sync_long_vals, d_sync_long_out_frames );
-  DEBUG(printf("Back from synch_long: OUT num_sync_long_vals = %u\n", num_sync_long_vals));
+  DO_NUM_IOS_ANALYSIS(printf("Back from synch_long: OUT num_sync_long_vals = %u\n", num_sync_long_vals));
   DEBUG(printf(" sl_freq_offset = %12.8f\n", sl_freq_offset);
 	for (int ti = 0; ti < 32619; ti++) {
 	  printf("  SYNC_LONG_OUT %5u  %12.8f %12.8f : FR_D %12.8f %12.8f : D_FR_L %12.8f %12.8f\n", ti, crealf(sync_short_out_frames[ti]), cimagf(sync_short_out_frames[ti]), crealf(frame_d[ti]), cimagf(frame_d[ti]), crealf(d_sync_long_out_frames[ti]), cimagf(d_sync_long_out_frames[ti])); 
@@ -381,7 +381,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
   fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE];
   fx_pt1 fft_ar_i[FRAME_EQ_IN_MAX_SIZE];
   unsigned num_fft_frames = (num_sync_long_vals+63) / 64;
-  DEBUG(printf("FFT_COMP : num_fft_frames = %u / 64 = %u So %u values\n", num_sync_long_vals,  num_fft_frames, (num_fft_frames * 64)));
+  DO_NUM_IOS_ANALYSIS(printf("Calling FFT_COMP : num_fft_frames = %u / 64 = %u So %u values\n", num_sync_long_vals,  num_fft_frames, (num_fft_frames * 64)));
  #ifdef INT_TIME
   gettimeofday(&r_fft_start, NULL);
   r_slong_sec  += r_fft_start.tv_sec  - r_slong_start.tv_sec;
@@ -409,7 +409,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
   }
 
   DEBUG(printf("\nCalling gr_equalize (frame_equalizer) with wifi_start = %12.8f\n", wifi_start));
-  DEBUG(printf("Calling gr_equalize (frame_equalizer): IN %u\n", num_fft_outs));
+  DO_NUM_IOS_ANALYSIS(printf("Calling gr_equalize (frame_equalizer): IN %u\n", num_fft_outs));
   unsigned num_eq_out_bits;
   unsigned num_eq_out_sym;
  #ifdef INT_TIME
@@ -418,13 +418,13 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
   unsigned psdu = 0;
   gr_equalize( wifi_start, num_fft_outs, toBeEqualized, &psdu, &num_eq_out_bits, equalized_bits, &num_eq_out_sym, equalized);
   DEBUG(printf("GR_FR_EQ : fft_outs = %u items %u ffts : num_eq_out_bits = %u %u : num_eq_out_sym = %u\n", num_fft_outs, num_fft_outs/64, num_eq_out_bits, num_eq_out_bits/48, num_eq_out_sym));
-  DEBUG(printf("Back from gr_equalize : OUT %u\n", num_eq_out_bits));
+  DO_NUM_IOS_ANALYSIS(printf("Back from gr_equalize : OUT %u\n", num_eq_out_bits));
   DEBUG(for (int ti = 0; ti < num_eq_out_bits; ti++) {
       printf(" FR_EQ_OUT %5u : toBeEQ %12.8f %12.8f : EQLZD %12.8f %12.8f : EQ_BIT %u\n", ti, crealf(toBeEqualized[ti]), cimagf(toBeEqualized[ti]), crealf(equalized[ti]), cimagf(equalized[ti]), equalized_bits[ti]);
     });
   
   //decode signal
-  DEBUG(printf("Calling decode_signal: IN %u\n", num_eq_out_bits));
+  DO_NUM_IOS_ANALYSIS(printf("Calling decode_signal: IN %u\n", num_eq_out_bits));
   unsigned num_dec_bits;
  #ifdef INT_TIME
   gettimeofday(&r_decsignl_start, NULL);
@@ -432,13 +432,13 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
   r_eqlz_usec += r_decsignl_start.tv_usec - r_eqlz_start.tv_usec;
  #endif
   decode_signal(num_eq_out_bits, equalized, &num_dec_bits, scrambled_msg);
-  DEBUG(printf("Back from decode_signal: OUT %u\n", num_dec_bits));
+  DO_NUM_IOS_ANALYSIS(printf("Back from decode_signal: OUT %u\n", num_dec_bits));
   DEBUG(for (int ti = 0; ti < num_dec_bits; ti++) {
       printf(" DEC_OUTS %5u : EQLZD %12.8f %12.8f : DEC_BIT %u\n", ti, crealf(toBeEqualized[ti]), cimagf(toBeEqualized[ti]), scrambled_msg[ti]);
     });
 
   //descrambler
-  DEBUG(printf("Calling sdr_descrambler with psdu = %u\n", psdu));
+  DO_NUM_IOS_ANALYSIS(printf("Calling sdr_descrambler with psdu = %u\n", psdu));
  #ifdef INT_TIME
   gettimeofday(&r_descrmbl_start, NULL);
   r_decsignl_sec  += r_descrmbl_start.tv_sec  - r_decsignl_start.tv_sec;

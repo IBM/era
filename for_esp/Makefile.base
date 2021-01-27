@@ -87,6 +87,14 @@ ifdef CONFIG_GDB
 CFLAGS += -g
 endif
 
+ifdef CONFIG_LIMITS
+CFLAGS += -DDO_LIMITS
+endif
+
+ifdef CONFIG_NUM_IOS
+CFLAGS += -DDO_NUM_IOS
+endif
+
 LDLIBS ?=
 ifdef COMPILE_TO_ESP
 LDLIBS += -L$(ESP_BUILD_DRIVERS)/contig_alloc

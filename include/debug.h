@@ -3,13 +3,19 @@
 #ifndef DEBUG_H
 #define DEBUG_H 
 
- #ifdef DEBUG_MODE
-  #define DEBUG(X) X
-  #define DEBUG2(X)
- #else 
-  #define DEBUG(X)
-  #define DEBUG2(X)
+#ifdef DEBUG_MODE
+ #define DEBUG(X) X
+ #define DEBUG2(X)
+ #define DO_NUM_IOS_ANALYSIS(x) x
+#else 
+ #define DEBUG(X)
+ #define DEBUG2(X)
+ #ifdef DO_NUM_IOS
+  #define DO_NUM_IOS_ANALYSIS(x) x
+ #else
+  #define DO_NUM_IOS_ANALYSIS(x)
  #endif
+#endif
 
 #ifdef DBG_THREADS
  #define TDEBUG(x) x
@@ -31,6 +37,7 @@
 #else
  #define DO_LIMITS_ANALYSIS(x)
 #endif
+
 
 /*
   #ifdef DEBUG_MODE
