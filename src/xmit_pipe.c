@@ -1553,7 +1553,8 @@ xmit_pipe_init() {
 void
 do_xmit_pipeline(int in_msg_len, char* in_msg, int* num_final_outs, float* final_out_real, float* final_out_imag)
 {
-  DEBUG(printf("In do_xmit_pipeline: MSG_LEN %u  MSG:\n", in_msg_len);
+  DEBUG(printf("In do_xmit_pipeline: MSG_LEN %u\n", in_msg_len));
+  DEBUG(printf("  MSG:");
 	for (int i = 0; i < in_msg_len; i++) {
 	  printf("%c", in_msg[i]);
 	}
@@ -1587,6 +1588,7 @@ do_xmit_pipeline(int in_msg_len, char* in_msg, int* num_final_outs, float* final
   x_phdrgen_sec  += x_phdrgen_stop.tv_sec  - x_domapwk_stop.tv_sec;
   x_phdrgen_usec += x_phdrgen_stop.tv_usec - x_domapwk_stop.tv_usec;
  #endif
+  DEBUG(printf("do_packet_header_gen: IN payload_size %u OUT packet_hdr_len %u\n", mapper_payload_size, pckt_hdr_len));
   DEBUG(printf("packet_header = ");
 	for (int i = 0; i < pckt_hdr_len; i++) {
 	  printf("%1x ", pckt_hdr_out[i]);
@@ -1641,11 +1643,13 @@ do_xmit_pipeline(int in_msg_len, char* in_msg, int* num_final_outs, float* final
   float ofdm_car_str_real[ofdm_max_out_size];
   float ofdm_car_str_imag[ofdm_max_out_size];
   
+  DEBUG(printf("Calling do_ofdm_carrier_alloc: IN n_sym %u n_enc_bits %u\n", d_frame.n_sym, d_frame.n_encoded_bits));
   //int ofc_res = do_ofdm_carrier_allocator_cvc_impl_work(520, 24576, msg_stream_real, msg_stream_imag, ofdm_car_str_real, ofdm_car_str_imag);
  #ifdef INT_TIME
   gettimeofday(&x_ocaralloc_start, NULL);
  #endif
   int ofc_res = do_ofdm_carrier_allocator_cvc_impl_work(d_frame.n_sym, d_frame.n_encoded_bits, msg_stream_real, msg_stream_imag, ofdm_car_str_real, ofdm_car_str_imag);
+  DEBUG(printf("Back from do_ofdm_carrier_alloc: OUT ofc_res %u : %u max outputs (of %u)\n", ofc_res, ofc_res*d_fft_len, ofdm_max_out_size));
   DEBUG(printf(" return value was %u so max %u outputs\n", ofc_res, ofc_res*d_fft_len);
 	printf(" do_ofdm_carrier_allocator_cvc_impl_work output:\n");
 	for (int ti = 0; ti < (ofc_res * 64); ti++) {
@@ -1665,12 +1669,14 @@ do_xmit_pipeline(int in_msg_len, char* in_msg, int* num_final_outs, float* final
   float fft_out_imag[ofdm_max_out_size];
   float scale = 1/sqrt(52.0);
 
+  DEBUG(printf("Calling do_xmit_fft_work: IN n_ins %u\n", n_ins));
   do_xmit_fft_work(n_ins, scale, ofdm_car_str_real, ofdm_car_str_imag, fft_out_real, fft_out_imag);
  #ifdef INT_TIME
   gettimeofday(&x_fft_stop, NULL);
   x_fft_sec  += x_fft_stop.tv_sec  - x_ocaralloc_stop.tv_sec;
   x_fft_usec += x_fft_stop.tv_usec - x_ocaralloc_stop.tv_usec;
  #endif
+  DEBUG(printf("Back from do_xmit_fft_work: OUT n_out %u\n", n_ins));
   DEBUG(for (int i = 0; i < n_ins; i++) {
       printf(" fft_out %6u : %11.8f + %11.8f i\n", i, fft_out_real[i], fft_out_imag[i]);
     });
@@ -1682,6 +1688,7 @@ do_xmit_pipeline(int in_msg_len, char* in_msg, int* num_final_outs, float* final
   float cycpref_out_real[41360]; // Large enough
   float cycpref_out_imag[41360]; // Large enough
   DEBUG(printf("\nCalling do_ofdm_cyclic_prefixer_impl_work(%u, fft_output)\n", ofc_res));
+  DEBUG(printf("Calling do_ofdm_cyclic_prefx: IN ofc_res %u : OUT n_cycp_out %u\n", ofc_res, num_cycpref_outs));
   //do_ofdm_cyclic_prefixer_impl_work(ofc_res, gold_fft_out_real, gold_fft_out_imag, cycpref_out_real, cycpref_out_imag);
  /* #ifdef INT_TIME */
  /*  gettimeofday(&x_ocycpref_start, NULL); */
@@ -1709,6 +1716,7 @@ do_xmit_pipeline(int in_msg_len, char* in_msg, int* num_final_outs, float* final
   // Now set the Final Outputs
   DEBUG(printf("\nFinal XMIT output:\n"));
   *num_final_outs = num_pre_pad + num_cycpref_outs + num_post_pad;
+  DEBUG(printf("Set num_finalouts to %u = pre-pad %u + %u num_cycpref_outs\n", *num_final_outs, num_pre_pad, num_cycpref_outs));
   for (int i = 0; i < num_pre_pad; i++) {
     final_out_real[i] = 0.0;
     final_out_imag[i] = 0.0;

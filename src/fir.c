@@ -10,7 +10,7 @@
 //  Note that it takes in the coefficient inputs, but this version never uses them (Mply is commented out)
 //   This implementation seems to be pretty inefficient (since it does NOT use the coefficients, i.e. uses "1" coefficients)
 //    It uses a sum loop over the M componenets for every input; we can improve (see ffir below).
-void fir(fx_pt1 output[FIR_MAVG64_MAX_SIZE], fx_pt1 input_sample[FIR_MAVG64_MAX_SIZE], const fx_pt1 coefficient[COEFF_LENGTH])
+void fir(fx_pt1 output[FIR_MAVG64_MAX_SIZE], unsigned num_inputs, fx_pt1 input_sample[FIR_MAVG64_MAX_SIZE], const fx_pt1 coefficient[COEFF_LENGTH])
 {
   static fx_pt1_ext buffer[COEFF_LENGTH];
   static bool init = true;
@@ -24,7 +24,8 @@ void fir(fx_pt1 output[FIR_MAVG64_MAX_SIZE], fx_pt1 input_sample[FIR_MAVG64_MAX_
   }
 
   /* loop_filter_data: */
-  for(unsigned n = 0; n < FIR_MAVG64_MAX_SIZE; n++) {
+  //for(unsigned n = 0; n < FIR_MAVG64_MAX_SIZE; n++) {
+  for(unsigned n = 0; n < num_inputs; n++) {
     //fx_pt1_ext t_output[COEFF_LENGTH];
     fx_pt1_ext t_output_t = 0;
     /* data_shift: */
@@ -54,11 +55,12 @@ void fir(fx_pt1 output[FIR_MAVG64_MAX_SIZE], fx_pt1 input_sample[FIR_MAVG64_MAX_
 // This is an equivalent, "Fast" firc which reduces the computation time
 //  This requires a "static" set of M initial "zero" values prepended to the input sample data
 //  We use a trick similar to the "delay" computations (where we manipulate the input data storage)
-void ffir(fx_pt1 output[FIR_MAVG64_MAX_SIZE], fx_pt1 input_sample[FIR_MAVG64_MAX_SIZE]) //, const fx_pt1 coefficient[COEFF_LENGTH])
+void ffir(fx_pt1 output[FIR_MAVG64_MAX_SIZE], unsigned num_inputs, fx_pt1 input_sample[FIR_MAVG64_MAX_SIZE]) //, const fx_pt1 coefficient[COEFF_LENGTH])
 {
   fx_pt curr_sum = 0; // First 64 are always "0"
   /* loop_filter_data: */
-  for (unsigned n = COEFF_LENGTH; n < (FIR_MAVG64_MAX_SIZE + COEFF_LENGTH); n++) {
+  //for (unsigned n = COEFF_LENGTH; n < (FIR_MAVG64_MAX_SIZE + COEFF_LENGTH); n++) {
+  for (unsigned n = COEFF_LENGTH; n < (num_inputs + COEFF_LENGTH); n++) {
     curr_sum= (fx_pt)(curr_sum - input_sample[n-COEFF_LENGTH] + input_sample[n]);
     output[n] = curr_sum;
   } //end for every sample
@@ -67,7 +69,7 @@ void ffir(fx_pt1 output[FIR_MAVG64_MAX_SIZE], fx_pt1 input_sample[FIR_MAVG64_MAX
 
 // This is the original implementation, and seems quite inefficient
 //   It uses an inner loop to add the M values once for each input...
-void firc(fx_pt output[FIRC_MAVG48_MAX_SIZE], fx_pt input_sample[FIRC_MAVG48_MAX_SIZE])
+void firc(fx_pt output[FIRC_MAVG48_MAX_SIZE], unsigned num_inputs, fx_pt input_sample[FIRC_MAVG48_MAX_SIZE])
 {
   static fx_pt_ext buffer[COMPLEX_COEFF_LENGTH];
   static bool init = true;
@@ -81,7 +83,8 @@ void firc(fx_pt output[FIRC_MAVG48_MAX_SIZE], fx_pt input_sample[FIRC_MAVG48_MAX
   }
 
   /* loop_filter_data: */
-  for (unsigned n = 0; n < FIRC_MAVG48_MAX_SIZE; n++) {
+  //for (unsigned n = 0; n < FIRC_MAVG48_MAX_SIZE; n++) {
+  for (unsigned n = 0; n < num_inputs; n++) {
     //fx_pt_ext t_output[COMPLEX_COEFF_LENGTH];
     fx_pt_ext t_output_t = 0 + 0 * I;
     /* data_shift: */
@@ -107,11 +110,12 @@ void firc(fx_pt output[FIRC_MAVG48_MAX_SIZE], fx_pt input_sample[FIRC_MAVG48_MAX
 // This is an equivalent, "Fast" firc which reduces the computation time
 //  This requires a "static" set of M initial "zero" values prepended to the input sample data
 //  We use a trick similar to the "delay" computations (where we manipulate the input data storage)
-void ffirc(fx_pt output[FIRC_MAVG48_MAX_SIZE], fx_pt input_sample[FIRC_MAVG48_MAX_SIZE])
+void ffirc(fx_pt output[FIRC_MAVG48_MAX_SIZE], unsigned num_inputs, fx_pt input_sample[FIRC_MAVG48_MAX_SIZE])
 {
   fx_pt curr_sum = 0; // First 64 are always "0"
   /* loop_filter_data: */
-  for (unsigned n = COMPLEX_COEFF_LENGTH; n < (FIRC_MAVG48_MAX_SIZE + COMPLEX_COEFF_LENGTH); n++) {
+  //for (unsigned n = COMPLEX_COEFF_LENGTH; n < (FIRC_MAVG48_MAX_SIZE + COMPLEX_COEFF_LENGTH); n++) {
+  for (unsigned n = COMPLEX_COEFF_LENGTH; n < (num_inputs + COMPLEX_COEFF_LENGTH); n++) {
     curr_sum= (fx_pt)(curr_sum - input_sample[n-COMPLEX_COEFF_LENGTH] + input_sample[n]);
     output[n] = curr_sum;
   } //end for every sample
