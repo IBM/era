@@ -127,6 +127,7 @@ uint64_t pd_wifi_car_usec = 0LL;
 
 #endif
 
+
 int counter = 0;
 int ascii_counter = 0;
 
@@ -174,7 +175,12 @@ void SIGPIPE_handler(int dummy)
  extern void init_VIT_HW_ACCEL();
  extern void free_VIT_HW_RESOURCES();
 #endif
-
+#ifdef XMIT_HW_FFT
+ extern void free_XMIT_FFT_HW_RESOURCES();
+#endif
+#ifdef RECV_HW_FFT
+ extern void free_RECV_FFT_HW_RESOURCES();
+#endif
 
 // This cleans up the state before exit
 void closeout_and_exit(char* last_msg, int rval)
@@ -199,6 +205,12 @@ void closeout_and_exit(char* last_msg, int rval)
  #ifdef HW_VIT
   free_VIT_HW_RESOURCES();
  #endif // HW_VIT
+ #ifdef XMIT_HW_FFT
+  free_XMIT_FFT_HW_RESOURCES();
+ #endif
+ #ifdef RECV_HW_FFT
+  free_RECV_FFT_HW_RESOURCES();
+ #endif
   printf("%s\n", last_msg);
   exit(rval);
 }
@@ -288,7 +300,7 @@ void* receive_and_fuse_maps(void* parm_ptr)
     DBGOUT(printf("\nTrying to Receive data on RECV port %u socket\n", RECV_PORT));
    #ifdef INT_TIME
     gettimeofday(&start_pd_wifi_recv_wait, NULL);
-   #endif	
+   #endif
     char r_buffer[10];
     int valread = read_all(recv_sock, r_buffer, 8);
     DBGOUT(printf("  RECV got %d bytes :'%s'\n", valread, r_buffer));
@@ -296,7 +308,7 @@ void* receive_and_fuse_maps(void* parm_ptr)
     if (valread == 8) {
      #ifdef INT_TIME
       gettimeofday(&start_pd_wifi_recv_all, NULL);
-     #endif	
+     #endif
       if(!(r_buffer[0] == 'X' && r_buffer[7] == 'X')) {
 	printf("ERROR: Unexpected message from WiFi...\n");
 	closeout_and_exit("Unexpected WiFi message...", -3);
@@ -660,8 +672,12 @@ int main(int argc, char *argv[])
   DEBUG(printf("Calling init_VIT_HW_ACCEL...\n"));
   init_VIT_HW_ACCEL();
  #endif
+  printf("Initializing the OccGrid state...\n");
   init_occgrid_state(); // Initialize the occgrid functions, state, etc.
+  printf("Initializing the Transmit pipeline...\n");
   xmit_pipe_init(); // Initialize the IEEE SDR Transmit Pipeline
+  printf("Initializing the Receive pipeline...\n");
+  recv_pipe_init();
 
   signal(SIGINT, INThandler);
   signal(SIGPIPE, SIGPIPE_handler);
@@ -954,7 +970,23 @@ void dump_final_run_statistics()
   printf("\nFinal Run Stats, %u, Odo, %u, Lidar, %u, LMAP, %u, XMIT, %u, RECV, %u, CAR-SEND\n", odo_count, lidar_count, lmap_count, xmit_count, recv_count, car_send_count);
   printf("Occ-Map Dimensions, %u, by, %u, grid, res, %lf, ray_r, %u\n", GRID_MAP_X_DIM, GRID_MAP_Y_DIM, GRID_MAP_RESLTN, RAYTR_RANGE);
 
-  printf("Timing (in usec):\n");
+  printf("Timing (in usec):");
+ #ifdef HW_VIT
+  printf(" with %u HW_VIT", 1);
+ #else 
+  printf(" with NO HW_VIT");
+ #endif
+ #ifdef XMIT_HW_FFT
+  printf(" and %u HW_XMIT_FFT", NUM_XMIT_FFT_ACCEL);
+ #else 
+  printf(" and NO HW_XMIT_FFT");
+ #endif
+ #ifdef RECV_HW_FFT
+  printf(" and %u HW_RECV_FFT", NUM_RECV_FFT_ACCEL);
+ #else 
+  printf(" and NO HW_RECV_FFT");
+ #endif
+  printf("\n");
 
   gettimeofday(&stop_prog, NULL);
   uint64_t total_exec = (uint64_t)(stop_prog.tv_sec - start_prog.tv_sec) * 1000000 + (uint64_t)(stop_prog.tv_usec - start_prog.tv_usec);
@@ -1005,6 +1037,13 @@ void dump_final_run_statistics()
   uint64_t x_fft       = (uint64_t)(x_fft_sec)  * 1000000 + (uint64_t)(x_fft_usec);
   uint64_t x_ocycpref  = (uint64_t)(x_ocycpref_sec)  * 1000000 + (uint64_t)(x_ocycpref_usec);
 
+#ifdef XMIT_HW_FFT
+  uint64_t x_fHtotal   = (uint64_t)(x_fHtotal_sec)  * 1000000 + (uint64_t)(x_fHtotal_usec);
+  uint64_t x_fHcvtin   = (uint64_t)(x_fHcvtin_sec)  * 1000000 + (uint64_t)(x_fHcvtin_usec);
+  uint64_t x_fHcomp    = (uint64_t)(x_fHcomp_sec)  * 1000000 + (uint64_t)(x_fHcomp_usec);
+  uint64_t x_fHcvtout  = (uint64_t)(x_fHcvtout_sec)  * 1000000 + (uint64_t)(x_fHcvtout_usec);
+#endif
+
   // This is the Xmit doMapWork breakdown
   uint64_t xdmw_total   = (uint64_t)(xdmw_total_sec)   * 1000000 + (uint64_t)(xdmw_total_usec);
   uint64_t xdmw_cnvEnc  = (uint64_t)(xdmw_cnvEnc_sec)  * 1000000 + (uint64_t)(xdmw_cnvEnc_usec);
@@ -1012,7 +1051,7 @@ void dump_final_run_statistics()
   uint64_t xdmw_intlv   = (uint64_t)(xdmw_intlv_sec)   * 1000000 + (uint64_t)(xdmw_intlv_usec);
   uint64_t xdmw_symbols = (uint64_t)(xdmw_symbls_sec)  * 1000000 + (uint64_t)(xdmw_symbls_usec);
   uint64_t xdmw_mapout  = (uint64_t)(xdmw_mapout_sec)  * 1000000 + (uint64_t)(xdmw_mapout_usec);
-  
+
   // This is the recv_pipe.c breakdown
   uint64_t r_pipe     = (uint64_t)(r_pipe_sec)  * 1000000 + (uint64_t)(r_pipe_usec);
   uint64_t r_cmpcnj   = (uint64_t)(r_cmpcnj_sec)  * 1000000 + (uint64_t)(r_cmpcnj_usec);
@@ -1028,6 +1067,14 @@ void dump_final_run_statistics()
   uint64_t r_eqlz     = (uint64_t)(r_eqlz_sec)  * 1000000 + (uint64_t)(r_eqlz_usec);
   uint64_t r_decsignl = (uint64_t)(r_decsignl_sec)  * 1000000 + (uint64_t)(r_decsignl_usec);
   uint64_t r_descrmbl = (uint64_t)(r_descrmbl_sec)  * 1000000 + (uint64_t)(r_descrmbl_usec);
+
+  // This is the receiver Hardware FFT breakdown
+#ifdef RECV_HW_FFT
+  uint64_t r_fHtotal   = (uint64_t)(r_fHtotal_sec)  * 1000000 + (uint64_t)(r_fHtotal_usec);
+  uint64_t r_fHcvtin   = (uint64_t)(r_fHcvtin_sec)  * 1000000 + (uint64_t)(r_fHcvtin_usec);
+  uint64_t r_fHcomp    = (uint64_t)(r_fHcomp_sec)  * 1000000 + (uint64_t)(r_fHcomp_usec);
+  uint64_t r_fHcvtout  = (uint64_t)(r_fHcvtout_sec)  * 1000000 + (uint64_t)(r_fHcvtout_usec);
+#endif
 
   // This is the sync_short.c "equalize" breakdown
   uint64_t rssh_total    = (uint64_t)(sysh_total_sec)     * 1000000 + (uint64_t)(sysh_total_usec);
@@ -1084,6 +1131,12 @@ void dump_final_run_statistics()
   printf("         X-Pipe Chnk2Sym Time     : %10lu usec\n", x_ck2sym);
   printf("         X-Pipe CarAlloc Time     : %10lu usec\n", x_ocaralloc);
   printf("         X-Pipe Xm-FFT Time       : %10lu usec\n", x_fft);
+#ifdef XMIT_HW_FFT
+  printf("           X-Pipe xHfft_total Time  : %10lu usec\n", x_fHtotal);
+  printf("           X-Pipe xHfft_cvtin Time  : %10lu usec\n", x_fHcvtin);
+  printf("           X-Pipe xHfft_comp  Time  : %10lu usec\n", x_fHcomp);
+  printf("           X-Pipe xHfft_cvtout Time : %10lu usec\n", x_fHcvtout);
+#endif
   printf("         X-Pipe CycPrefix Time    : %10lu usec\n", x_ocycpref);
   printf("       Total pd xmit_send       : %10lu usec\n", pd_wifi_send);
   printf("         Total pd xmit_send_rl    : %10lu usec\n", pd_wifi_send_rl);
@@ -1113,6 +1166,12 @@ void dump_final_run_statistics()
   printf("           R-SyLng Search Time        : %10lu usec\n", rslg_search);
   printf("           R-SyLng OutGen Time        : %10lu usec\n", rslg_outgen);
   printf("         R-Pipe Rc-FFT Time       : %10lu usec\n", r_fft);
+#ifdef RMIT_HW_FFT
+  printf("           R-Pipe rHfft_total Time  : %10lu usec\n", r_fHtotal);
+  printf("           R-Pipe rHfft_cvtin Time  : %10lu usec\n", r_fHcvtin);
+  printf("           R-Pipe rHfft_comp  Time  : %10lu usec\n", r_fHcomp);
+  printf("           R-Pipe rHfft_cvtout Time : %10lu usec\n", r_fHcvtout);
+#endif
   printf("         R-Pipe Equalize Time     :  %10lu usec\n", r_eqlz);
   printf("           R-Eql Total Time         : %10lu usec\n", reql_total);
   printf("           R-Eql Set-Symbol Time    : %10lu usec\n", reql_sym_set);

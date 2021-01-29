@@ -53,6 +53,10 @@ bool show_recv_output = true;
  extern void free_VIT_HW_RESOURCES();
 #endif
 
+#ifdef RECV_HW_FFT
+extern void free_RECV_FFT_HW_RESOURCES();
+#endif
+
 
 void print_usage(char * pname) {
   printf("Usage: %s <OPTIONS>\n", pname);
@@ -71,6 +75,9 @@ void closeout_and_exit(char* last_msg, int rval)
  #ifdef HW_VIT
   free_VIT_HW_RESOURCES();
  #endif // HW_VIT
+ #ifdef RECV_HW_FFT
+  free_RECV_FFT_HW_RESOURCES();
+ #endif
   printf("%s\n", last_msg);
   exit(rval);
 }

@@ -40,8 +40,26 @@
 #include <assert.h>
 
 #include "debug.h"
+
+#ifdef XMIT_HW_FFT
+ #include <fcntl.h>
+ #include <math.h>
+ #include <pthread.h>
+ #include <sys/types.h>
+ #include <sys/mman.h>
+ #include <sys/stat.h>
+ #include <string.h>
+ #include <time.h>
+ #include <unistd.h>
+
+ #include "contig.h"
+ #include "mini-era.h"
+#endif // HW_VIT
+
+#include "globals.h"
 #include "sdr_base.h"
 #include "xmit_pipe.h"
+
 
 #include "fft.h"
 
@@ -110,6 +128,24 @@ uint64_t x_fft_usec = 0LL;
 struct timeval x_ocycpref_stop; /*, x_ocycpref_start;*/
 uint64_t x_ocycpref_sec  = 0LL;
 uint64_t x_ocycpref_usec = 0LL;
+
+#ifdef XMIT_HW_FFT
+struct timeval x_fHtotal_stop, x_fHtotal_start;
+uint64_t x_fHtotal_sec  = 0LL;
+uint64_t x_fHtotal_usec = 0LL;
+
+struct timeval x_fHcvtin_stop, x_fHcvtin_start;
+uint64_t x_fHcvtin_sec  = 0LL;
+uint64_t x_fHcvtin_usec = 0LL;
+
+struct timeval x_fHcomp_stop, x_fHcomp_start;
+uint64_t x_fHcomp_sec  = 0LL;
+uint64_t x_fHcomp_usec = 0LL;
+
+struct timeval x_fHcvtout_stop, x_fHcvtout_start;
+uint64_t x_fHcvtout_sec  = 0LL;
+uint64_t x_fHcvtout_usec = 0LL;
+#endif
 
 #endif
 
@@ -1381,87 +1417,6 @@ do_ofdm_carrier_allocator_cvc_impl_work (int noutput_items,
 
 
 
-void
-do_xmit_fft_work(int n_inputs, float scale, float *input_real, float * input_imag, float* output_real, float*output_imag)
-{
-  // Do the FFT in 64-entry windows, and add the "shift" operation to each
-  //   Also add the weighting/scaling for the window
-  float fft_in_real[64];
-  float fft_in_imag[64];
-  bool inverse = true;
-  bool shift = true;
-  bool swap_odd_signs = false; // We shift the inputs instead?
-  int  size = d_fft_len;
-  int  log_size = d_fft_logn;
-  float recluster[2] = {1.0, 1.0}; // used to alter sign of "odd" fft results
-  if (swap_odd_signs) {
-    recluster[1] = -1.0;
-  }
-
-  DO_LIMITS_ANALYSIS(float min_input = 3.0e+038;
-		     float max_input = -1.17e-038);
-  DEBUG(printf("Starting do_xmit_fft_work with size %u inverse %u shift %u on n_inputs %u\n", size, inverse, shift, n_inputs));
-  for (int k = 0; k < (n_inputs+(size-1)); k += size) {
-
-    DEBUG(printf(" Prepping for FFT call starting at %u\n", k));
-    // Set up the (scaled) inputs
-    if (shift) {
-      for (int i = 0; i < size/2; i++) {
-	fft_in_real[32+i] = input_real[k + i] * scale;    // Copy  0 .. 31 into 32 .. 63
-	DO_LIMITS_ANALYSIS(if (fft_in_real[32+i] < min_input) { min_input = fft_in_real[32+i]; } 
-			   if (fft_in_real[32+i] > max_input) { max_input = fft_in_real[32+i]; } );
-	fft_in_imag[32+i] = input_imag[k + i] * scale;    // Copy  0 .. 31 into 32 .. 63
-	DO_LIMITS_ANALYSIS(if (fft_in_imag[32+i] < min_input) { min_input = fft_in_imag[32+i]; } 
-			   if (fft_in_imag[32+i] > max_input) { max_input = fft_in_imag[32+i]; });
-	fft_in_real[i] = input_real[k + 32 + i] * scale;  // Copy 32 .. 63 into  0 .. 31
-	DO_LIMITS_ANALYSIS(if (fft_in_real[i] < min_input) { min_input = fft_in_real[i]; } 
-			   if (fft_in_real[i] > max_input) { max_input = fft_in_real[i]; });
-	fft_in_imag[i] = input_imag[k + 32 + i] * scale;  // Copy 32 .. 63 into  0 .. 31
-	DO_LIMITS_ANALYSIS(if (fft_in_imag[i] < min_input) { min_input = fft_in_imag[i]; } 
-			   if (fft_in_imag[i] > max_input) { max_input = fft_in_imag[i]; });
-	DEBUG(if (k == 0) {
-	    printf("  set %u IN[ %2u ] = %11.8f * ( %11.8f + %11.8f i) = %11.8f + %11.8f i\n", k, 32+i, scale, input_real[k+i], input_imag[k+i], fft_in_real[32+i], fft_in_imag[32+i]);
-	    printf("  set %u IN[ %2u ] = %11.8f * ( %11.8f + %11.8f i) = %11.8f + %11.8f i\n", k, i, scale, input_real[k+32+i], input_imag[k+32+i], fft_in_real[i], fft_in_imag[i]);
-	  });
-      }      
-    } else {
-      for (int i = 0; i < size; i++) {
-	fft_in_real[i] = input_real[k + i] * scale;
-	fft_in_imag[i] = input_imag[k + i] * scale;
-	DEBUG(if (k == 0) {
-	    printf(" set %u IN[ %2u ] = %11.8f * ( %11.8f + %11.8f i) = %11.8f + %11.8f i\n", k, i, scale, input_real[k+i], input_imag[k+i], fft_in_real[i], fft_in_imag[i]);
-	  });
-      }
-    }
-    DEBUG(if (k < 256) {
-	printf("\n Iteration %u inputs (in order):\n", k);
-	for (int i = 0; i < size; i++) {
-	  printf("  FFT_%u_IN[ %2u ] = %11.8f * ( %11.8f + %11.8f i) = %11.8f + %11.8f i\n", k, i, scale, input_real[k+i], input_imag[k+i], fft_in_real[i], fft_in_imag[i]);
-	}
-	printf("\nCalling FFT function with inverse = %u size = %u\n", inverse, size);
-      });
-    // NOTE: This version over-writes the input data with output data
-    fft_ri(fft_in_real, fft_in_imag, inverse, false, size, log_size);
-    for (int i = 0; i < size; i++) {
-      // Swap sign on the "odd" FFT results (re-cluster energy around zero?)
-      output_real[k + i] = recluster[i&0x1]*fft_in_real[i];
-      output_imag[k + i] = recluster[i&0x1]*fft_in_imag[i];
-    }
-
-    DEBUG(if (k < 256) {
-	for (int i = 0; i < size; i++) {
-	  printf(" FFT_%u_OUT[ %2u : %5u ] = %11.8f + %11.8f i\n", k, i, k+i, output_real[k+i], output_imag[k+i]);
-	}
-      });
-
-    DEBUG(if (k < 4) { printf("\n");} );
-  }
-  DO_LIMITS_ANALYSIS(printf("DO_XMIT_FFT_WORK : min_input = %.15g  max_input = %.15g\n", min_input, max_input));
-  DEBUG(printf(" Done with fft calls... output:\n"));
-}
-
-
-
 
 /** This code is adapted from gr-digital/ofdm_cyclic_prefixer.cc **/
 #define  d_rolloff_len   2
@@ -1533,6 +1488,74 @@ do_ofdm_cyclic_prefixer_impl_work(int n_symbols, float * in_real, float* in_imag
 /********************************************************************************
  * This routine manages the initializations for all xmit pipeline components
  ********************************************************************************/
+
+#ifdef COMPILE_TO_ESP
+#include "fixed_point.h"
+#endif
+
+#ifdef XMIT_HW_FFT
+// These are XMIT FFT Hardware Accelerator Variables, etc.
+char xmit_fftAccelName[NUM_XMIT_FFT_ACCEL][64];// = {"/dev/xmit_fft.0", "/dev/xmit_fft.1", "/dev/xmit_fft.2", "/dev/xmit_fft.3", "/dev/xmit_fft.4", "/dev/xmit_fft.5"};
+
+int xmit_fftHW_fd[NUM_XMIT_FFT_ACCEL];
+contig_handle_t xmit_fftHW_mem[NUM_XMIT_FFT_ACCEL];
+
+xmit_fftHW_token_t* xmit_fftHW_lmem[NUM_XMIT_FFT_ACCEL];  // Pointer to local version (mapping) of xmit_fftHW_mem
+xmit_fftHW_token_t* xmit_fftHW_li_mem[NUM_XMIT_FFT_ACCEL]; // Pointer to input memory block
+xmit_fftHW_token_t* xmit_fftHW_lo_mem[NUM_XMIT_FFT_ACCEL]; // Pointer to output memory block
+size_t xmit_fftHW_in_len[NUM_XMIT_FFT_ACCEL];
+size_t xmit_fftHW_out_len[NUM_XMIT_FFT_ACCEL];
+size_t xmit_fftHW_in_size[NUM_XMIT_FFT_ACCEL];
+size_t xmit_fftHW_out_size[NUM_XMIT_FFT_ACCEL];
+size_t xmit_fftHW_out_offset[NUM_XMIT_FFT_ACCEL];
+size_t xmit_fftHW_size[NUM_XMIT_FFT_ACCEL];
+fft2_access xmit_fftHW_desc[NUM_XMIT_FFT_ACCEL];
+
+
+/* User-defined code */
+static void init_xmit_fft_parameters(unsigned n, uint32_t log_nsamples, uint32_t num_ffts, uint32_t do_inverse, uint32_t do_shift, uint32_t scale_factor)
+{
+  size_t xmit_fftHW_in_words_adj;
+  size_t xmit_fftHW_out_words_adj;
+  int len = (1 << log_nsamples) * num_ffts;
+  DEBUG(printf("  In init_xmit_fft_parameters with n = %u and logn = %u\n", n, log_nsamples));
+  xmit_fftHW_desc[n].logn_samples    = log_nsamples; 
+  xmit_fftHW_desc[n].do_inverse      = do_inverse;
+  xmit_fftHW_desc[n].do_shift        = do_shift;
+  xmit_fftHW_desc[n].scale_factor    = scale_factor;
+
+  if (DMA_WORD_PER_BEAT(sizeof(xmit_fftHW_token_t)) == 0) {
+    xmit_fftHW_in_words_adj  = 2 * len;
+    xmit_fftHW_out_words_adj = 2 * len;
+  } else {
+    xmit_fftHW_in_words_adj = round_up(2 * len, DMA_WORD_PER_BEAT(sizeof(xmit_fftHW_token_t)));
+    xmit_fftHW_out_words_adj = round_up(2 * len, DMA_WORD_PER_BEAT(sizeof(xmit_fftHW_token_t)));
+  }
+  xmit_fftHW_in_len[n] = xmit_fftHW_in_words_adj;
+  xmit_fftHW_out_len[n] =  xmit_fftHW_out_words_adj;
+  xmit_fftHW_in_size[n] = xmit_fftHW_in_len[n] * sizeof(xmit_fftHW_token_t);
+  xmit_fftHW_out_size[n] = xmit_fftHW_out_len[n] * sizeof(xmit_fftHW_token_t);
+  xmit_fftHW_out_offset[n] = 0;
+  xmit_fftHW_size[n] = (xmit_fftHW_out_offset[n] * sizeof(xmit_fftHW_token_t)) + xmit_fftHW_out_size[n];
+  DEBUG(printf("  returning from init_xmit_fft_parameters for HW_XMIT_FFT[%u]\n", n));
+}
+
+static void xmit_fft_in_hw(int *fd, struct fftHW_access *desc)
+{
+  if (ioctl(*fd, FFTHW_IOC_ACCESS, *desc)) {
+    perror("ERROR : xmit_fft_in_hw : IOCTL:\n");
+    closeout_and_exit("Bad ioctl invocation for XMIT pipe", EXIT_FAILURE);
+  }
+}
+
+void free_XMIT_FFT_HW_RESOURCES() {
+  for (int fi = 0; fi < NUM_XMIT_FFT_ACCEL; fi++) {
+    contig_free(xmit_fftHW_mem[fi]);
+    close(xmit_fftHW_fd[fi]);
+  }
+}
+#endif // XMIT_HW_FFT
+
 void
 xmit_pipe_init() {
   d_scrambler = 1;
@@ -1540,6 +1563,198 @@ xmit_pipe_init() {
   init_ofdm_parms(&d_ofdm, BPSK_1_2);
 
   init_ofdm_carrier_allocator();
+
+#ifdef XMIT_HW_FFT
+  // This initializes the XMIT_FFT Accelerator Pool
+  printf("Initializing the %u total XMIT_FFT Accelerators...\n", NUM_XMIT_FFT_ACCEL);
+  for (int fi = 0; fi < NUM_XMIT_FFT_ACCEL; fi++) {
+    // Inititalize to the "largest legal" XMIT_FFT size
+    printf("Calling init_xmit_fft_parameters for Accel %u (of %u) and LOGN %u\n", fi, NUM_XMIT_FFT_ACCEL, MAX_XMIT_FFT_LOGN, MAX_XMIT_NUM_FFTS);
+    init_xmit_fft_parameters(fi, MAX_XMIT_FFT_LOGN, MAX_XMIT_NUM_FFTS, 1/*do_inverse*/, 1/*do_shift*/, 1/*scale_factor*/);
+
+    snprintf(xmit_fftAccelName[fi], 63, "%s.%u", FFT_DEV_BASE, fi);
+    printf(" Acclerator %u opening XMIT_FFT device %s\n", fi, xmit_fftAccelName[fi]);
+    xmit_fftHW_fd[fi] = open(xmit_fftAccelName[fi], O_RDWR, 0);
+    if (xmit_fftHW_fd[fi] < 0) {
+      fprintf(stderr, "Error: cannot open %s\n", xmit_fftAccelName[fi]);
+      closeout_and_exit("Cannot open XMIT FFT Accel", EXIT_FAILURE);
+    }
+
+    printf(" Allocate hardware buffer of size %u\n", xmit_fftHW_size[fi]);
+    xmit_fftHW_lmem[fi] = contig_alloc(xmit_fftHW_size[fi], &(xmit_fftHW_mem[fi]));
+    if (xmit_fftHW_lmem[fi] == NULL) {
+      fprintf(stderr, "Error: cannot allocate %u contig bytes\n", xmit_fftHW_size[fi]);
+      closeout_and_exit("Cannot allocate RECV_FFT memory", EXIT_FAILURE);
+    }
+
+    xmit_fftHW_li_mem[fi] = &(xmit_fftHW_lmem[fi][0]);
+    xmit_fftHW_lo_mem[fi] = &(xmit_fftHW_lmem[fi][xmit_fftHW_out_offset[fi]]);
+    printf(" Set xmit_fftHW_li_mem = %p  AND xmit_fftHW_lo_mem = %p\n", xmit_fftHW_li_mem[fi], xmit_fftHW_lo_mem[fi]);
+
+    xmit_fftHW_desc[fi].esp.run = true;
+    xmit_fftHW_desc[fi].esp.coherence = ACC_COH_NONE;
+    xmit_fftHW_desc[fi].esp.p2p_store = 0;
+    xmit_fftHW_desc[fi].esp.p2p_nsrcs = 0;
+    //xmit_fftHW_desc[fi].esp.p2p_srcs = {"", "", "", ""};
+    xmit_fftHW_desc[fi].esp.contig = contig_to_khandle(xmit_fftHW_mem[fi]);
+
+#if USE_XMIT_FFT_ACCEL_VERSION == 1
+    // Always use BIT-REV in HW for now -- simpler interface, etc.
+    xmit_fftHW_desc[fi].do_bitrev  = XMIT_FFTHW_DO_BITREV;
+#elif USE_XMIT_FFT_ACCEL_VERSION == 2
+    xmit_fftHW_desc[fi].num_xmit_ffts      = 1;  // We only use one at a time in this applciation.
+    xmit_fftHW_desc[fi].do_inverse    = XMIT_FFTHW_NO_INVERSE;
+    xmit_fftHW_desc[fi].do_shift      = XMIT_FFTHW_NO_SHIFT;
+    xmit_fftHW_desc[fi].scale_factor = 1;
+#endif
+    //xmit_fftHW_desc[fi].logn_samples  = log_nsamples; 
+    xmit_fftHW_desc[fi].src_offset = 0;
+    xmit_fftHW_desc[fi].dst_offset = 0;
+  }
+#endif
+
+}
+
+
+
+// ADD in access/controls for the FFT HWR Accelerator
+
+
+void
+do_xmit_fft_work(int n_inputs, float scale, float *input_real, float * input_imag, float* output_real, float*output_imag)
+{
+  // Do the FFT in 64-entry windows, and add the "shift" operation to each
+  //   Also add the weighting/scaling for the window
+  float fft_in_real[64];
+  float fft_in_imag[64];
+  bool inverse = true;
+  bool shift = true;
+  bool swap_odd_signs = false; // We shift the inputs instead?
+  int  size = d_fft_len;
+  int  log_size = d_fft_logn;
+  float recluster[2] = {1.0, 1.0}; // used to alter sign of "odd" fft results
+  if (swap_odd_signs) {
+    recluster[1] = -1.0;
+  }
+
+#ifdef XMIT_HW_FFT
+  // Now we call the init_fft_parameters for the target FFT HWR accelerator and the specific log_nsamples for this invocation
+  int num_ffts = (n_inputs+(size-1))/size;
+  const int fn = 0;
+  init_xmit_fft_parameters(fn, 6/*log_nsamples*/, num_ffts, 1/*do_inverse*/, 1/*do_shift*/, 1/*scale_factor*/);
+
+ #ifdef INT_TIME
+  gettimeofday(&(x_fHcvtin_start), NULL);
+ #endif // INT_TIME
+  // convert input from float to fixed point
+  // We also SCALE it here (but we should be able to do that in the HWR Accel later)
+  int jidx = 0;
+  for (int k = 0; k < (n_inputs+(size-1)); k += size) {
+    for (int i = 0; i < size; i++) {
+      xmit_fftHW_lmem[fn][jidx++] = float2fx(fft_in_real[k+i] * scale, FX_IL); // NOTE: when we enable scale is HW remove it from here.
+      xmit_fftHW_lmem[fn][jidx++] = float2fx(fft_in_imag[k+i] * scale, FX_IL); // NOTE: when we enable scale is HW remove it from here.
+    }
+  }
+ #ifdef INT_TIME
+  gettimeofday(&x_fHcvtin_stop, NULL);
+  x_fHcvtin_sec   += x_fHcvtin_stop.tv_sec  - x_fHcvtin_start.tv_sec;
+  x_fHcvtin_usec  += x_fHcvtin_stop.tv_usec - x_fHcvtin_start.tv_usec;
+ #endif // INT_TIME
+
+  // Call the FFT Accelerator
+  //    NOTE: Currently this is blocking-wait for call to complete
+ #ifdef INT_TIME
+  gettimeofday(&(x_fHcomp_start), NULL);
+ #endif // INT_TIME
+  DEBUG(printf("XMIT: calling the HW_XMIT_FFT[%u]\n", fn));
+  xmit_fft_in_hw(&(xmit_fftHW_fd[fn]), &(xmit_fftHW_desc[fn]));
+ #ifdef INT_TIME
+  gettimeofday(&x_fHcomp_stop, NULL);
+  x_fHcomp_sec   += x_fHcomp_stop.tv_sec  - x_fHcomp_start.tv_sec;
+  x_fHcomp_usec  += x_fHcomp_stop.tv_usec - x_fHcomp_start.tv_usec;
+ #endif
+  // convert output from fixed point to float
+  DEBUG(printf("EHFA:   converting from fixed-point to float\n"));
+ #ifdef INT_TIME
+  gettimeofday(&(x_fHcvtout_start), NULL);
+ #endif // INT_TIME
+  for (int k = 0; k < (n_inputs+(size-1)); k += size) {
+    for (int i = 0; i < size; i++) {
+      output_real[k + i] = recluster[i&0x1]*(float)fx2float(xmit_fftHW_lmem[fn][jidx++], FX_IL);
+      output_imag[k + i] = recluster[i&0x1]*(float)fx2float(xmit_fftHW_lmem[fn][jidx++], FX_IL);
+    }
+  }
+ #ifdef INT_TIME
+  gettimeofday(&x_fHcvtout_stop, NULL);
+  x_fHcvtout_sec   += x_fHcvtout_stop.tv_sec  - x_fHcvtout_start.tv_sec;
+  x_fHcvtout_usec  += x_fHcvtout_stop.tv_usec - x_fHcvtout_start.tv_usec;
+  x_fHtotal_sec   += x_fHcvtout_stop.tv_sec  - x_fHcvtin_start.tv_sec;
+  x_fHtotal_usec  += x_fHcvtout_stop.tv_usec - x_fHcvtin_start.tv_usec;
+ #endif // INT_TIME
+
+#else
+  DO_LIMITS_ANALYSIS(float min_input = 3.0e+038;
+		     float max_input = -1.17e-038);
+  DEBUG(printf("Starting do_xmit_fft_work with size %u inverse %u shift %u on n_inputs %u\n", size, inverse, shift, n_inputs));
+  for (int k = 0; k < (n_inputs+(size-1)); k += size) {
+
+    DEBUG(printf(" Prepping for FFT call starting at %u\n", k));
+    // Set up the (scaled) inputs
+    if (shift) {
+      for (int i = 0; i < size/2; i++) {
+	fft_in_real[32+i] = input_real[k + i] * scale;    // Copy  0 .. 31 into 32 .. 63
+	DO_LIMITS_ANALYSIS(if (fft_in_real[32+i] < min_input) { min_input = fft_in_real[32+i]; } 
+			   if (fft_in_real[32+i] > max_input) { max_input = fft_in_real[32+i]; } );
+	fft_in_imag[32+i] = input_imag[k + i] * scale;    // Copy  0 .. 31 into 32 .. 63
+	DO_LIMITS_ANALYSIS(if (fft_in_imag[32+i] < min_input) { min_input = fft_in_imag[32+i]; } 
+			   if (fft_in_imag[32+i] > max_input) { max_input = fft_in_imag[32+i]; });
+	fft_in_real[i] = input_real[k + 32 + i] * scale;  // Copy 32 .. 63 into  0 .. 31
+	DO_LIMITS_ANALYSIS(if (fft_in_real[i] < min_input) { min_input = fft_in_real[i]; } 
+			   if (fft_in_real[i] > max_input) { max_input = fft_in_real[i]; });
+	fft_in_imag[i] = input_imag[k + 32 + i] * scale;  // Copy 32 .. 63 into  0 .. 31
+	DO_LIMITS_ANALYSIS(if (fft_in_imag[i] < min_input) { min_input = fft_in_imag[i]; } 
+			   if (fft_in_imag[i] > max_input) { max_input = fft_in_imag[i]; });
+	DEBUG(if (k == 0) {
+	    printf("  set %u IN[ %2u ] = %11.8f * ( %11.8f + %11.8f i) = %11.8f + %11.8f i\n", k, 32+i, scale, input_real[k+i], input_imag[k+i], fft_in_real[32+i], fft_in_imag[32+i]);
+	    printf("  set %u IN[ %2u ] = %11.8f * ( %11.8f + %11.8f i) = %11.8f + %11.8f i\n", k, i, scale, input_real[k+32+i], input_imag[k+32+i], fft_in_real[i], fft_in_imag[i]);
+	  });
+      }      
+    } else {
+      for (int i = 0; i < size; i++) {
+	fft_in_real[i] = input_real[k + i] * scale;
+	fft_in_imag[i] = input_imag[k + i] * scale;
+	DEBUG(if (k == 0) {
+	    printf(" set %u IN[ %2u ] = %11.8f * ( %11.8f + %11.8f i) = %11.8f + %11.8f i\n", k, i, scale, input_real[k+i], input_imag[k+i], fft_in_real[i], fft_in_imag[i]);
+	  });
+      }
+    }
+    DEBUG(if (k < 256) {
+	printf("\n Iteration %u inputs (in order):\n", k);
+	for (int i = 0; i < size; i++) {
+	  printf("  FFT_%u_IN[ %2u ] = %11.8f * ( %11.8f + %11.8f i) = %11.8f + %11.8f i\n", k, i, scale, input_real[k+i], input_imag[k+i], fft_in_real[i], fft_in_imag[i]);
+	}
+	printf("\nCalling FFT function with inverse = %u size = %u\n", inverse, size);
+      });
+    // NOTE: This version over-writes the input data with output data
+    fft_ri(fft_in_real, fft_in_imag, inverse, false, size, log_size);
+
+    for (int i = 0; i < size; i++) {
+      // Swap sign on the "odd" FFT results (re-cluster energy around zero?)
+      output_real[k + i] = recluster[i&0x1]*fft_in_real[i];
+      output_imag[k + i] = recluster[i&0x1]*fft_in_imag[i];
+    }
+
+    DEBUG(if (k < 256) {
+	for (int i = 0; i < size; i++) {
+	  printf(" FFT_%u_OUT[ %2u : %5u ] = %11.8f + %11.8f i\n", k, i, k+i, output_real[k+i], output_imag[k+i]);
+	}
+      });
+
+    DEBUG(if (k < 4) { printf("\n");} );
+  } // for (k = 0 .. n_inputs
+#endif
+  DO_LIMITS_ANALYSIS(printf("DO_XMIT_FFT_WORK : min_input = %.15g  max_input = %.15g\n", min_input, max_input));
+  DEBUG(printf(" Done with fft calls... output:\n"));
 }
 
 

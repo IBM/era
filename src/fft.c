@@ -152,7 +152,7 @@ bit_reverse (float * w, unsigned int N, unsigned int bits)
 
 /* This version takes in Complex numbers in one array as REALa, IMAGa, REALb, IMAGb, ... */
 int
-fft(float * data, unsigned int N, unsigned int logn, int sign)
+fft(float * data, unsigned int N, unsigned int logn, int sign, int shift)
 {
   unsigned int transform_length;
   unsigned int a, b, i, j, bit;
@@ -214,6 +214,22 @@ fft(float * data, unsigned int N, unsigned int logn, int sign)
     transform_length *= 2;
   }
 
+  if (shift) {
+    float swap_r, swap_i;
+    int M = (N/2);
+    /* shift: */
+    for(unsigned i = 0; i < M; i++) {
+      int idx = 2*i;
+      int mdx = 2*(M+i);
+      swap_r = data[idx  ];
+      swap_i = data[idx+1];
+      data[idx  ] = data[mdx  ];
+      data[idx+1] = data[mdx+1];
+      data[mdx+i] = swap_r;
+      data[mdx+i] = swap_i;
+    }
+  }
+
   return 0;
 }
 
@@ -251,11 +267,19 @@ fft_ri(float * rdata, float * idata, int inverse, int shift, unsigned int N, uns
   unsigned int a, b, i, j, bit;
   float theta, t_real, t_imag, w_real, w_imag, s, t, s2, z_real, z_imag;
   int sign = (inverse ? 1 : -1);
-  
+
   transform_length = 1;
 
   /* bit reversal */
+#ifdef INT_TIME
+  gettimeofday(&bitrev_start, NULL);
+#endif
   bit_reverse_ri(rdata, idata, N, logn);
+#ifdef INT_TIME
+  gettimeofday(&bitrev_stop, NULL);
+  bitrev_sec  += bitrev_stop.tv_sec  - bitrev_start.tv_sec;
+  bitrev_usec += bitrev_stop.tv_usec - bitrev_start.tv_usec;
+#endif
 
   /* calculation */
   for (bit = 0; bit < logn; bit++) {

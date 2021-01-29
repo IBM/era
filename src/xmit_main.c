@@ -58,6 +58,9 @@ bool show_main_output = true;
 bool show_xmit_output = false;
 bool do_add_pre_pad = false;
 
+#ifdef XMIT_HW_FFT
+extern void free_XMIT_FFT_HW_RESOURCES();
+#endif
 
 void print_usage(char * pname) {
   printf("Usage: %s <OPTIONS>\n", pname);
@@ -69,6 +72,17 @@ void print_usage(char * pname) {
   printf("    -M <0|1>   : 0=disable 1=enable output of Messages (input and output) per time step\n");
   printf("    -x <0|1>   : 0=disable 1=enable output of XMIT output per time step\n");
   printf("    -o <FN>    : Output the encoded message data to file <FN>\n");
+}
+
+
+// This cleans up the state before exit
+void closeout_and_exit(char* last_msg, int rval)
+{
+ #ifdef XMIT_HW_FFT
+  free_XMIT_FFT_HW_RESOURCES();
+ #endif
+  printf("%s\n", last_msg);
+  exit(rval);
 }
 
 
@@ -231,3 +245,6 @@ int main(int argc, char *argv[])
   printf("\nDone.\n");
   return 0;
 }
+
+
+

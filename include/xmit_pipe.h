@@ -73,6 +73,20 @@ extern uint64_t x_fft_usec;
 extern uint64_t x_ocycpref_sec;
 extern uint64_t x_ocycpref_usec;
 
+#ifdef XMIT_HW_FFT
+extern uint64_t x_fHtotal_sec;
+extern uint64_t x_fHtotal_usec;
+
+extern uint64_t x_fHcvtin_sec;
+extern uint64_t x_fHcvtin_usec;
+
+extern uint64_t x_fHcomp_sec;
+extern uint64_t x_fHcomp_usec;
+
+extern uint64_t x_fHcvtout_sec;
+extern uint64_t x_fHcvtout_usec;
+#endif
+
 #endif
 
 void xmit_pipe_init();

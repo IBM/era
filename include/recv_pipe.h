@@ -71,6 +71,20 @@ extern uint64_t r_descrmbl_usec;
 extern uint64_t r_zz_sec;
 extern uint64_t r_zz_usec;
 
+#ifdef RECV_HW_FFT
+
+extern uint64_t r_fHtotal_sec;
+extern uint64_t r_fHtotal_usec;
+
+extern uint64_t r_fHcvtin_sec;
+extern uint64_t r_fHcvtin_usec;
+
+extern uint64_t r_fHcomp_sec;
+extern uint64_t r_fHcomp_usec;
+
+extern uint64_t r_fHcvtout_sec;
+extern uint64_t r_fHcvtout_usec;
+#endif
 #endif
 
 void recv_pipe_init();

@@ -83,7 +83,7 @@
 
 /* This is the original version, which does only FFT and usese a single input array
    containing pairs of values as REALa, IMAGa, REALb, IMAGb, ... */
-int fft(float * data, unsigned int N, unsigned int logn, int sign);
+int fft(float * data, unsigned int N, unsigned int logn, int sign, int shift);
 
 /* This is the version that supports the SDR code, and is more general.
    This takes in two arrays, one of real values, one of imaginary values, so a number is R[x] + i*I[x]

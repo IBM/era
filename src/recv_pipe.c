@@ -9,6 +9,23 @@
 #include <assert.h>
 
 #include "debug.h"
+#ifdef RECV_HW_FFT
+ #include <fcntl.h>
+ #include <math.h>
+ #include <pthread.h>
+ #include <sys/types.h>
+ #include <sys/mman.h>
+ #include <sys/stat.h>
+ #include <string.h>
+ #include <time.h>
+ #include <unistd.h>
+
+ #include "contig.h"
+ #include "mini-era.h"
+ #include "mini-era.h"
+#endif // HW_VIT
+
+#include "globals.h"
 #include "sdr_type.h"
 #include "sdr_base.h"
 #include "delay.h"
@@ -83,6 +100,25 @@ struct timeval r_zz_stop, r_zz_start;
 uint64_t r_zz_sec  = 0LL;
 uint64_t r_zz_usec = 0LL;
 
+#ifdef RECV_HW_FFT
+struct timeval r_fHtotal_stop, r_fHtotal_start;
+uint64_t r_fHtotal_sec  = 0LL;
+uint64_t r_fHtotal_usec = 0LL;
+
+struct timeval r_fHcvtin_stop, r_fHcvtin_start;
+uint64_t r_fHcvtin_sec  = 0LL;
+uint64_t r_fHcvtin_usec = 0LL;
+
+struct timeval r_fHcomp_stop, r_fHcomp_start;
+uint64_t r_fHcomp_sec  = 0LL;
+uint64_t r_fHcomp_usec = 0LL;
+
+struct timeval r_fHcvtout_stop, r_fHcvtout_start;
+uint64_t r_fHcvtout_sec  = 0LL;
+uint64_t r_fHcvtout_usec = 0LL;
+#endif
+
+
 #endif
 
 
@@ -92,13 +128,13 @@ fx_pt  firc_input[CMP_MULT_MAX_SIZE + COMPLEX_COEFF_LENGTH]; // holds cmpx_mult_
 fx_pt* cmpx_mult_out = &(firc_input[COMPLEX_COEFF_LENGTH]);
 fx_pt  correlation_complex[FIRC_MAVG48_MAX_SIZE]; // (firc mov_avg48 output
 //fx_pt correlation_complex_m48[MOV_AVG48_MAX_SIZE]; // (mov_avg48 output
-  
+
 fx_pt1  correlation[CMP2MAG_MAX_SIZE]; // complex_to_mangitude outpu
 fx_pt1  fir_input[CMP2MAGSQ_MAX_SIZE + COEFF_LENGTH]; // holds signal_power but pre-pads with zeros
 fx_pt1* signal_power = &(fir_input[COEFF_LENGTH]);
 fx_pt1  avg_signal_power[FIR_MAVG64_MAX_SIZE]; // fir moving-average-64
 //fx_pt1 avg_signal_power_m64[MOV_AVG64_MAX_SIZE]; // moving-average64
-  
+
 fx_pt1 the_correlation[DIVIDE_MAX_SIZE];
 
 fx_pt frame_d[DELAY_320_MAX_OUT_SIZE]; // delay320 output
@@ -118,6 +154,73 @@ void compute(unsigned num_inputs, fx_pt *inbuff, int* out_msg_len, uint8_t *outb
 /********************************************************************************
  * This routine manages the initializations for all recv pipeline components
  ********************************************************************************/
+
+#ifdef COMPILE_TO_ESP
+#include "fixed_point.h"
+#endif
+
+#ifdef RECV_HW_FFT
+// These are RECV FFT Hardware Accelerator Variables, etc.
+char recv_fftAccelName[NUM_RECV_FFT_ACCEL][64];// = {"/dev/recv_fft.0", "/dev/recv_fft.1", "/dev/recv_fft.2", "/dev/recv_fft.3", "/dev/recv_fft.4", "/dev/recv_fft.5"};
+
+int recv_fftHW_fd[NUM_RECV_FFT_ACCEL];
+contig_handle_t recv_fftHW_mem[NUM_RECV_FFT_ACCEL];
+
+recv_fftHW_token_t* recv_fftHW_lmem[NUM_RECV_FFT_ACCEL];  // Pointer to local version (mapping) of recv_fftHW_mem
+recv_fftHW_token_t* recv_fftHW_li_mem[NUM_RECV_FFT_ACCEL]; // Pointer to input memory block
+recv_fftHW_token_t* recv_fftHW_lo_mem[NUM_RECV_FFT_ACCEL]; // Pointer to output memory block
+size_t recv_fftHW_in_len[NUM_RECV_FFT_ACCEL];
+size_t recv_fftHW_out_len[NUM_RECV_FFT_ACCEL];
+size_t recv_fftHW_in_size[NUM_RECV_FFT_ACCEL];
+size_t recv_fftHW_out_size[NUM_RECV_FFT_ACCEL];
+size_t recv_fftHW_out_offset[NUM_RECV_FFT_ACCEL];
+size_t recv_fftHW_size[NUM_RECV_FFT_ACCEL];
+fft2_access recv_fftHW_desc[NUM_RECV_FFT_ACCEL];
+
+
+static void init_recv_fft_parameters(unsigned n, uint32_t logn_samples, uint32_t num_ffts, uint32_t do_inverse, uint32_t do_shift, uint32_t scale_factor)
+{
+  size_t recv_fftHW_in_words_adj;
+  size_t recv_fftHW_out_words_adj;
+  int len = (1 << logn_samples) * num_ffts;
+  DEBUG(printf("  In init_recv_fft_parameters with n = %u and logn = %u\n", n, log_nsamples));
+  recv_fftHW_desc[n].logn_samples    = logn_samples; 
+  recv_fftHW_desc[n].do_inverse      = do_inverse;
+  recv_fftHW_desc[n].do_shift        = do_shift;
+  recv_fftHW_desc[n].scale_factor    = scale_factor;
+
+  if (DMA_WORD_PER_BEAT(sizeof(recv_fftHW_token_t)) == 0) {
+    recv_fftHW_in_words_adj  = 2 * len;
+    recv_fftHW_out_words_adj = 2 * len;
+  } else {
+    recv_fftHW_in_words_adj  = round_up(2 * len, DMA_WORD_PER_BEAT(sizeof(recv_fftHW_token_t)));
+    recv_fftHW_out_words_adj = round_up(2 * len, DMA_WORD_PER_BEAT(sizeof(recv_fftHW_token_t)));
+  }
+  recv_fftHW_in_len[n]  = recv_fftHW_in_words_adj;
+  recv_fftHW_out_len[n] =  recv_fftHW_out_words_adj;
+  recv_fftHW_in_size[n]  = recv_fftHW_in_len[n] * sizeof(recv_fftHW_token_t);
+  recv_fftHW_out_size[n] = recv_fftHW_out_len[n] * sizeof(recv_fftHW_token_t);
+  recv_fftHW_out_offset[n] = 0;
+  recv_fftHW_size[n] = (recv_fftHW_out_offset[n] * sizeof(recv_fftHW_token_t)) + recv_fftHW_out_size[n];
+  DEBUG(printf("  returning from init_recv_fft_parameters for HW_RECV_FFT[%u]\n", n));
+}
+
+static void recv_fft_in_hw(int *fd, struct fftHW_access *desc)
+{
+  if (ioctl(*fd, FFTHW_IOC_ACCESS, *desc)) {
+    perror("ERROR : recv_fft_in_hw : IOCTL:\n");
+    closeout_and_exit("Bad ioctl invocation for RECV pipe", EXIT_FAILURE);
+  }
+}
+
+void free_RECV_FFT_HW_RESOURCES() {
+  for (int fi = 0; fi < NUM_RECV_FFT_ACCEL; fi++) {
+    contig_free(recv_fftHW_mem[fi]);
+    close(recv_fftHW_fd[fi]);
+  }
+}
+#endif // RECV_HW_FFT
+
 void
 recv_pipe_init() {
   // Initialize the pre-pended zero segments for fir_input and firc_input
@@ -127,6 +230,56 @@ recv_pipe_init() {
   for (int i = 0; i < COMPLEX_COEFF_LENGTH; i++) {
     firc_input[i] = 0;
   }
+
+#ifdef RECV_HW_FFT
+  // This initializes the RECV_FFT Accelerator Pool
+  printf("Initializing the %u total RECV_FFT Accelerators...\n", NUM_RECV_FFT_ACCEL);
+  for (int fi = 0; fi < NUM_RECV_FFT_ACCEL; fi++) {
+    // Inititalize to the "largest legal" RECV_FFT size
+    printf("Calling init_recv_fft_parameters for Accel %u (of %u) with LOGN %u and MAX_FFTS %u\n", fi, NUM_RECV_FFT_ACCEL, MAX_RECV_FFT_LOGN, MAX_RECV_NUM_FFTS);
+    init_recv_fft_parameters(fi, MAX_RECV_FFT_LOGN, MAX_RECV_NUM_FFTS, 0, 0, 0);
+
+    snprintf(recv_fftAccelName[fi], 63, "%s.%u", FFT_DEV_BASE, (NUM_XMIT_FFT_ACCEL + fi)); /* Start RECV after XMIT */
+    printf(" Acclerator %u opening RECV_FFT device %s\n", fi, recv_fftAccelName[fi]);
+    recv_fftHW_fd[fi] = open(recv_fftAccelName[fi], O_RDWR, 0);
+    if (recv_fftHW_fd[fi] < 0) {
+      fprintf(stderr, "Error: cannot open %s\n", recv_fftAccelName[fi]);
+      closeout_and_exit("Cannot open RECV FFT Accel", EXIT_FAILURE);
+    }
+
+    printf(" Allocate hardware buffer of size %u\n", recv_fftHW_size[fi]);
+    recv_fftHW_lmem[fi] = contig_alloc(recv_fftHW_size[fi], &(recv_fftHW_mem[fi]));
+    if (recv_fftHW_lmem[fi] == NULL) {
+      fprintf(stderr, "Error: cannot allocate %u contig bytes\n", recv_fftHW_size[fi]);
+      closeout_and_exit("Cannot allocate RECV_FFT memory", EXIT_FAILURE);
+    }
+
+    recv_fftHW_li_mem[fi] = &(recv_fftHW_lmem[fi][0]);
+    recv_fftHW_lo_mem[fi] = &(recv_fftHW_lmem[fi][recv_fftHW_out_offset[fi]]);
+    printf(" Set recv_fftHW_li_mem = %p  AND recv_fftHW_lo_mem = %p\n", recv_fftHW_li_mem[fi], recv_fftHW_lo_mem[fi]);
+
+    recv_fftHW_desc[fi].esp.run = true;
+    recv_fftHW_desc[fi].esp.coherence = ACC_COH_NONE;
+    recv_fftHW_desc[fi].esp.p2p_store = 0;
+    recv_fftHW_desc[fi].esp.p2p_nsrcs = 0;
+    //recv_fftHW_desc[fi].esp.p2p_srcs = {"", "", "", ""};
+    recv_fftHW_desc[fi].esp.contig = contig_to_khandle(recv_fftHW_mem[fi]);
+
+#if USE_RECV_FFT_ACCEL_VERSION == 1
+    // Always use BIT-REV in HW for now -- simpler interface, etc.
+    recv_fftHW_desc[fi].do_bitrev  = RECV_FFTHW_DO_BITREV;
+#elif USE_RECV_FFT_ACCEL_VERSION == 2
+    recv_fftHW_desc[fi].num_recv_ffts      = 1;  // We only use one at a time in this applciation.
+    recv_fftHW_desc[fi].do_inverse    = RECV_FFTHW_NO_INVERSE;
+    recv_fftHW_desc[fi].do_shift      = RECV_FFTHW_NO_SHIFT;
+    recv_fftHW_desc[fi].scale_factor = 1;
+#endif
+    //recv_fftHW_desc[fi].logn_samples  = log_nsamples; 
+    recv_fftHW_desc[fi].src_offset = 0;
+    recv_fftHW_desc[fi].dst_offset = 0;
+  }
+#endif
+
 }
 
 
@@ -144,6 +297,75 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
     exit(-7);
   }
   DEBUG(printf("FFT_COMP : num_fft_frames = %u\n", num_fft_frames));
+  const uint32_t log_nsamples = 6;
+  const uint32_t num_samples = (1<<log_nsamples);
+  const uint32_t do_inverse = 0;
+  const uint32_t do_shift = 1;
+#ifdef RECV_HW_FFT
+  // Now we call the init_fft_parameters for the target FFT HWR accelerator and the specific log_nsamples for this invocation
+  const uint32_t fn = 0;
+  const uint32_t scale_factor = 1;
+  printf("Calling init_recv_fft_parms fn %u lgn %u nfft %u inv %u shft %u\n", fn, log_nsamples, num_fft_frames, do_inverse, do_shift, scale_factor);
+  init_recv_fft_parameters(fn, log_nsamples, num_fft_frames, do_inverse, do_shift, scale_factor);
+
+ #ifdef INT_TIME
+  gettimeofday(&(r_fHcvtin_start), NULL);
+ #endif // INT_TIME
+  // convert input from float to fixed point
+  // We also SCALE it here (but we should be able to do that in the HWR Accel later)
+  int jidx = 0;
+  printf(" RECV: Doing convert-inputs...\n");
+  for (unsigned i = 0; i < num_fft_frames /*SYNC_L_OUT_MAX_SIZE/64*/; i++) { // This is the "spin" to invoke the FFT
+	  //printf("  RECV: converting FFT frame %u\n",i); fflush(stdout);
+    for (unsigned j = 0; j < 64; j++) {
+      fx_pt fftSample;
+      //printf("    RECV: jidx %u : fftSample = d_sync_long_out_frames[64* %u + %u] = [ %u ] = %f\n", jidx, i, j, 64*i+j, d_sync_long_out_frames[64*i + j]); fflush(stdout);
+      fftSample = d_sync_long_out_frames[64*i + j]; // 64 * invocations + offset_j
+      recv_fftHW_lmem[fn][jidx++] = float2fx((float)crealf(fftSample), FX_IL);
+      recv_fftHW_lmem[fn][jidx++] = float2fx((float)cimagf(fftSample), FX_IL);
+    }
+  }
+ #ifdef INT_TIME
+  gettimeofday(&r_fHcvtin_stop, NULL);
+  r_fHcvtin_sec   += r_fHcvtin_stop.tv_sec  - r_fHcvtin_start.tv_sec;
+  r_fHcvtin_usec  += r_fHcvtin_stop.tv_usec - r_fHcvtin_start.tv_usec;
+ #endif // INT_TIME
+
+  // Call the FFT Accelerator
+  //    NOTE: Currently this is blocking-wait for call to complete
+ #ifdef INT_TIME
+  gettimeofday(&(r_fHcomp_start), NULL);
+ #endif // INT_TIME
+  //DEBUG(
+  printf(" RECV: calling the HW_RECV_FFT[%u]\n", fn);//);
+  recv_fft_in_hw(&(recv_fftHW_fd[fn]), &(recv_fftHW_desc[fn]));
+ #ifdef INT_TIME
+  gettimeofday(&r_fHcomp_stop, NULL);
+  r_fHcomp_sec   += r_fHcomp_stop.tv_sec  - r_fHcomp_start.tv_sec;
+  r_fHcomp_usec  += r_fHcomp_stop.tv_usec - r_fHcomp_start.tv_usec;
+ #endif
+  // convert output from fixed point to float
+  DEBUG(printf("EHFA:   converting from fixed-point to float\n"));
+ #ifdef INT_TIME
+  gettimeofday(&(r_fHcvtout_start), NULL);
+ #endif // INT_TIME
+  printf(" RECV: Doing convert-outputs...\n");
+  for (unsigned i = 0; i < num_fft_frames /*SYNC_L_OUT_MAX_SIZE/64*/; i++) { // This is the "spin" to invoke the FFT
+    for (unsigned j = 0; j < 64; j++) {
+      fft_ar_r[64*i + j] = (float)fx2float(recv_fftHW_lmem[fn][jidx++], FX_IL);
+      fft_ar_i[64*i + j] = (float)fx2float(recv_fftHW_lmem[fn][jidx++], FX_IL);
+    }
+  }
+  num_fft_outs = 64 * num_fft_frames;
+ #ifdef INT_TIME
+  gettimeofday(&r_fHcvtout_stop, NULL);
+  r_fHcvtout_sec   += r_fHcvtout_stop.tv_sec  - r_fHcvtout_start.tv_sec;
+  r_fHcvtout_usec  += r_fHcvtout_stop.tv_usec - r_fHcvtout_start.tv_usec;
+  r_fHtotal_sec   += r_fHcvtout_stop.tv_sec  - r_fHcvtin_start.tv_sec;
+  r_fHtotal_usec  += r_fHcvtout_stop.tv_usec - r_fHcvtin_start.tv_usec;
+ #endif // INT_TIME
+
+#else
   { // The FFT only uses one set of input/outputs (the fft_in) and overwrites the inputs with outputs
     float fft_in_real[64];
     float fft_in_imag[64];
@@ -156,7 +378,7 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
 	  fftSample = d_sync_long_out_frames[64*i + j]; // 64 * invocations + offset_j
 	  fft_in_real[32 + j] = (float)creal(fftSample);
 	  fft_in_imag[32 + j] = (float)cimagf(fftSample);
-	  
+
 	  fftSample = d_sync_long_out_frames[64*i + 32 + j]; // 64 * invocations + offset_j
 	  fft_in_real[j] = (float)crealf(fftSample);
 	  fft_in_imag[j] = (float)cimagf(fftSample);
@@ -178,7 +400,7 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
 	    for (unsigned j = 0; j < 64; j++) {
 	      printf("   FFT_IN %4u %2u : %6u %12.8f %12.8f\n", i, j, 64*i+j, fft_in_real[j], fft_in_imag[j]);
 	    });
-      fft_ri(fft_in_real, fft_in_imag, false, true, 64, 6); // not-inverse, but shifting
+      fft_ri(fft_in_real, fft_in_imag, do_inverse, do_shift, num_samples, log_nsamples); // not-inverse, but shifting
       DEBUG(printf("  FFT Output %4u \n", i);
 	    for (unsigned j = 0; j < 64; j++) {
 	      printf("   FFT_OUT %4u %2u : %6u %12.8f %12.8f\n", i, j, 64*i+j, fft_in_real[j], fft_in_imag[j]);
@@ -190,7 +412,8 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
       }
       num_fft_outs += 64;
     } // for (i = 0 to CHUNK/64) (FFT invocations loop)
-  }
+  } // Non-HWR FFT Scope
+#endif
   DEBUG(printf(" num_fft_outs = %u  vs  %u = %u * 64\n", num_fft_outs, num_fft_frames*64, num_fft_frames));
   DEBUG(printf("\nFFT Results at Frame-Eq interface:\n");
 	for (unsigned j = 0; j < num_fft_outs /*FRAME_EQ_IN_MAX_SIZE*/; j++) {
