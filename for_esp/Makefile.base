@@ -8,7 +8,11 @@ ifdef COMPILE_TO_ESP
 ESP_ROOT ?= $(realpath ../../esp)
 ESP_DRIVERS ?= $(ESP_ROOT)/soft/common/drivers
 ESP_DRV_LINUX  = $(ESP_DRIVERS)/linux
+$(info $$ESP_ROOT is [${ESP_ROOT}])
+$(info $$ESP_DRIVERS is [${ESP_DRIVERS}])
+$(info $$ESP_DRV_LINUX is [${ESP_DRV_LINUX}])
 endif
+
 
 CC = gcc -std=c99
 
@@ -68,22 +72,22 @@ endif
 ifdef CONFIG_FFT_BITREV
  CFLAGS += -DHW_FFT_BITREV
 endif
-$(info $$FFT_DEVICE_BASE is [${FFT_DEVICE_BASE}])
+#$(info $$FFT_DEVICE_BASE is [${FFT_DEVICE_BASE}])
 
 ifdef CONFIG_VITERBI_EN
  CFLAGS += -DHW_VIT
  CFLAGS += -DVIT_DEV_BASE='"$(VIT_DEVICE_BASE).0"'
  ifdef CONFIG_HW_SM_DECODE
   CFLAGS += -DDEC_SIG_FIELD_ON_HW=$(CONFIG_HW_SM_DECODE)
- else 
+ else
   CFLAGS += -DDEC_SIG_FIELD_ON_HW=false
  endif
  DEC_SIGF_FNMSTR = _$(CONFIG_HW_SM_DECODE)
-else 
+else
  CFLAGS += -DDEC_SIG_FIELD_ON_HW=false
- DEC_SIGF_FNMSTR = 
+ DEC_SIGF_FNMSTR =
 endif
-$(info $$VIT_DEVICE_BASE is [${VIT_DEVICE_BASE}])
+#$(info $$VIT_DEVICE_BASE is [${VIT_DEVICE_BASE}])
 
 ifdef CONFIG_KERAS_CV_BYPASS
 CFLAGS += -DBYPASS_KERAS_CV_CODE
@@ -120,6 +124,8 @@ endif
 ifdef CONFIG_NUM_IOS
 CFLAGS += -DDO_NUM_IOS
 endif
+
+ESP_BUILD_DRIVERS     = esp-build/drivers
 
 LDLIBS ?=
 ifdef COMPILE_TO_ESP
@@ -184,14 +190,13 @@ ALL_OBJ_DIR=obj_era1 obj_era2 obj_pera1 obj_pera2 obj_recv obj_xmit obj_tera1 ob
 
 all: esp-libs $(ALL_OBJ_DIR) $(TARGET_ERA1) $(TARGET_ERA2) $(TARGET_PERA1) $(TARGET_PERA2) $(TARGET_RECV) $(TARGET_XMIT) $(TARGET_TERA1) $(TARGET_TERA2) $(TARGET_TPERA1) $(TARGET_TPERA2) $(TARGET_TRECV) $(TARGET_TXMIT)
 
-ESP_BUILD_DRIVERS     = esp-build/drivers
 
 esp-build:
 	@mkdir -p $(ESP_BUILD_DRIVERS)/contig_alloc
 	@mkdir -p $(ESP_BUILD_DRIVERS)/esp
 	@mkdir -p $(ESP_BUILD_DRIVERS)/esp_cache
-	@mkdir -p $(ESP_BUILD_DRIVERS)/libesp
 	@mkdir -p $(ESP_BUILD_DRIVERS)/probe
+	@mkdir -p $(ESP_BUILD_DRIVERS)/libesp
 	@mkdir -p $(ESP_BUILD_DRIVERS)/test
 	@mkdir -p $(ESP_BUILD_DRIVERS)/utils/baremetal
 	@mkdir -p $(ESP_BUILD_DRIVERS)/utils/linux
@@ -207,7 +212,7 @@ esp-build-clean:
 esp-build-distclean: esp-build-clean
 	$(QUIET_CLEAN)$(RM) -rf esp-build
 
-ifdef COMPILE_FOR_ESP
+ifdef COMPILE_TO_ESP
 esp-libs: esp-build
 	  CROSS_COMPILE=$(CROSS_COMPILE) DRIVERS=$(ESP_DRV_LINUX) $(MAKE) -C $(ESP_BUILD_DRIVERS)/contig_alloc/ libcontig.a
 	  cd $(ESP_BUILD_DRIVERS)/test; CROSS_COMPILE=$(CROSS_COMPILE) BUILD_PATH=$$PWD $(MAKE) -C $(ESP_DRV_LINUX)/test
@@ -215,7 +220,7 @@ esp-libs: esp-build
 	  cd $(ESP_BUILD_DRIVERS)/utils; CROSS_COMPILE=$(CROSS_COMPILE) BUILD_PATH=$$PWD $(MAKE) -C $(ESP_DRV_LINUX)/utils
 else
 esp-libs: 
-
+	  @echo Blank rule for esp-libs
 endif
 
 .PHONY: esp-build-clean esp-build-distclean esp-libs
