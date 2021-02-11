@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -21,7 +20,6 @@
  #include <unistd.h>
 
  #include "contig.h"
- #include "mini-era.h"
  #include "mini-era.h"
 #endif // HW_VIT
 
@@ -185,6 +183,7 @@ static void init_recv_fft_parameters(unsigned n, uint32_t logn_samples, uint32_t
   int len = (1 << logn_samples) * num_ffts;
   DEBUG(printf("  In init_recv_fft_parameters with n = %u and logn = %u\n", n, log_nsamples));
   recv_fftHW_desc[n].logn_samples    = logn_samples; 
+  recv_fftHW_desc[n].num_ffts        = num_ffts;
   recv_fftHW_desc[n].do_inverse      = do_inverse;
   recv_fftHW_desc[n].do_shift        = do_shift;
   recv_fftHW_desc[n].scale_factor    = scale_factor;
@@ -269,10 +268,10 @@ recv_pipe_init() {
     // Always use BIT-REV in HW for now -- simpler interface, etc.
     recv_fftHW_desc[fi].do_bitrev  = RECV_FFTHW_DO_BITREV;
 #elif USE_RECV_FFT_ACCEL_VERSION == 2
-    recv_fftHW_desc[fi].num_recv_ffts      = 1;  // We only use one at a time in this applciation.
-    recv_fftHW_desc[fi].do_inverse    = RECV_FFTHW_NO_INVERSE;
-    recv_fftHW_desc[fi].do_shift      = RECV_FFTHW_NO_SHIFT;
-    recv_fftHW_desc[fi].scale_factor = 1;
+    recv_fftHW_desc[fi].num_recv_ffts  = 1;
+    recv_fftHW_desc[fi].do_inverse     = RECV_FFTHW_NO_INVERSE;
+    recv_fftHW_desc[fi].do_shift       = RECV_FFTHW_NO_SHIFT;
+    recv_fftHW_desc[fi].scale_factor   = 1;
 #endif
     //recv_fftHW_desc[fi].logn_samples  = log_nsamples; 
     recv_fftHW_desc[fi].src_offset = 0;
@@ -313,18 +312,20 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
  #endif // INT_TIME
   // convert input from float to fixed point
   // We also SCALE it here (but we should be able to do that in the HWR Accel later)
-  int jidx = 0;
-  printf(" RECV: Doing convert-inputs...\n");
-  for (unsigned i = 0; i < num_fft_frames /*SYNC_L_OUT_MAX_SIZE/64*/; i++) { // This is the "spin" to invoke the FFT
-	  //printf("  RECV: converting FFT frame %u\n",i); fflush(stdout);
-    for (unsigned j = 0; j < 64; j++) {
-      fx_pt fftSample;
-      //printf("    RECV: jidx %u : fftSample = d_sync_long_out_frames[64* %u + %u] = [ %u ] = %f\n", jidx, i, j, 64*i+j, d_sync_long_out_frames[64*i + j]); fflush(stdout);
-      fftSample = d_sync_long_out_frames[64*i + j]; // 64 * invocations + offset_j
-      recv_fftHW_lmem[fn][jidx++] = float2fx((float)crealf(fftSample), FX_IL);
-      recv_fftHW_lmem[fn][jidx++] = float2fx((float)cimagf(fftSample), FX_IL);
+  { // scope for jidx
+    int jidx = 0;
+    printf(" RECV: Doing convert-inputs...\n");
+    for (unsigned i = 0; i < num_fft_frames /*SYNC_L_OUT_MAX_SIZE/64*/; i++) { // This is the "spin" to invoke the FFT
+      //printf("  RECV: converting FFT frame %u\n",i); fflush(stdout);
+      for (unsigned j = 0; j < 64; j++) {
+        fx_pt fftSample;
+        //printf("    RECV: jidx %u : fftSample = d_sync_long_out_frames[64* %u + %u] = [ %u ] = %f\n", jidx, i, j, 64*i+j, d_sync_long_out_frames[64*i + j]); fflush(stdout);
+        fftSample = d_sync_long_out_frames[64*i + j]; // 64 * invocations + offset_j
+        recv_fftHW_lmem[fn][jidx++] = float2fx((float)crealf(fftSample), FX_IL);
+        recv_fftHW_lmem[fn][jidx++] = float2fx((float)cimagf(fftSample), FX_IL);
+      }
     }
-  }
+  } // scope for jidx
  #ifdef INT_TIME
   gettimeofday(&r_fHcvtin_stop, NULL);
   r_fHcvtin_sec   += r_fHcvtin_stop.tv_sec  - r_fHcvtin_start.tv_sec;
@@ -350,12 +351,15 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
   gettimeofday(&(r_fHcvtout_start), NULL);
  #endif // INT_TIME
   printf(" RECV: Doing convert-outputs...\n");
-  for (unsigned i = 0; i < num_fft_frames /*SYNC_L_OUT_MAX_SIZE/64*/; i++) { // This is the "spin" to invoke the FFT
-    for (unsigned j = 0; j < 64; j++) {
-      fft_ar_r[64*i + j] = (float)fx2float(recv_fftHW_lmem[fn][jidx++], FX_IL);
-      fft_ar_i[64*i + j] = (float)fx2float(recv_fftHW_lmem[fn][jidx++], FX_IL);
+  { // scope for jidx
+    int jidx = 0;
+    for (unsigned i = 0; i < num_fft_frames /*SYNC_L_OUT_MAX_SIZE/64*/; i++) { // This is the "spin" to invoke the FFT
+      for (unsigned j = 0; j < 64; j++) {
+        fft_ar_r[64*i + j] = (float)fx2float(recv_fftHW_lmem[fn][jidx++], FX_IL);
+        fft_ar_i[64*i + j] = (float)fx2float(recv_fftHW_lmem[fn][jidx++], FX_IL);
+      }
     }
-  }
+  } // scope for jidx
   num_fft_outs = 64 * num_fft_frames;
  #ifdef INT_TIME
   gettimeofday(&r_fHcvtout_stop, NULL);

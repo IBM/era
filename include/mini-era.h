@@ -65,11 +65,13 @@ typedef fftHW_native_t recv_fftHW_native_t;
 typedef struct fftHW_access {
 	struct esp_access esp;
 	/* <<--regs-->> */
+
 	unsigned logn_samples;
 	unsigned num_ffts;
 	unsigned do_inverse;
 	unsigned do_shift;
 	unsigned scale_factor; // (not used)
+
 	unsigned src_offset;
 	unsigned dst_offset;
 } fft2_access;

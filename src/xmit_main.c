@@ -219,7 +219,7 @@ int main(int argc, char *argv[])
       }
       fprintf(outF, "%u %u\n", xmit_msg_len, xmit_num_out);
       for (int i = 0; i < xmit_num_out; i++) {
-	fprintf(outF, "%12.8f %12.8f", xmit_out_real[i], xmit_out_imag[i]);
+	fprintf(outF, "%12.8f %12.8f\n", xmit_out_real[i], xmit_out_imag[i]);
       }
       fclose(outF);
     }

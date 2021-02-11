@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
   }    
   DEBUG(printf("  The message is %u bytes and %u complex encoded values\n", xmit_msg_len, xmit_num_out));
   for (int i = 0; i < xmit_num_out; i++) {
-    if (fscanf(inF, "%f %f", &xmit_out_real[i], &xmit_out_imag[i]) != 2) {
+    if (fscanf(inF, "%f %f\n", &xmit_out_real[i], &xmit_out_imag[i]) != 2) {
       printf("ERROR reading the complex input %d values\n", i);
       fclose(inF);
       exit(-2);
