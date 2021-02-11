@@ -164,43 +164,47 @@ char recv_fftAccelName[NUM_RECV_FFT_ACCEL][64];// = {"/dev/recv_fft.0", "/dev/re
 int recv_fftHW_fd[NUM_RECV_FFT_ACCEL];
 contig_handle_t recv_fftHW_mem[NUM_RECV_FFT_ACCEL];
 
-recv_fftHW_token_t* recv_fftHW_lmem[NUM_RECV_FFT_ACCEL];  // Pointer to local version (mapping) of recv_fftHW_mem
-recv_fftHW_token_t* recv_fftHW_li_mem[NUM_RECV_FFT_ACCEL]; // Pointer to input memory block
-recv_fftHW_token_t* recv_fftHW_lo_mem[NUM_RECV_FFT_ACCEL]; // Pointer to output memory block
+fftHW_token_t* recv_fftHW_lmem[NUM_RECV_FFT_ACCEL];  // Pointer to local version (mapping) of recv_fftHW_mem
+fftHW_token_t* recv_fftHW_li_mem[NUM_RECV_FFT_ACCEL]; // Pointer to input memory block
+fftHW_token_t* recv_fftHW_lo_mem[NUM_RECV_FFT_ACCEL]; // Pointer to output memory block
 size_t recv_fftHW_in_len[NUM_RECV_FFT_ACCEL];
 size_t recv_fftHW_out_len[NUM_RECV_FFT_ACCEL];
 size_t recv_fftHW_in_size[NUM_RECV_FFT_ACCEL];
 size_t recv_fftHW_out_size[NUM_RECV_FFT_ACCEL];
 size_t recv_fftHW_out_offset[NUM_RECV_FFT_ACCEL];
 size_t recv_fftHW_size[NUM_RECV_FFT_ACCEL];
-fft2_access recv_fftHW_desc[NUM_RECV_FFT_ACCEL];
+struct fftHW_access recv_fftHW_desc[NUM_RECV_FFT_ACCEL];
 
 
-static void init_recv_fft_parameters(unsigned n, uint32_t logn_samples, uint32_t num_ffts, uint32_t do_inverse, uint32_t do_shift, uint32_t scale_factor)
+static void init_recv_fft_parameters(unsigned n, uint32_t log_nsamples, uint32_t num_ffts, uint32_t do_inverse, uint32_t do_shift, uint32_t scale_factor)
 {
-  size_t recv_fftHW_in_words_adj;
-  size_t recv_fftHW_out_words_adj;
-  int len = (1 << logn_samples) * num_ffts;
+  size_t fftHW_in_words_adj;
+  size_t fftHW_out_words_adj;
+  int len = 1 << log_nsamples;
   DEBUG(printf("  In init_recv_fft_parameters with n = %u and logn = %u\n", n, log_nsamples));
-  recv_fftHW_desc[n].logn_samples    = logn_samples; 
-  recv_fftHW_desc[n].num_ffts        = num_ffts;
-  recv_fftHW_desc[n].do_inverse      = do_inverse;
-  recv_fftHW_desc[n].do_shift        = do_shift;
-  recv_fftHW_desc[n].scale_factor    = scale_factor;
 
-  if (DMA_WORD_PER_BEAT(sizeof(recv_fftHW_token_t)) == 0) {
-    recv_fftHW_in_words_adj  = 2 * len;
-    recv_fftHW_out_words_adj = 2 * len;
+  recv_fftHW_desc[n].scale_factor = 0;
+  recv_fftHW_desc[n].logn_samples = log_nsamples;
+  recv_fftHW_desc[n].num_ffts     = num_ffts;
+  recv_fftHW_desc[n].do_inverse   = do_inverse;
+  recv_fftHW_desc[n].do_shift     = do_shift;
+
+  if (DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)) == 0) {
+    fftHW_in_words_adj  = 2 * len;
+    fftHW_out_words_adj = 2 * len;
   } else {
-    recv_fftHW_in_words_adj  = round_up(2 * len, DMA_WORD_PER_BEAT(sizeof(recv_fftHW_token_t)));
-    recv_fftHW_out_words_adj = round_up(2 * len, DMA_WORD_PER_BEAT(sizeof(recv_fftHW_token_t)));
+    fftHW_in_words_adj = round_up(2 * len, DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)));
+    fftHW_out_words_adj = round_up(2 * len, DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)));
   }
-  recv_fftHW_in_len[n]  = recv_fftHW_in_words_adj;
-  recv_fftHW_out_len[n] =  recv_fftHW_out_words_adj;
-  recv_fftHW_in_size[n]  = recv_fftHW_in_len[n] * sizeof(recv_fftHW_token_t);
-  recv_fftHW_out_size[n] = recv_fftHW_out_len[n] * sizeof(recv_fftHW_token_t);
+  recv_fftHW_in_len[n]  = fftHW_in_words_adj;
+  recv_fftHW_out_len[n] = fftHW_out_words_adj;
+  recv_fftHW_in_size[n]  = recv_fftHW_in_len[n] * sizeof(fftHW_token_t);
+  recv_fftHW_out_size[n] = recv_fftHW_out_len[n] * sizeof(fftHW_token_t);
   recv_fftHW_out_offset[n] = 0;
-  recv_fftHW_size[n] = (recv_fftHW_out_offset[n] * sizeof(recv_fftHW_token_t)) + recv_fftHW_out_size[n];
+  recv_fftHW_size[n] = (recv_fftHW_out_offset[n] * sizeof(fftHW_token_t)) + recv_fftHW_out_size[n];
+  DEBUG(printf("  returning from init_recv_fft_parameters for HW_FFT[%u]\n", n));
+  printf("    in_len %u %u  in size %u tot_size %u\n", recv_fftHW_in_len[n], recv_fftHW_in_size[n], recv_fftHW_size[n]);
+  printf("   out_len %u %u out size %u out_ofst %u\n", recv_fftHW_out_len[n], recv_fftHW_out_size[n], recv_fftHW_out_offset[n]);
   DEBUG(printf("  returning from init_recv_fft_parameters for HW_RECV_FFT[%u]\n", n));
 }
 
@@ -301,7 +305,7 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
   const uint32_t do_inverse = 0;
   const uint32_t do_shift = 1;
 #ifdef RECV_HW_FFT
-  // Now we call the init_fft_parameters for the target FFT HWR accelerator and the specific log_nsamples for this invocation
+  // Now we call the init_recv_fft_parameters for the target FFT HWR accelerator and the specific log_nsamples for this invocation
   const uint32_t fn = 0;
   const uint32_t scale_factor = 1;
   printf("Calling init_recv_fft_parms fn %u lgn %u nfft %u inv %u shft %u\n", fn, log_nsamples, num_fft_frames, do_inverse, do_shift, scale_factor);

@@ -1500,45 +1500,46 @@ char xmit_fftAccelName[NUM_XMIT_FFT_ACCEL][64];// = {"/dev/xmit_fft.0", "/dev/xm
 int xmit_fftHW_fd[NUM_XMIT_FFT_ACCEL];
 contig_handle_t xmit_fftHW_mem[NUM_XMIT_FFT_ACCEL];
 
-xmit_fftHW_token_t* xmit_fftHW_lmem[NUM_XMIT_FFT_ACCEL];  // Pointer to local version (mapping) of xmit_fftHW_mem
-xmit_fftHW_token_t* xmit_fftHW_li_mem[NUM_XMIT_FFT_ACCEL]; // Pointer to input memory block
-xmit_fftHW_token_t* xmit_fftHW_lo_mem[NUM_XMIT_FFT_ACCEL]; // Pointer to output memory block
+fftHW_token_t* xmit_fftHW_lmem[NUM_XMIT_FFT_ACCEL];  // Pointer to local version (mapping) of xmit_fftHW_mem
+fftHW_token_t* xmit_fftHW_li_mem[NUM_XMIT_FFT_ACCEL]; // Pointer to input memory block
+fftHW_token_t* xmit_fftHW_lo_mem[NUM_XMIT_FFT_ACCEL]; // Pointer to output memory block
 size_t xmit_fftHW_in_len[NUM_XMIT_FFT_ACCEL];
 size_t xmit_fftHW_out_len[NUM_XMIT_FFT_ACCEL];
 size_t xmit_fftHW_in_size[NUM_XMIT_FFT_ACCEL];
 size_t xmit_fftHW_out_size[NUM_XMIT_FFT_ACCEL];
 size_t xmit_fftHW_out_offset[NUM_XMIT_FFT_ACCEL];
 size_t xmit_fftHW_size[NUM_XMIT_FFT_ACCEL];
-fft2_access xmit_fftHW_desc[NUM_XMIT_FFT_ACCEL];
+struct fftHW_access xmit_fftHW_desc[NUM_XMIT_FFT_ACCEL];
 
 
 /* User-defined code */
 static void init_xmit_fft_parameters(unsigned n, uint32_t log_nsamples, uint32_t num_ffts, uint32_t do_inverse, uint32_t do_shift, uint32_t scale_factor)
 {
-  size_t xmit_fftHW_in_words_adj;
-  size_t xmit_fftHW_out_words_adj;
-  int len = (1 << log_nsamples) * num_ffts;
-  //DEBUG(
-  printf("  In init_xfft_parms with n %u of %u : ln %u nfft %u inv %u shft %u scale %u\n", n, NUM_XMIT_FFT_ACCEL, log_nsamples, num_ffts, do_inverse, do_shift, scale_factor);//);
-  xmit_fftHW_desc[n].logn_samples    = log_nsamples; 
-  xmit_fftHW_desc[n].num_ffts        = num_ffts;
-  xmit_fftHW_desc[n].do_inverse      = do_inverse;
-  xmit_fftHW_desc[n].do_shift        = do_shift;
-  xmit_fftHW_desc[n].scale_factor    = scale_factor;
+  size_t fftHW_in_words_adj;
+  size_t fftHW_out_words_adj;
+  int len = 1 << log_nsamples;
+  DEBUG(printf("  In init_xmit_fft_parameters with n = %u and logn = %u\n", n, log_nsamples));
 
-  if (DMA_WORD_PER_BEAT(sizeof(xmit_fftHW_token_t)) == 0) {
-    xmit_fftHW_in_words_adj  = 2 * len;
-    xmit_fftHW_out_words_adj = 2 * len;
+  xmit_fftHW_desc[n].scale_factor = 0;
+  xmit_fftHW_desc[n].logn_samples = log_nsamples;
+  xmit_fftHW_desc[n].num_ffts     = num_ffts;
+  xmit_fftHW_desc[n].do_inverse   = do_inverse;
+  xmit_fftHW_desc[n].do_shift     = do_shift;
+
+  if (DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)) == 0) {
+    fftHW_in_words_adj  = 2 * len;
+    fftHW_out_words_adj = 2 * len;
   } else {
-    xmit_fftHW_in_words_adj = round_up(2 * len, DMA_WORD_PER_BEAT(sizeof(xmit_fftHW_token_t)));
-    xmit_fftHW_out_words_adj = round_up(2 * len, DMA_WORD_PER_BEAT(sizeof(xmit_fftHW_token_t)));
+    fftHW_in_words_adj = round_up(2 * len, DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)));
+    fftHW_out_words_adj = round_up(2 * len, DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)));
   }
-  xmit_fftHW_in_len[n] = xmit_fftHW_in_words_adj;
-  xmit_fftHW_out_len[n] =  xmit_fftHW_out_words_adj;
-  xmit_fftHW_in_size[n] = xmit_fftHW_in_len[n] * sizeof(xmit_fftHW_token_t);
-  xmit_fftHW_out_size[n] = xmit_fftHW_out_len[n] * sizeof(xmit_fftHW_token_t);
+  xmit_fftHW_in_len[n] = fftHW_in_words_adj;
+  xmit_fftHW_out_len[n] =  fftHW_out_words_adj;
+  xmit_fftHW_in_size[n] = xmit_fftHW_in_len[n] * sizeof(fftHW_token_t);
+  xmit_fftHW_out_size[n] = xmit_fftHW_out_len[n] * sizeof(fftHW_token_t);
   xmit_fftHW_out_offset[n] = 0;
-  xmit_fftHW_size[n] = (xmit_fftHW_out_offset[n] * sizeof(xmit_fftHW_token_t)) + xmit_fftHW_out_size[n];
+  xmit_fftHW_size[n] = (xmit_fftHW_out_offset[n] * sizeof(fftHW_token_t)) + xmit_fftHW_out_size[n];
+  DEBUG(printf("  returning from init_xmit_fft_parameters for HW_FFT[%u]\n", n));
   printf("    in_len %u %u  in size %u tot_size %u\n", xmit_fftHW_in_len[n], xmit_fftHW_in_size[n], xmit_fftHW_size[n]);
   printf("   out_len %u %u out size %u out_ofst %u\n", xmit_fftHW_out_len[n], xmit_fftHW_out_size[n], xmit_fftHW_out_offset[n]);
   DEBUG(printf("  returning from init_xmit_fft_parameters for HW_XMIT_FFT[%u]\n", n));
@@ -1649,7 +1650,7 @@ do_xmit_fft_work(int n_inputs, float scale, float *input_real, float * input_ima
     });
 
 #ifdef XMIT_HW_FFT
-  // Now we call the init_fft_parameters for the target FFT HWR accelerator and the specific log_nsamples for this invocation
+  // Now we call the init_xmit_fft_parameters for the target FFT HWR accelerator and the specific log_nsamples for this invocation
   int num_ffts = (n_inputs+(size-1))/size;
   const int fn = 0;
   const uint32_t log_nsamples = 6;
