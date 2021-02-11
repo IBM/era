@@ -45,4 +45,4 @@ CONFIG_ESP_INTERFACE=y
 # CONFIG_LIMITS=y
 
 # This enables analysis/output of the number of Inputs/Ouputs to the various functions.
- CONFIG_NUM_IOS=y
+# CONFIG_NUM_IOS=y

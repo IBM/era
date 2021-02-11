@@ -17,6 +17,12 @@
  #endif
 #endif
 
+#ifdef DEBUG_FFT
+ #define FFT_DEBUG(X) X
+#else
+ #define FFT_DEBUG(X)
+#endif
+
 #ifdef DBG_THREADS
  #define TDEBUG(x) x
 #else

@@ -1640,13 +1640,13 @@ do_xmit_fft_work(int n_inputs, float scale, float *input_real, float * input_ima
   }
 
   // Show the function-time input_{real/imag}
-  for (int k = 0; k < (n_inputs+(size-1)); k += size) {
+  FFT_DEBUG(for (int k = 0; k < (n_inputs+(size-1)); k += size) {
     for (int i = 0; i < size; i++) {
       if ((k == 0)) { //  && (i < 2)) {
         printf("  Call_INPUT %u : REAL %f IMAG %f\n", k+i, input_real[k+i], input_imag[k+i]);
       }
     }
-  }
+    });
 
 #ifdef XMIT_HW_FFT
   // Now we call the init_fft_parameters for the target FFT HWR accelerator and the specific log_nsamples for this invocation
@@ -1670,11 +1670,11 @@ do_xmit_fft_work(int n_inputs, float scale, float *input_real, float * input_ima
       for (int i = 0; i < size; i++) {
         xmit_fftHW_li_mem[fn][jidx++] = float2fx(input_real[k+i] * scale, FX_IL); // NOTE: when we enable scale is HW remove it from here.
         xmit_fftHW_li_mem[fn][jidx++] = float2fx(input_imag[k+i] * scale, FX_IL); // NOTE: when we enable scale is HW remove it from here.
-        if ((k == 0)) { // && (i < 2)) {
+        FFT_DEBUG(if ((k == 0)) { // && (i < 2)) {
           printf(" IN_R %u : %f * %f = %f at %p\n", k+i, scale, input_real[k+i], scale*input_real[k+i], &(xmit_fftHW_li_mem[fn][jidx-2]));
           printf(" IN_I %u : %f * %f = %f at %p\n", k+i, scale, input_imag[k+i], scale*input_imag[k+i], &(xmit_fftHW_li_mem[fn][jidx-1]));
 	  usleep(50000);
-        }
+	  });
       }
     }
   } // scope for jidx
@@ -1714,11 +1714,11 @@ do_xmit_fft_work(int n_inputs, float scale, float *input_real, float * input_ima
 	float vali = (float)fx2float(xmit_fftHW_lo_mem[fn][jidx++], FX_IL);
 	output_real[k + i] = recluster[i&0x1]*valr;
 	output_imag[k + i] = recluster[i&0x1]*vali;
-        if (k == 0) {
+        FFT_DEBUG(if (k == 0) {
           printf("  OUT_R %u : rc %d : Vr %f R %f at %p\n", k+i, recluster[i&0x1], valr, output_real[k+i], &(xmit_fftHW_lo_mem[fn][jidx-2]));
           printf("  OUT_I %u : rc %d : Vr %f I %f at %p\n", k+i, recluster[i&0x1], vali, output_imag[k+i], &(xmit_fftHW_lo_mem[fn][jidx-1]));
 	  usleep(50000);
-        }
+	  });
       }
     }
   } // scope for jidx 
@@ -1742,13 +1742,13 @@ do_xmit_fft_work(int n_inputs, float scale, float *input_real, float * input_ima
     DEBUG(printf(" Prepping for FFT call starting at %u\n", k));
     // Set up the (scaled) inputs
     if (shift) {
-      for (int i = 0; i < size/2; i++) {
+      FFT_DEBUG(for (int i = 0; i < size/2; i++) {
         if ((k == 0)) { // && (i < 2)) {
 	  printf(" IN_R %u : %f * %f = %f\n", k+i, scale, input_real[k+i], scale*input_real[k+i]);
 	  printf(" IN_I %u : %f * %f = %f\n", k+i, scale, input_imag[k+i], scale*input_imag[k+i]);
 	  usleep(50000);
         }
-      }
+	});
       for (int i = 0; i < size/2; i++) {
 	fft_in_real[32+i] = input_real[k + i] * scale;    // Copy  0 .. 31 into 32 .. 63
 	DO_LIMITS_ANALYSIS(if (fft_in_real[32+i] < min_input) { min_input = fft_in_real[32+i]; } 
@@ -1767,22 +1767,22 @@ do_xmit_fft_work(int n_inputs, float scale, float *input_real, float * input_ima
 	    printf("  set %u IN[ %2u ] = %11.8f * ( %11.8f + %11.8f i) = %11.8f + %11.8f i\n", k, i, scale, input_real[k+32+i], input_imag[k+32+i], fft_in_real[i], fft_in_imag[i]);
 	  });
       }
-      for (int i = 0; i < size/2; i++) {
+      FFT_DEBUG(for (int i = 0; i < size/2; i++) {
         if ((k == 0)) { // && (i < 2)) {
 	  printf(" SHIFTED_IN_R %u : %f\n", k+i, fft_in_real[i]);
 	  printf(" SHIFTED_IN_I %u : %f\n", k+i, fft_in_imag[i]);
 	  usleep(50000);
         }
-      }
+	});
     } else {
       for (int i = 0; i < size; i++) {
 	fft_in_real[i] = input_real[k + i] * scale;
 	fft_in_imag[i] = input_imag[k + i] * scale;
-        if ((k == 0)) { // && (i < 2)) {
+        FFT_DEBUG(if ((k == 0)) { // && (i < 2)) {
 	  printf(" Set IN_R at %u to %f * %f = %f\n", k+i, scale, input_real[k+i], scale*input_real[k+i]);
 	  printf(" Set IN_I at %u to %f * %f = %f\n", k+i, scale, input_imag[k+i], scale*input_imag[k+i]);
 	  usleep(50000);
-        }
+	  });
 	DEBUG(if (k == 0) {
 	    printf(" set %u IN[ %2u ] = %11.8f * ( %11.8f + %11.8f i) = %11.8f + %11.8f i\n", k, i, scale, input_real[k+i], input_imag[k+i], fft_in_real[i], fft_in_imag[i]);
 	  });
@@ -1802,11 +1802,11 @@ do_xmit_fft_work(int n_inputs, float scale, float *input_real, float * input_ima
       // Swap sign on the "odd" FFT results (re-cluster energy around zero?)
       output_real[k + i] = recluster[i&0x1]*fft_in_real[i];
       output_imag[k + i] = recluster[i&0x1]*fft_in_imag[i];
-      if (k == 0) {
-        printf("  OUT_R %u : rc %d : Vr %f R %f\n", k+i, recluster[i&0x1], fft_in_real[i], output_real[k+i]);
-        printf("  OUT_I %u : rc %d : Vr %f I %f\n", k+i, recluster[i&0x1], fft_in_imag[i], output_imag[k+i]);
+      FFT_DEBUG(if (k == 0) {
+        printf("  OUT_R %u : rc %f : Vr %f R %f\n", k+i, recluster[i&0x1], fft_in_real[i], output_real[k+i]);
+        printf("  OUT_I %u : rc %f : Vr %f I %f\n", k+i, recluster[i&0x1], fft_in_imag[i], output_imag[k+i]);
 	usleep(50000);
-      }
+	});
     }
 
     DEBUG(if (k < 256) {
