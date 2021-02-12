@@ -54,7 +54,7 @@
 
  #include "contig.h"
  #include "mini-era.h"
-#endif // HW_VIT
+#endif // XMIT_HW_FFT
 
 #include "globals.h"
 #include "sdr_base.h"
@@ -1517,8 +1517,9 @@ static void init_xmit_fft_parameters(unsigned n, uint32_t log_nsamples, uint32_t
 {
   size_t fftHW_in_words_adj;
   size_t fftHW_out_words_adj;
-  int len = 1 << log_nsamples;
-  DEBUG(printf("  In init_xmit_fft_parameters with n = %u and logn = %u\n", n, log_nsamples));
+  int num_samples = 1 << log_nsamples;
+  //DEBUG(
+  printf("  In init_xmit_fft_params : n %u logn %u nfft %u inv %u shft %u scl %u\n", n, log_nsamples, num_ffts, do_inverse, do_shift, scale_factor);//);
 
   xmit_fftHW_desc[n].scale_factor = 0;
   xmit_fftHW_desc[n].logn_samples = log_nsamples;
@@ -1527,22 +1528,22 @@ static void init_xmit_fft_parameters(unsigned n, uint32_t log_nsamples, uint32_t
   xmit_fftHW_desc[n].do_shift     = do_shift;
 
   if (DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)) == 0) {
-    fftHW_in_words_adj  = 2 * len;
-    fftHW_out_words_adj = 2 * len;
+    fftHW_in_words_adj  = 2 * num_ffts * num_samples;
+    fftHW_out_words_adj = 2 * num_ffts * num_samples;
   } else {
-    fftHW_in_words_adj = round_up(2 * len, DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)));
-    fftHW_out_words_adj = round_up(2 * len, DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)));
+    fftHW_in_words_adj  = round_up(2 * num_ffts * num_samples, DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)));
+    fftHW_out_words_adj = round_up(2 * num_ffts *num_samples, DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)));
   }
-  xmit_fftHW_in_len[n] = fftHW_in_words_adj;
+  xmit_fftHW_in_len[n]  = fftHW_in_words_adj;
   xmit_fftHW_out_len[n] =  fftHW_out_words_adj;
-  xmit_fftHW_in_size[n] = xmit_fftHW_in_len[n] * sizeof(fftHW_token_t);
+  xmit_fftHW_in_size[n]  = xmit_fftHW_in_len[n]  * sizeof(fftHW_token_t);
   xmit_fftHW_out_size[n] = xmit_fftHW_out_len[n] * sizeof(fftHW_token_t);
   xmit_fftHW_out_offset[n] = 0;
   xmit_fftHW_size[n] = (xmit_fftHW_out_offset[n] * sizeof(fftHW_token_t)) + xmit_fftHW_out_size[n];
-  DEBUG(printf("  returning from init_xmit_fft_parameters for HW_FFT[%u]\n", n));
+  //DEBUG(
+  printf("  returning from init_xmit_fft_parameters for HW_FFT[%u]\n", n);
   printf("    in_len %u %u  in size %u tot_size %u\n", xmit_fftHW_in_len[n], xmit_fftHW_in_size[n], xmit_fftHW_size[n]);
-  printf("   out_len %u %u out size %u out_ofst %u\n", xmit_fftHW_out_len[n], xmit_fftHW_out_size[n], xmit_fftHW_out_offset[n]);
-  DEBUG(printf("  returning from init_xmit_fft_parameters for HW_XMIT_FFT[%u]\n", n));
+  printf("   out_len %u %u out size %u out_ofst %u\n", xmit_fftHW_out_len[n], xmit_fftHW_out_size[n], xmit_fftHW_out_offset[n]);//);
 }
 
 static void xmit_fft_in_hw(int *fd, struct fftHW_access *desc)
@@ -1657,7 +1658,7 @@ do_xmit_fft_work(int n_inputs, float scale, float *input_real, float * input_ima
   const uint32_t do_inverse = 1;
   const uint32_t do_shift = 1;
   const uint32_t scale_factor = 1;
-  printf("  XMIT: Calling init_xmit_parms ln %u nf %u inv %u sh %u scale %u\n", log_nsamples, num_ffts, do_inverse, do_shift, scale_factor);
+  FFT_DEBUG(printf("  XMIT: Calling init_xmit_fft_parms ln %u nf %u inv %u sh %u scale %u\n", log_nsamples, num_ffts, do_inverse, do_shift, scale_factor));
   init_xmit_fft_parameters(fn, log_nsamples, num_ffts, do_inverse, do_shift, scale_factor);
 
  #ifdef INT_TIME
@@ -1687,8 +1688,7 @@ do_xmit_fft_work(int n_inputs, float scale, float *input_real, float * input_ima
 
   // Call the FFT Accelerator
   //    NOTE: Currently this is blocking-wait for call to complete
-  //DEBUG(
-  printf("XMIT: calling the HW_XMIT_FFT[%u]\n", fn); usleep(50000);//);
+  FFT_DEBUG(printf("XMIT: calling the HW_XMIT_FFT[%u]\n", fn); usleep(50000));
 
  #ifdef INT_TIME
   gettimeofday(&(x_fHcomp_start), NULL);
@@ -1700,8 +1700,7 @@ do_xmit_fft_work(int n_inputs, float scale, float *input_real, float * input_ima
   x_fHcomp_usec  += x_fHcomp_stop.tv_usec - x_fHcomp_start.tv_usec;
  #endif
   // convert output from fixed point to float
-  //DEBUG(
-  printf("EHFA:   converting from fixed-point to float and reclustering...\n");//);
+  FFT_DEBUG(printf("EHFA:   converting from fixed-point to float and reclustering...\n"));
  #ifdef INT_TIME
   gettimeofday(&(x_fHcvtout_start), NULL);
  #endif // INT_TIME

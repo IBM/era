@@ -77,5 +77,4 @@ struct fftHW_access {
 
 #define FFTHW_IOC_ACCESS	_IOW ('S', 0, struct fftHW_access)
 
-
 #endif /* _MINI_ERA_H_ */

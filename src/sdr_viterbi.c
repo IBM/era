@@ -96,9 +96,6 @@ static frame_param *d_frame;
 static const unsigned char *d_depuncture_pattern;
 
 static uint8_t d_depunctured[MAX_ENCODED_BITS];
-#ifndef USE_ESP_INTERFACE
-static uint8_t d_decoded[MAX_ENCODED_BITS * 3 / 4];
-#endif
 
 static const unsigned char PARTAB[256] = {
          0, 1, 1, 0, 1, 0, 0, 1,
@@ -215,7 +212,7 @@ static void init_vit_parameters()
 {
   size_t vitHW_in_words_adj;
   size_t vitHW_out_words_adj;
-  //printf("Doing init_vit_parameters\n");
+  printf("Doing init_vit_parameters\n");
   if (DMA_WORD_PER_BEAT(sizeof(vitHW_token_t)) == 0) {
     vitHW_in_words_adj  = 24852;
     vitHW_out_words_adj = 18585;
@@ -229,13 +226,18 @@ static void init_vit_parameters()
   vitHW_out_size = vitHW_out_len * sizeof(vitHW_token_t);
   vitHW_out_offset = vitHW_in_len;
   vitHW_size = (vitHW_out_offset * sizeof(vitHW_token_t)) + vitHW_out_size;
+  //DEBUG(
+  printf("  returning from init_vit_parameters\n");
+  printf("    in_len %u %u  in size %u tot_size %u\n", vitHW_in_len, vitHW_in_size, vitHW_size);
+  printf("   out_len %u %u out size %u out_ofst %u\n", vitHW_out_len, vitHW_out_size, vitHW_out_offset);//);
 }
 
 
 void init_VIT_HW_ACCEL()
 {
   // This initializes the Viterbi Accelerator Pool
-  DEBUG(printf("Calling init_vit_parameters\n"));
+  //DEBUG(
+	printf("In init_VIT_HW_ACCEL: calling init_vit_parameters\n");//);
   init_vit_parameters();
   printf(" Opening Vit-Do-Decode device %s\n", vitAccelName);
   vitHW_fd = open(vitAccelName, O_RDWR, 0);
@@ -293,26 +295,17 @@ static void do_sdr_decoding_hw(int *fd, struct vitdodec_access *desc)
 //    d_ppresult            : OUTPUT : uint8_t[ntraceback_MAX][ 64 bytes ]
 
 
-#ifdef USE_ESP_INTERFACE
 void do_sdr_decoding(int in_n_data_bits, int in_cbps, int in_ntraceback, unsigned char *inMemory, unsigned char *outMemory )
-#else
-uint8_t* do_sdr_decoding(int in_cbps, int in_ntraceback, const unsigned char* in_depuncture_pattern, int in_n_data_bits, uint8_t* depd_data) 
-#endif
 {
   int in_count = 0;
   int out_count = 0;
   int n_decoded = 0;
 
-#ifdef USE_ESP_INTERFACE
   unsigned char* d_brtab27[2]        = { &(inMemory[    0]), 
                                          &(inMemory[   32]) };
   unsigned char* in_depuncture_pattern = &(inMemory[   64]);
   uint8_t* depd_data                   = &(inMemory[   72]);
   uint8_t* l_decoded                   = &(outMemory[   0]);
-#else
-  unsigned char* d_brtab27[2] = {&(d_branchtab27_generic[0].c[0]), &(d_branchtab27_generic[1].c[0])};
-  uint8_t*       l_decoded = d_decoded;
-#endif
 
 #if(0)
   {
@@ -343,7 +336,7 @@ uint8_t* do_sdr_decoding(int in_cbps, int in_ntraceback, const unsigned char* in
     printf("\n");
     printf("\n");
 
-    /**#ifdef USE_ESP_INTERFACE
+    /**
     printf(" plm_in_ping = ");
     int limi = 0;
     for (int li = 0; li < 32; li++) {
@@ -363,7 +356,7 @@ uint8_t* do_sdr_decoding(int in_cbps, int in_ntraceback, const unsigned char* in
       printf("%u,", inMemory[limi++]);
     }
     printf("\n");
-    #endif **/
+    **/
   }
 #endif
 
@@ -732,9 +725,6 @@ uint8_t* do_sdr_decoding(int in_cbps, int in_ntraceback, const unsigned char* in
     printf("\n");
   }
 #endif
-#ifndef USE_ESP_INTERFACE
-  return l_decoded;
-#endif
 }
 
 // Initialize starting metrics to prefer 0 state
@@ -790,7 +780,6 @@ void sdr_reset() {
 //  <return> : OUTPUT : uint8_t Array [ MAX_ENCODED_BITS * 3 / 4 == 18585 ] : The decoded data stream
 
 void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_char, uint8_t* output) {
-
   d_ofdm = ofdm;
   d_frame = frame;
 
@@ -798,9 +787,9 @@ void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t
 
   sdr_reset();
 
-  DEBUG(printf("In the decode routine: num_in_bits = %u (+ 10?)\n", frame->n_encoded_bits);
+  /*DEBUG(*/printf("In sdr_decode : use_hw_accel = %u : num_in_bits = %u (+ 10?)\n", use_hw_accel, frame->n_encoded_bits);
 	printf("DEC: OFDM  : %u %u %u %u %u\n", ofdm->n_bpsc, ofdm->n_cbps, ofdm->n_dbps, ofdm->encoding, ofdm->rate_field);
-	printf("DEC: FRAME : %u %u %u %u %u\n", frame->psdu_size, frame->n_sym, frame->n_pad, frame->n_encoded_bits, frame->n_data_bits));
+	printf("DEC: FRAME : %u %u %u %u %u\n", frame->psdu_size, frame->n_sym, frame->n_pad, frame->n_encoded_bits, frame->n_data_bits);//);
 
   //#define DUMP_DECODE_INPUTS
 #ifdef  DUMP_DECODE_INPUTS
@@ -837,7 +826,6 @@ void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t
       printf("\n");
     });
 
- #ifdef USE_ESP_INTERFACE
   {
     // Copy inputs into the inMemory for esp-interface version
     #ifdef HW_VIT
@@ -891,12 +879,15 @@ void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t
       vitHW_desc.cbps = ofdm->n_cbps;
       vitHW_desc.ntraceback = d_ntraceback;
       vitHW_desc.data_bits = frame->n_data_bits;
+      //DEBUG(
+      printf("  Preparing to call do_sdr_decoding_hw :\n");
+      printf("    cbps %u  ntrbk %u data_bits %u\n", vitHW_desc.cbps, vitHW_desc.ntraceback, vitHW_desc.data_bits);//);
       do_sdr_decoding_hw(&vitHW_fd, &vitHW_desc);
     } else
-#else
+   #else
     {
       // Call the viterbi_butterfly2_generic function using ESP interface
-      DEBUG(printf("ESP_INTFC: Calling do_sdr_decoding with frame->n_data_bits = %u  ofdm->n_cbps = %u d_ntraceback = %u \n", frame->n_data_bits, ofdm->n_cbps, d_ntraceback));
+      DEBUG(printf("ESP_INTFC: Calling do_sdr_decoding with frame->n_data_bits = %u  ofdm->n_cbps = %u d_ntraceback = %u \n", frame->n_data_bits, ofdm->n_cbps, d_ntrace`back));
       do_sdr_decoding(frame->n_data_bits, ofdm->n_cbps, d_ntraceback, inMemory, outMemory);
     }
    #endif
@@ -923,26 +914,6 @@ void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t
   printf("LAST-OUTPUT\n\n");
  #endif
   return;
- #else // of USE_ESP_INTERFACE
-  {
-   #ifdef INT_TIME
-    gettimeofday(&dodec_start, NULL);
-   #endif
-    uint8_t* tval = do_sdr_decoding(ofdm->n_cbps, d_ntraceback, d_depuncture_pattern, frame->n_data_bits, depunctured);
-   #ifdef INT_TIME
-    gettimeofday(&dodec_stop, NULL);
-    dodec_sec  += dodec_stop.tv_sec  - dodec_start.tv_sec;
-    dodec_usec += dodec_stop.tv_usec - dodec_start.tv_usec;
-   #endif
-    for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti++) {
-     #ifdef GENERATE_CHECK_VALUES
-      printf("%u\n", tval[ti]);
-     #endif
-      output[ti] = tval[ti];
-    }
-    return;
-  }
- #endif // of USE_ESP_INTERFACE else clause
 }
 
 

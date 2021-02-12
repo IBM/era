@@ -21,7 +21,7 @@
 
  #include "contig.h"
  #include "mini-era.h"
-#endif // HW_VIT
+#endif // RECV_HW_FFT
 
 #include "globals.h"
 #include "sdr_type.h"
@@ -180,8 +180,9 @@ static void init_recv_fft_parameters(unsigned n, uint32_t log_nsamples, uint32_t
 {
   size_t fftHW_in_words_adj;
   size_t fftHW_out_words_adj;
-  int len = 1 << log_nsamples;
-  DEBUG(printf("  In init_recv_fft_parameters with n = %u and logn = %u\n", n, log_nsamples));
+  int num_samples = 1 << log_nsamples;
+  //DEBUG(
+  printf("  In init_recv_fft_params : n %u logn %u nfft %u inv %u shft %u scl %u\n", n, log_nsamples, num_ffts, do_inverse, do_shift, scale_factor);//);
 
   recv_fftHW_desc[n].scale_factor = 0;
   recv_fftHW_desc[n].logn_samples = log_nsamples;
@@ -190,22 +191,22 @@ static void init_recv_fft_parameters(unsigned n, uint32_t log_nsamples, uint32_t
   recv_fftHW_desc[n].do_shift     = do_shift;
 
   if (DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)) == 0) {
-    fftHW_in_words_adj  = 2 * len;
-    fftHW_out_words_adj = 2 * len;
+    fftHW_in_words_adj  = 2 * num_ffts * num_samples;
+    fftHW_out_words_adj = 2 * num_ffts * num_samples;
   } else {
-    fftHW_in_words_adj = round_up(2 * len, DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)));
-    fftHW_out_words_adj = round_up(2 * len, DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)));
+    fftHW_in_words_adj  = round_up(2 * num_ffts * num_samples, DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)));
+    fftHW_out_words_adj = round_up(2 * num_ffts * num_samples, DMA_WORD_PER_BEAT(sizeof(fftHW_token_t)));
   }
   recv_fftHW_in_len[n]  = fftHW_in_words_adj;
   recv_fftHW_out_len[n] = fftHW_out_words_adj;
-  recv_fftHW_in_size[n]  = recv_fftHW_in_len[n] * sizeof(fftHW_token_t);
+  recv_fftHW_in_size[n]  = recv_fftHW_in_len[n]  * sizeof(fftHW_token_t);
   recv_fftHW_out_size[n] = recv_fftHW_out_len[n] * sizeof(fftHW_token_t);
   recv_fftHW_out_offset[n] = 0;
   recv_fftHW_size[n] = (recv_fftHW_out_offset[n] * sizeof(fftHW_token_t)) + recv_fftHW_out_size[n];
-  DEBUG(printf("  returning from init_recv_fft_parameters for HW_FFT[%u]\n", n));
+  //DEBUG(
+  printf("  returning from init_recv_fft_parameters for HW_FFT[%u]\n", n);
   printf("    in_len %u %u  in size %u tot_size %u\n", recv_fftHW_in_len[n], recv_fftHW_in_size[n], recv_fftHW_size[n]);
-  printf("   out_len %u %u out size %u out_ofst %u\n", recv_fftHW_out_len[n], recv_fftHW_out_size[n], recv_fftHW_out_offset[n]);
-  DEBUG(printf("  returning from init_recv_fft_parameters for HW_RECV_FFT[%u]\n", n));
+  printf("   out_len %u %u out size %u out_ofst %u\n", recv_fftHW_out_len[n], recv_fftHW_out_size[n], recv_fftHW_out_offset[n]);//);
 }
 
 static void recv_fft_in_hw(int *fd, struct fftHW_access *desc)
@@ -318,7 +319,7 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
   // We also SCALE it here (but we should be able to do that in the HWR Accel later)
   { // scope for jidx
     int jidx = 0;
-    printf(" RECV: Doing convert-inputs...\n");
+    FFT_DEBUG(printf(" RECV: Doing convert-inputs...\n"));
     for (unsigned i = 0; i < num_fft_frames /*SYNC_L_OUT_MAX_SIZE/64*/; i++) { // This is the "spin" to invoke the FFT
       //printf("  RECV: converting FFT frame %u\n",i); fflush(stdout);
       for (unsigned j = 0; j < 64; j++) {
@@ -342,7 +343,7 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
   gettimeofday(&(r_fHcomp_start), NULL);
  #endif // INT_TIME
   //DEBUG(
-  printf(" RECV: calling the HW_RECV_FFT[%u]\n", fn);//);
+  FFT_DEBUG(printf(" RECV: calling the HW_RECV_FFT[%u]\n", fn));
   recv_fft_in_hw(&(recv_fftHW_fd[fn]), &(recv_fftHW_desc[fn]));
  #ifdef INT_TIME
   gettimeofday(&r_fHcomp_stop, NULL);
@@ -354,7 +355,7 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
  #ifdef INT_TIME
   gettimeofday(&(r_fHcvtout_start), NULL);
  #endif // INT_TIME
-  printf(" RECV: Doing convert-outputs...\n");
+  FFT_DEBUG(printf(" RECV: Doing convert-outputs...\n"));
   { // scope for jidx
     int jidx = 0;
     for (unsigned i = 0; i < num_fft_frames /*SYNC_L_OUT_MAX_SIZE/64*/; i++) { // This is the "spin" to invoke the FFT
