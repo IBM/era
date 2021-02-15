@@ -787,24 +787,24 @@ void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t
 
   sdr_reset();
 
-  /*DEBUG(*/printf("In sdr_decode : use_hw_accel = %u : num_in_bits = %u (+ 10?)\n", use_hw_accel, frame->n_encoded_bits);
+  DEBUG(printf("In sdr_decode : use_hw_accel = %u : num_in_bits = %u (+ 10?)\n", use_hw_accel, frame->n_encoded_bits);
 	printf("DEC: OFDM  : %u %u %u %u %u\n", ofdm->n_bpsc, ofdm->n_cbps, ofdm->n_dbps, ofdm->encoding, ofdm->rate_field);
-	printf("DEC: FRAME : %u %u %u %u %u\n", frame->psdu_size, frame->n_sym, frame->n_pad, frame->n_encoded_bits, frame->n_data_bits);//);
+	printf("DEC: FRAME : %u %u %u %u %u\n", frame->psdu_size, frame->n_sym, frame->n_pad, frame->n_encoded_bits, frame->n_data_bits));
 
   //#define DUMP_DECODE_INPUTS
-#ifdef  DUMP_DECODE_INPUTS
+  #ifdef  DUMP_DECODE_INPUTS
   {
     printf("mnum mid\n");
-    printf("%u %u %u %u %u\n", ofdm->n_bpsc, ofdm->n_cbps, ofdm->n_dbps, ofdm->encoding, ofdm->rate_field);
-    printf("%u %u %u %u %u\n", frame->psdu_size, frame->n_sym, frame->n_pad, frame->n_encoded_bits, frame->n_data_bits);
+    printf("OFMD: bpsc %u cbps %u dbps %u enc %u rate %u\n", ofdm->n_bpsc, ofdm->n_cbps, ofdm->n_dbps, ofdm->encoding, ofdm->rate_field);
+    printf("FRAME: psdu %u nsym %u npad %u encb %u ndbts %u\n", frame->psdu_size, frame->n_sym, frame->n_pad, frame->n_encoded_bits, frame->n_data_bits);
     int num_in_bits = frame->n_encoded_bits + 10; // strlen(str3)+10; //additional 10 values
-    for (int ci = 0; ci < num_in_bits; ci++) { 
+    for (int ci = 0; ci < num_in_bits; ci++) {
       printf("%u ", in[ci]);
     }
     printf("\n");
   }
-#endif
-  
+  #endif
+
 #ifdef INT_TIME
   gettimeofday(&depunc_start, NULL);
 #endif
@@ -817,14 +817,14 @@ void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t
 
   DEBUG({
       printf("VBS: depunctured = [\n %6u : ", 0);
-      for (int ti = 0; ti < (frame->n_encoded_bits) /*MAX_ENCODED_BITS*/; ti ++) {
+      for (int ti = 0; ti < frame->n_encoded_bits /*MAX_ENCODED_BITS*/; ti ++) {
 	if (ti > 0) { printf(", "); }
 	if ((ti > 0) && ((ti % 8) == 0)) { printf("\n %6u : ", ti); }
 	//if ((ti > 0) && ((ti % 40) == 0)) { printf("\n"); }
 	printf("%02x", depunctured[ti]);
       }
       printf("\n");
-    });
+  });
 
   {
     // Copy inputs into the inMemory for esp-interface version
@@ -850,7 +850,40 @@ void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t
     if (imi != 70) { printf("ERROR : imi = %u and should be 70\n", imi); }
     // imi = 70
     imi += 2; // Padding
-    for (int ti = 0; ti < MAX_ENCODED_BITS; ti ++) {
+    DEBUG(for (int ti = 0; ti < frame->n_encoded_bits /*MAX_ENCODED_BITS*/; ti ++) {
+	    if (ti > 0) { printf(", "); }
+	    if ((ti > 0) && ((ti % 8) == 0)) { printf("\n %6u : ", ti); }
+	    //if ((ti > 0) && ((ti % 40) == 0)) { printf("\n"); }
+	    printf("%02x", depunctured[ti]);
+	  }
+	  printf("\n"););
+  }
+
+  {
+    // Copy inputs into the inMemory for esp-interface version
+    #ifdef HW_VIT
+    uint8_t* inMemory  = vitHW_li_mem;
+    uint8_t* outMemory = vitHW_lo_mem;
+    #else
+    uint8_t inMemory[24852];  // This is "minimally sized for max entries"
+    uint8_t outMemory[18585]; // This is "minimally sized for max entries"
+    #endif
+
+    int imi = 0;
+    for (int ti = 0; ti < 2; ti ++) {
+      for (int tj = 0; tj < 32; tj++) {
+	inMemory[imi++] = d_branchtab27_generic[ti].c[tj];
+      }
+    }
+    if (imi != 64) { printf("ERROR : imi = %u and should be 64\n", imi); }
+    // imi = 64;
+    for (int ti = 0; ti < 6; ti ++) {
+      inMemory[imi++] = d_depuncture_pattern[ti];
+    }
+    if (imi != 70) { printf("ERROR : imi = %u and should be 70\n", imi); }
+    // imi = 70
+    imi += 2; // Padding
+    for (int ti = 0; ti < frame->n_encoded_bits /*MAX_ENCODED_BITS*/; ti ++) {
       inMemory[imi++] = depunctured[ti];
     }
     if (imi != 24852) { printf("ERROR : imi = %u and should be 24852\n", imi); }
@@ -862,8 +895,9 @@ void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t
 
    #ifdef GENERATE_CHECK_VALUES
     printf("\nINPUTS-TO-DO-DECODING:\n");
-    for (int ti = 0; ti < (84 + MAX_ENCODED_BITS); ti ++) {
-      printf("%u\n", inMemory[ti]);
+    //for (int ti = 0; ti < (84 + MAX_ENCODED_BITS); ti ++) {
+    for (int ti = 0; ti < 72 + frame->n_encoded_bits; ti ++) {
+      printf("inMem %u = %u\n", ti, inMemory[ti]);
     }
     printf("LAST-INPUT\n\n\n");
    #endif
@@ -879,9 +913,8 @@ void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t
       vitHW_desc.cbps = ofdm->n_cbps;
       vitHW_desc.ntraceback = d_ntraceback;
       vitHW_desc.data_bits = frame->n_data_bits;
-      //DEBUG(
-      printf("  Preparing to call do_sdr_decoding_hw :\n");
-      printf("    cbps %u  ntrbk %u data_bits %u\n", vitHW_desc.cbps, vitHW_desc.ntraceback, vitHW_desc.data_bits);//);
+      DEBUG(printf("  Preparing to call do_sdr_decoding_hw :\n");
+            printf("    cbps %u  ntrbk %u data_bits %u\n", vitHW_desc.cbps, vitHW_desc.ntraceback, vitHW_desc.data_bits));
       do_sdr_decoding_hw(&vitHW_fd, &vitHW_desc);
     } else
    #else
@@ -902,10 +935,10 @@ void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t
    #ifdef GENERATE_CHECK_VALUES
     printf("\n\nOUTPUTS-FROM-DO-DECODING:\n");
    #endif
-    for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti ++) {
-   #ifdef GENERATE_CHECK_VALUES
+    for (int ti = 0; ti < (frame->n_encoded_bits /*MAX_ENCODED_BITS*/ * 3 / 4); ti ++) {
+     #ifdef GENERATE_CHECK_VALUES
       printf("%u\n", outMemory[imi]);
-   #endif
+     #endif
       output[ti] = outMemory[imi++];
     }
 
