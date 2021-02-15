@@ -181,8 +181,7 @@ static void init_recv_fft_parameters(unsigned n, uint32_t log_nsamples, uint32_t
   size_t fftHW_in_words_adj;
   size_t fftHW_out_words_adj;
   int num_samples = 1 << log_nsamples;
-  //DEBUG(
-  printf("  In init_recv_fft_params : n %u logn %u nfft %u inv %u shft %u scl %u\n", n, log_nsamples, num_ffts, do_inverse, do_shift, scale_factor);//);
+  DEBUG(printf("  In init_recv_fft_params : n %u logn %u nfft %u inv %u shft %u scl %u\n", n, log_nsamples, num_ffts, do_inverse, do_shift, scale_factor));
 
   recv_fftHW_desc[n].scale_factor = 0;
   recv_fftHW_desc[n].logn_samples = log_nsamples;
@@ -203,10 +202,9 @@ static void init_recv_fft_parameters(unsigned n, uint32_t log_nsamples, uint32_t
   recv_fftHW_out_size[n] = recv_fftHW_out_len[n] * sizeof(fftHW_token_t);
   recv_fftHW_out_offset[n] = 0;
   recv_fftHW_size[n] = (recv_fftHW_out_offset[n] * sizeof(fftHW_token_t)) + recv_fftHW_out_size[n];
-  //DEBUG(
-  printf("  returning from init_recv_fft_parameters for HW_FFT[%u]\n", n);
-  printf("    in_len %u %u  in size %u tot_size %u\n", recv_fftHW_in_len[n], recv_fftHW_in_size[n], recv_fftHW_size[n]);
-  printf("   out_len %u %u out size %u out_ofst %u\n", recv_fftHW_out_len[n], recv_fftHW_out_size[n], recv_fftHW_out_offset[n]);//);
+  DEBUG(printf("  returning from init_recv_fft_parameters for HW_FFT[%u]\n", n);
+	  printf("    in_len %u %u  in size %u tot_size %u\n", recv_fftHW_in_len[n], recv_fftHW_in_size[n], recv_fftHW_size[n]);
+	  printf("   out_len %u %u out size %u out_ofst %u\n", recv_fftHW_out_len[n], recv_fftHW_out_size[n], recv_fftHW_out_offset[n]));
 }
 
 static void recv_fft_in_hw(int *fd, struct fftHW_access *desc)

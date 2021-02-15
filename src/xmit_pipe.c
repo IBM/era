@@ -1518,8 +1518,7 @@ static void init_xmit_fft_parameters(unsigned n, uint32_t log_nsamples, uint32_t
   size_t fftHW_in_words_adj;
   size_t fftHW_out_words_adj;
   int num_samples = 1 << log_nsamples;
-  //DEBUG(
-  printf("  In init_xmit_fft_params : n %u logn %u nfft %u inv %u shft %u scl %u\n", n, log_nsamples, num_ffts, do_inverse, do_shift, scale_factor);//);
+  DEBUG(printf("  In init_xmit_fft_params : n %u logn %u nfft %u inv %u shft %u scl %u\n", n, log_nsamples, num_ffts, do_inverse, do_shift, scale_factor));
 
   xmit_fftHW_desc[n].scale_factor = 0;
   xmit_fftHW_desc[n].logn_samples = log_nsamples;
@@ -1540,10 +1539,9 @@ static void init_xmit_fft_parameters(unsigned n, uint32_t log_nsamples, uint32_t
   xmit_fftHW_out_size[n] = xmit_fftHW_out_len[n] * sizeof(fftHW_token_t);
   xmit_fftHW_out_offset[n] = 0;
   xmit_fftHW_size[n] = (xmit_fftHW_out_offset[n] * sizeof(fftHW_token_t)) + xmit_fftHW_out_size[n];
-  //DEBUG(
-  printf("  returning from init_xmit_fft_parameters for HW_FFT[%u]\n", n);
-  printf("    in_len %u %u  in size %u tot_size %u\n", xmit_fftHW_in_len[n], xmit_fftHW_in_size[n], xmit_fftHW_size[n]);
-  printf("   out_len %u %u out size %u out_ofst %u\n", xmit_fftHW_out_len[n], xmit_fftHW_out_size[n], xmit_fftHW_out_offset[n]);//);
+  DEBUG(printf("  returning from init_xmit_fft_parameters for HW_FFT[%u]\n", n);
+	  printf("    in_len %u %u  in size %u tot_size %u\n", xmit_fftHW_in_len[n], xmit_fftHW_in_size[n], xmit_fftHW_size[n]);
+	  printf("   out_len %u %u out size %u out_ofst %u\n", xmit_fftHW_out_len[n], xmit_fftHW_out_size[n], xmit_fftHW_out_offset[n]));
 }
 
 static void xmit_fft_in_hw(int *fd, struct fftHW_access *desc)
@@ -1733,8 +1731,7 @@ do_xmit_fft_work(int n_inputs, float scale, float *input_real, float * input_ima
 #else
   DO_LIMITS_ANALYSIS(float min_input = 3.0e+038;
 		     float max_input = -1.17e-038);
-  //DEBUG(
-  printf("Starting do_xmit_fft_work with size %u inverse %u shift %u on n_inputs %u\n", size, inverse, shift, n_inputs);//);
+  DEBUG(printf("Starting do_xmit_fft_work with size %u inverse %u shift %u on n_inputs %u\n", size, inverse, shift, n_inputs));
   for (int k = 0; k < (n_inputs+(size-1)); k += size) {
     float fft_in_real[64];
     float fft_in_imag[64];

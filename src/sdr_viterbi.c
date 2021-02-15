@@ -850,40 +850,7 @@ void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t
     if (imi != 70) { printf("ERROR : imi = %u and should be 70\n", imi); }
     // imi = 70
     imi += 2; // Padding
-    DEBUG(for (int ti = 0; ti < frame->n_encoded_bits /*MAX_ENCODED_BITS*/; ti ++) {
-	    if (ti > 0) { printf(", "); }
-	    if ((ti > 0) && ((ti % 8) == 0)) { printf("\n %6u : ", ti); }
-	    //if ((ti > 0) && ((ti % 40) == 0)) { printf("\n"); }
-	    printf("%02x", depunctured[ti]);
-	  }
-	  printf("\n"););
-  }
-
-  {
-    // Copy inputs into the inMemory for esp-interface version
-    #ifdef HW_VIT
-    uint8_t* inMemory  = vitHW_li_mem;
-    uint8_t* outMemory = vitHW_lo_mem;
-    #else
-    uint8_t inMemory[24852];  // This is "minimally sized for max entries"
-    uint8_t outMemory[18585]; // This is "minimally sized for max entries"
-    #endif
-
-    int imi = 0;
-    for (int ti = 0; ti < 2; ti ++) {
-      for (int tj = 0; tj < 32; tj++) {
-	inMemory[imi++] = d_branchtab27_generic[ti].c[tj];
-      }
-    }
-    if (imi != 64) { printf("ERROR : imi = %u and should be 64\n", imi); }
-    // imi = 64;
-    for (int ti = 0; ti < 6; ti ++) {
-      inMemory[imi++] = d_depuncture_pattern[ti];
-    }
-    if (imi != 70) { printf("ERROR : imi = %u and should be 70\n", imi); }
-    // imi = 70
-    imi += 2; // Padding
-    for (int ti = 0; ti < frame->n_encoded_bits /*MAX_ENCODED_BITS*/; ti ++) {
+    for (int ti = 0; ti < MAX_ENCODED_BITS; ti ++) {
       inMemory[imi++] = depunctured[ti];
     }
     if (imi != 24852) { printf("ERROR : imi = %u and should be 24852\n", imi); }
