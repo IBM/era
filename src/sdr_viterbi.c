@@ -850,13 +850,17 @@ void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t
     if (imi != 70) { printf("ERROR : imi = %u and should be 70\n", imi); }
     // imi = 70
     imi += 2; // Padding
-    for (int ti = 0; ti < MAX_ENCODED_BITS; ti ++) {
+    int max_ins = frame->n_encoded_bits + 100; // Not sure why I need +100; +8 too small...
+    if (max_ins > MAX_ENCODED_BITS) { max_ins = MAX_ENCODED_BITS; }
+    for (int ti = 0; ti < max_ins /*frame->n_encoded_bits*/ /*MAX_ENCODED_BITS*/; ti ++) {
       inMemory[imi++] = depunctured[ti];
     }
-    if (imi != 24852) { printf("ERROR : imi = %u and should be 24852\n", imi); }
+    //if (imi != 24852) { printf("ERROR : imi = %u and should be 24852\n", imi); }
+    DEBUG(printf("NOTE: imi = %u vs MAX %u\n", imi, MAX_ENCODED_BITS));
     // imi = 24862 : OUTPUT ONLY -- DON'T NEED TO SEND INPUTS
     // Reset the output space (for cleaner testing results)
-    for (int ti = 0; ti < (MAX_ENCODED_BITS * 3 / 4); ti ++) {
+    int max_outs = frame->n_encoded_bits * 3 / 4; // (MAX_ENCODED_BITS * 3 / 4)
+    for (int ti = 0; ti < max_outs; ti ++) {
       outMemory[ti] = 0;
     }
 
