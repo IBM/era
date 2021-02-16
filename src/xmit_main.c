@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <stdint.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -31,6 +32,15 @@
 
 #define TIME
 
+#ifdef TIME
+struct timeval stop_prog, start_prog;
+struct timeval stop_exec_xmit, start_exec_xmit;
+
+uint64_t exec_xmit_sec  = 0LL;
+uint64_t exec_xmit_usec  = 0LL;
+#endif // TIME
+
+unsigned time_step = 0;
 unsigned max_time_steps = 1;
 
 #define MAX_XMIT_OUTPUTS   41800   // Really 41782 I think
@@ -58,6 +68,10 @@ bool show_main_output = true;
 bool show_xmit_output = false;
 bool do_add_pre_pad = false;
 
+// Forward Declarations
+void dump_final_run_statistics();
+void INThandler(int dummy);
+
 #ifdef XMIT_HW_FFT
 extern void free_XMIT_FFT_HW_RESOURCES();
 #endif
@@ -74,10 +88,26 @@ void print_usage(char * pname) {
   printf("    -o <FN>    : Output the encoded message data to file <FN>\n");
 }
 
+void INThandler(int dummy)
+{
+  printf("In SIGINT INThandler -- Closing the connection and exiting\n");
+  closeout_and_exit("Received a SIGINT...", -1);
+}
+
+
+void SIGPIPE_handler(int dummy)
+{
+  printf("In SIGPIPE_handler -- Closing the connection and exiting\n");
+  closeout_and_exit("Received a SIGPIPE...", -1);
+}
+
 
 // This cleans up the state before exit
 void closeout_and_exit(char* last_msg, int rval)
 {
+  if (time_step > 0) {
+    dump_final_run_statistics();
+  }
  #ifdef XMIT_HW_FFT
   free_XMIT_FFT_HW_RESOURCES();
  #endif
@@ -164,27 +194,20 @@ int main(int argc, char *argv[])
   if (show_main_output) {
     printf("\nXMIT_MSG:\n'%s'\n\n", xmit_msg);
   }
-  
+
   /* Kernels initialization */
   printf("Initializing the XMIT pipeline\n");
   xmit_pipe_init(); // Initialize the IEEE SDR Transmit Pipeline
 
+  signal(SIGINT, INThandler);
+  signal(SIGPIPE, SIGPIPE_handler);
+
   /*** MAIN LOOP -- iterates until all the traces are fully consumed ***/
- #ifdef TIME
-  struct timeval stop, start;
-
-  struct timeval stop_exec_xmit, start_exec_xmit;
-
-  uint64_t exec_xmit_sec  = 0LL;
-
-  uint64_t exec_xmit_usec  = 0LL;
- #endif // TIME
 
   printf("Starting the main loop...\n");
   /* The input trace contains the per-epoch (time-step) input data */
-  int time_step = 0;
  #ifdef TIME
-  gettimeofday(&start, NULL);
+  gettimeofday(&start_prog, NULL);
  #endif
   for (time_step = 0; time_step < max_time_steps; time_step++) {
     DEBUG(printf("Time Step %u\n", time_step));
@@ -225,22 +248,11 @@ int main(int argc, char *argv[])
     }
   }
 
- #ifdef TIME
-  gettimeofday(&stop, NULL);
- #endif
+  dump_final_run_statistics();
 
- #ifdef TIME
-  {
-    uint64_t total_exec = (uint64_t) (stop.tv_sec - start.tv_sec) * 1000000 + (uint64_t) (stop.tv_usec - start.tv_usec);
-    uint64_t exec_xmit    = (uint64_t) (exec_xmit_sec)  * 1000000 + (uint64_t) (exec_xmit_usec);
-    printf("\nProgram total execution time     %lu usec\n", total_exec);
-    printf("  execute_xmit_kernel run time     %lu usec\n", exec_xmit);
-  }
- #endif // TIME
- #ifdef INT_TIME
-  // These are timings taken from called routines...
-  printf("\n");
- #endif // INT_TIME
+ #ifdef XMIT_HW_FFT
+  free_XMIT_FFT_HW_RESOURCES();
+ #endif
 
   printf("\nDone.\n");
   return 0;
@@ -248,3 +260,83 @@ int main(int argc, char *argv[])
 
 
 
+void dump_final_run_statistics()
+{
+  printf("\nFinal Run Stats after, %u, Time Steps\n", time_step);
+  printf("Occ-Map Dimensions, %u, by, %u, grid, res, %lf, ray_r, %u\n", GRID_MAP_X_DIM, GRID_MAP_Y_DIM, GRID_MAP_RESLTN, RAYTR_RANGE);
+
+  printf("Timing (in usec):");
+ #ifdef HW_VIT
+  printf(" with %u HW_VIT", 1);
+ #else
+  printf(" with NO HW_VIT");
+ #endif
+ #ifdef XMIT_HW_FFT
+  printf(" and %u HW_XMIT_FFT", NUM_XMIT_FFT_ACCEL);
+ #else
+  printf(" and NO HW_XMIT_FFT");
+ #endif
+  printf("\n");
+
+#ifdef TIME
+  gettimeofday(&stop_prog, NULL);
+  uint64_t total_exec = (uint64_t)(stop_prog.tv_sec - start_prog.tv_sec) * 1000000 + (uint64_t)(stop_prog.tv_usec - start_prog.tv_usec);
+  uint64_t total_xmit = (uint64_t)(exec_xmit_sec)  * 1000000 + (uint64_t)(exec_xmit_usec);
+ #if INT_TIME
+  // This is the xmit_pipe.c breakdown
+  uint64_t x_pipe      = (uint64_t)(x_pipe_sec)  * 1000000 + (uint64_t)(x_pipe_usec);
+  uint64_t x_genmacfr  = (uint64_t)(x_genmacfr_sec)  * 1000000 + (uint64_t)(x_genmacfr_usec);
+  uint64_t x_domapwk   = (uint64_t)(x_domapwk_sec)  * 1000000 + (uint64_t)(x_domapwk_usec);
+  uint64_t x_phdrgen   = (uint64_t)(x_phdrgen_sec)  * 1000000 + (uint64_t)(x_phdrgen_usec);
+  uint64_t x_ck2sym    = (uint64_t)(x_ck2sym_sec)  * 1000000 + (uint64_t)(x_ck2sym_usec);
+  uint64_t x_ocaralloc = (uint64_t)(x_ocaralloc_sec)  * 1000000 + (uint64_t)(x_ocaralloc_usec);
+  uint64_t x_fft       = (uint64_t)(x_fft_sec)  * 1000000 + (uint64_t)(x_fft_usec);
+  uint64_t x_ocycpref  = (uint64_t)(x_ocycpref_sec)  * 1000000 + (uint64_t)(x_ocycpref_usec);
+
+  #ifdef XMIT_HW_FFT
+  uint64_t x_fHtotal   = (uint64_t)(x_fHtotal_sec)  * 1000000 + (uint64_t)(x_fHtotal_usec);
+  uint64_t x_fHcvtin   = (uint64_t)(x_fHcvtin_sec)  * 1000000 + (uint64_t)(x_fHcvtin_usec);
+  uint64_t x_fHcomp    = (uint64_t)(x_fHcomp_sec)   * 1000000 + (uint64_t)(x_fHcomp_usec);
+  uint64_t x_fHcvtout  = (uint64_t)(x_fHcvtout_sec)  * 1000000 + (uint64_t)(x_fHcvtout_usec);
+  #endif
+
+  // This is the Xmit doMapWork breakdown
+  uint64_t xdmw_total   = (uint64_t)(xdmw_total_sec)   * 1000000 + (uint64_t)(xdmw_total_usec);
+  uint64_t xdmw_cnvEnc  = (uint64_t)(xdmw_cnvEnc_sec)  * 1000000 + (uint64_t)(xdmw_cnvEnc_usec);
+  uint64_t xdmw_punct   = (uint64_t)(xdmw_punct_sec)   * 1000000 + (uint64_t)(xdmw_punct_usec);
+  uint64_t xdmw_intlv   = (uint64_t)(xdmw_intlv_sec)   * 1000000 + (uint64_t)(xdmw_intlv_usec);
+  uint64_t xdmw_symbols = (uint64_t)(xdmw_symbls_sec)  * 1000000 + (uint64_t)(xdmw_symbls_usec);
+  uint64_t xdmw_mapout  = (uint64_t)(xdmw_mapout_sec)  * 1000000 + (uint64_t)(xdmw_mapout_usec);
+ #endif // INT_TIME
+
+  printf(" Total workload run-time    : %10lu usec\n", total_exec);
+  printf("   Total xmit_pipe run-time : %10lu usec\n", total_xmit);
+
+ #ifdef INT_TIME
+  printf("     X-Pipe Total Time        : %10lu usec\n", x_pipe);
+  printf("     X-Pipe GenMacFr Time     : %10lu usec\n", x_genmacfr);
+  printf("     X-Pipe doMapWk Time      : %10lu usec\n", x_domapwk);
+  printf("       XdoMW Total Time         : %10lu usec\n", xdmw_total);
+  printf("       XdoMW ConvEncode Time    : %10lu usec\n", xdmw_cnvEnc);
+  printf("       XdoMW Puncture Time      : %10lu usec\n", xdmw_punct);
+  printf("       XdoMW Interleave Time    : %10lu usec\n", xdmw_intlv);
+  printf("       XdoMW Gen-Symbols Time   : %10lu usec\n", xdmw_symbols);
+  printf("       XdoMW Gen-Map-Out Time   : %10lu usec\n", xdmw_mapout);
+  printf("     X-Pipe PckHdrGen Time    : %10lu usec\n", x_phdrgen);
+  printf("     X-Pipe Chnk2Sym Time     : %10lu usec\n", x_ck2sym);
+  printf("     X-Pipe CarAlloc Time     : %10lu usec\n", x_ocaralloc);
+  printf("     X-Pipe Xm-FFT Time       : %10lu usec\n", x_fft);
+  #ifdef XMIT_HW_FFT
+  printf("       X-Pipe xHfft_total Time  : %10lu usec\n", x_fHtotal);
+  printf("       X-Pipe xHfft_cvtin Time  : %10lu usec\n", x_fHcvtin);
+  printf("       X-Pipe xHfft_comp  Time  : %10lu usec\n", x_fHcomp);
+  printf("       X-Pipe xHfft_cvtout Time : %10lu usec\n", x_fHcvtout);
+  #endif
+  printf("     X-Pipe CycPrefix Time    : %10lu usec\n", x_ocycpref);
+  printf("\n");
+ #endif // INT_TIME
+ #else // TIME
+  printf(" NO more detailed timing information on this run...\n");
+ #endif
+  printf("\nDone with the run...\n");
+}

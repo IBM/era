@@ -1040,7 +1040,7 @@ void dump_final_run_statistics()
 #ifdef XMIT_HW_FFT
   uint64_t x_fHtotal   = (uint64_t)(x_fHtotal_sec)  * 1000000 + (uint64_t)(x_fHtotal_usec);
   uint64_t x_fHcvtin   = (uint64_t)(x_fHcvtin_sec)  * 1000000 + (uint64_t)(x_fHcvtin_usec);
-  uint64_t x_fHcomp    = (uint64_t)(x_fHcomp_sec)  * 1000000 + (uint64_t)(x_fHcomp_usec);
+  uint64_t x_fHcomp    = (uint64_t)(x_fHcomp_sec)   * 1000000 + (uint64_t)(x_fHcomp_usec);
   uint64_t x_fHcvtout  = (uint64_t)(x_fHcvtout_sec)  * 1000000 + (uint64_t)(x_fHcvtout_usec);
 #endif
 
@@ -1166,7 +1166,7 @@ void dump_final_run_statistics()
   printf("           R-SyLng Search Time        : %10lu usec\n", rslg_search);
   printf("           R-SyLng OutGen Time        : %10lu usec\n", rslg_outgen);
   printf("         R-Pipe Rc-FFT Time       : %10lu usec\n", r_fft);
-#ifdef RMIT_HW_FFT
+#ifdef RECV_HW_FFT
   printf("           R-Pipe rHfft_total Time  : %10lu usec\n", r_fHtotal);
   printf("           R-Pipe rHfft_cvtin Time  : %10lu usec\n", r_fHcvtin);
   printf("           R-Pipe rHfft_comp  Time  : %10lu usec\n", r_fHcomp);
