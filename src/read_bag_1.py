@@ -58,10 +58,10 @@ def send_data(bag_file):
             o2_str = o1_str + blank_str[len(o1_str):]
             o_str = 'L' + o2_str + 'L'
             #print('Sending Lidar message length msg "%s"' % o_str)
-            conn.sendall(o_str)
+            conn.sendall(o_str.encode('utf-8'))
             data = recvall(conn, 2)
             #print('  received reply "%s"' % data)
-            if data == 'OK':
+            if data.decode() == 'OK':
                 #print('  Sending Lidar message of %d bytes' % len(msg.data))
                 conn.sendall(msg.data)
                 print('Hero1 Lidar msg %d sent %d bytes' %
@@ -77,10 +77,10 @@ def send_data(bag_file):
             o2_str = o1_str + blank_str[len(o1_str):]
             o_str = 'O' + o2_str + 'O'
             #print('Sending Odo message length msg "%s"' % o_str)
-            conn.sendall(o_str)
+            conn.sendall(o_str.encode('utf-8'))
             data = recvall(conn, 2)
             #print('  received reply "%s"' % data)
-            if data == 'OK':
+            if data.decode() == 'OK':
                 #print('  sending Odo message of %d bytes' % len(ba))
                 conn.sendall(ba)
                 print('Hero1 Odometry msg %d sent %d bytes' %
