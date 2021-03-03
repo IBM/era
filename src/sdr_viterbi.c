@@ -891,7 +891,7 @@ void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t
    #else
     {
       // Call the viterbi_butterfly2_generic function using ESP interface
-      DEBUG(printf("ESP_INTFC: Calling do_sdr_decoding with frame->n_data_bits = %u  ofdm->n_cbps = %u d_ntraceback = %u \n", frame->n_data_bits, ofdm->n_cbps, d_ntrace`back));
+      DEBUG(printf("ESP_INTFC: Calling do_sdr_decoding with frame->n_data_bits = %u  ofdm->n_cbps = %u d_ntraceback = %u \n", frame->n_data_bits, ofdm->n_cbps, d_ntraceback));
       do_sdr_decoding(frame->n_data_bits, ofdm->n_cbps, d_ntraceback, inMemory, outMemory);
     }
    #endif
