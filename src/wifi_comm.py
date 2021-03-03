@@ -5,98 +5,105 @@ import socket
 import struct
 import argparse
 
-HOST  = '127.0.0.1'  # Standard loopback interface address (localhost)
+HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
 RPORT = 5560         # Port to listen on & receive from
 XPORT = 5559         # Port to listen on & send to
 
+
 def recvall(sock, n):
-        # Helper function to recv all 'n' bytes of a message
-        data = bytearray()
-        while len(data) < n :
-                packet = sock.recv(n - len(data))
-                if not packet:
-                        return None
-                data.extend(packet)
-        return data
-        
+    # Helper function to recv all 'n' bytes of a message
+    data = bytearray()
+    while len(data) < n:
+        packet = sock.recv(n - len(data))
+        if not packet:
+            return None
+        data.extend(packet)
+    return data
+
 
 def main():
-        global HOST
-        global RPORT
-        global XPORT
-        msg_count = 0
+    global HOST
+    global RPORT
+    global XPORT
+    msg_count = 0
 
-        parser = argparse.ArgumentParser()
-        parser.add_argument("-A", "--address", help="define the IP address to connect to")
-        parser.add_argument("-R", "--recv_port", type=int, help="define the Port for the socket to receive from")
-        parser.add_argument("-X", "--xmit_port", type=int, help="define the Port for the socket to transmit to")
-        args = parser.parse_args()
-        if (args.address != None) :
-                HOST = args.address
-                #print('Set HOST to ' + HOST);
-        if (args.recv_port != None) :
-                RPORT = args.recv_port
-                #print('Set RPORT to %d' % RPORT);
-        if (args.xmit_port != None) :
-                XPORT = args.xmit_port
-                #print('Set XPORT to %d' % XPORT);
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-A", "--address",
+                        help="define the IP address to connect to")
+    parser.add_argument("-R", "--recv_port", type=int,
+                        help="define the Port for the socket to receive from")
+    parser.add_argument("-X", "--xmit_port", type=int,
+                        help="define the Port for the socket to transmit to")
+    args = parser.parse_args()
+    if (args.address != None):
+        HOST = args.address
+        #print('Set HOST to ' + HOST);
+    if (args.recv_port != None):
+        RPORT = args.recv_port
+        #print('Set RPORT to %d' % RPORT);
+    if (args.xmit_port != None):
+        XPORT = args.xmit_port
+        #print('Set XPORT to %d' % XPORT);
 
-        print('Using HOST %s and R-PORT %u and X-PORT %u' %(HOST, RPORT, XPORT));
-	s1 =  socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	s1.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    print('Using HOST %s and R-PORT %u and X-PORT %u' % (HOST, RPORT, XPORT))
+    s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s1.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-	s1.bind((HOST, RPORT))
-	s1.listen(1)
-	conn1, addr1 = s1.accept()
-	print('Connected to ' + str(addr1))
+    s1.bind((HOST, RPORT))
+    s1.listen(1)
+    conn1, addr1 = s1.accept()
+    print('Connected to ' + str(addr1))
 
-	s2 =  socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	s2.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s2.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-	s2.bind((HOST, XPORT))
-	s2.listen(1)
-	conn2, addr2 = s2.accept()
-	print('Connected to ' + str(addr2))
+    s2.bind((HOST, XPORT))
+    s2.listen(1)
+    conn2, addr2 = s2.accept()
+    print('Connected to ' + str(addr2))
 
-        while True :
-		header = recvall(conn1, 8) #conn1.recv(8)
-                if not header :
-                        print('... end of run on message %d.' % msg_count)
-                        break
-		#print('Wifi in-msg %d received header %d bytes from port %d' % (msg_count, len(header), RPORT))
-                #print('   msg: "%s"' % str(header))
+    while True:
+        header = recvall(conn1, 8)  # conn1.recv(8)
+        if not header:
+            print('... end of run on message %d.' % msg_count)
+            break
+        #print('Wifi in-msg %d received header %d bytes from port %d' % (msg_count, len(header), RPORT))
+        #print('   msg: "%s"' % str(header))
 
-                d_len = int(header[1:7])
-                #print('    Therefore %d bytes for real/imag parts' % d_len)
-		d_real = recvall(conn1, d_len) # conn1.recv(d_len)
-                if not d_real :
-                        print('... end of run on d_real of message %d.' % msg_count)
-                        break
-		#print(  '  Wifi in-msg %d received d_real %d bytes from port %d' % (msg_count, len(d_real), RPORT))
-                #print('   msg: "%s"' % str(d_real))
+        d_len = int(header[1:7])
+        #print('    Therefore %d bytes for real/imag parts' % d_len)
+        d_real = recvall(conn1, d_len)  # conn1.recv(d_len)
+        if not d_real:
+            print('... end of run on d_real of message %d.' % msg_count)
+            break
+        #print(  '  Wifi in-msg %d received d_real %d bytes from port %d' % (msg_count, len(d_real), RPORT))
+        #print('   msg: "%s"' % str(d_real))
 
-		d_imag = recvall(conn1, d_len) # conn1.recv(d_len)
-                if not d_imag :
-                        print('... end of run on d_imag of message %d.' % msg_count)
-                        break
-		#print('  Wifi in-msg %d received d_imag %d bytes from port %d' % (msg_count, len(d_imag), RPORT))
-                #print('   msg: "%s"' % str(d_imag))
-                print('Wifi received all in-msg %d from port %d payload %d bytes' % (msg_count, RPORT, len(d_real)))
-		#print('Wifi sending messages %d to port %d' % (msg_count, XPORT))
-                conn2.sendall(header)
-		#print('  Wifi sent header message %d to port %d' % (msg_count, XPORT))
-		resp = recvall(conn2, 2)
-		#print('  received reply "%s"' % resp)
-		if resp == 'OK' :
-                        #print('  Sending Lidar message of %d bytes' % len(msg.resp))
-                        conn2.sendall(d_real)
-		        #print('  Wifi sent d_real message %d to port %d' % (msg_count, XPORT))
-                        conn2.sendall(d_imag)
-                        print('Wifi sent all out-msg %d to port %d payload %d bytes' % (msg_count, XPORT, len(d_real)))
-		        #print('Wifi sent all messages %d to port %d' %(msg_count, XPORT))
-                        msg_count += 1
-                else :
-                        print('Send header receive odd response "%s"\n' % resp)
+        d_imag = recvall(conn1, d_len)  # conn1.recv(d_len)
+        if not d_imag:
+            print('... end of run on d_imag of message %d.' % msg_count)
+            break
+        #print('  Wifi in-msg %d received d_imag %d bytes from port %d' % (msg_count, len(d_imag), RPORT))
+        #print('   msg: "%s"' % str(d_imag))
+        print('Wifi received all in-msg %d from port %d payload %d bytes' %
+              (msg_count, RPORT, len(d_real)))
+        #print('Wifi sending messages %d to port %d' % (msg_count, XPORT))
+        conn2.sendall(header)
+        #print('  Wifi sent header message %d to port %d' % (msg_count, XPORT))
+        resp = recvall(conn2, 2)
+        #print('  received reply "%s"' % resp)
+        if resp == 'OK':
+            #print('  Sending Lidar message of %d bytes' % len(msg.resp))
+            conn2.sendall(d_real)
+            #print('  Wifi sent d_real message %d to port %d' % (msg_count, XPORT))
+            conn2.sendall(d_imag)
+            print('Wifi sent all out-msg %d to port %d payload %d bytes' %
+                  (msg_count, XPORT, len(d_real)))
+            #print('Wifi sent all messages %d to port %d' %(msg_count, XPORT))
+            msg_count += 1
+        else:
+            print('Send header receive odd response "%s"\n' % resp)
+
 
 if __name__ == "__main__":
-	main()
+    main()
