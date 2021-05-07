@@ -47,7 +47,7 @@ two ERA executables:
  - era1 : the ```hero1``` executable, that reads and reacts to the hero1 bagfile contents
  - era2 : the ```hero2``` executable, that reads and reacts to the hero2 bagfile contents
 
-The bag file can be downloaded at: https://ibm.box.com/s/2ji8jljguz3wgyovaxfs4m6v9vyjtwfk
+The bag file can be downloaded at: <a href="https://ibm.ent.box.com/file/808321861497">https://ibm.ent.box.com/file/808321861497</a>
 
 There are an additional 2 executables names ```do_cxit_pipe``` and ```do_recv_pipe```
 which are standalone versions of the transmit and receive pipelines used in the ERA executables.
