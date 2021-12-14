@@ -58,3 +58,5 @@ build/*
 
 # Emacs auto-save backups
 *~
+
+*.bag
