@@ -13,7 +13,8 @@ packaged in a "bagfile" and some example bagfiles are available <a href="https:/
 
 ## System Requirements
 
-Standalone-ERA has been successfully built and executed using the following set-up:
+Standalone-ERA has been successfully built and executed using the following set-ups:
+
  - Ubuntu 18.04 and Python 2.7
  - Ubuntu 20.04 and Python 3.8
 
@@ -168,5 +169,4 @@ At this point, you will have invoked the Standalone-ERA program for the two cars
 
  - J-D Wellman (wellman@us.ibm.com)
  - Augusto Vega (ajvega@us.ibm.com)
- 
  
