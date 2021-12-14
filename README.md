@@ -14,8 +14,8 @@ packaged in a "bagfile" and some example bagfiles are available <a href="https:/
 ## System Requirements
 
 Standalone-ERA has been successfully built and executed using the following set-up:
- - Ubuntu 18.04
- - Python 2.7
+ - Ubuntu 18.04 and Python 2.7
+ - Ubuntu 20.04 and Python 3.8
 
 The bagfiles (see below) are in a `rosbag` format, and the Python reader requires that the
 rosbag package be installed.  On Ubuntu 18, this can be achieved with
