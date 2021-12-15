@@ -92,7 +92,8 @@ def main():
         #print('  Wifi sent header message %d to port %d' % (msg_count, XPORT))
         resp = recvall(conn2, 2)
         #print('  received reply "%s"' % resp)
-        if resp == 'OK':
+        #if resp == 'OK':
+        if resp.decode('UTF-8') == 'OK':
             #print('  Sending Lidar message of %d bytes' % len(msg.resp))
             conn2.sendall(d_real)
             #print('  Wifi sent d_real message %d to port %d' % (msg_count, XPORT))
