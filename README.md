@@ -109,14 +109,14 @@ The easiest way to run Standalone-ERA is to start multiple (eight) terminals in 
 
 ```
 cd era/src
-python ././read_bag_1.py ../data/bagfile
+python ./read_bag_1.py ../data/bagfile
 ```
 
 **Terminal 2:**
 
 ```
 cd era/src
-python ./read_bag_1.py ../data/bagfile
+python ./read_bag_2.py ../data/bagfile
 ```
 
 **Terminal 3:**
