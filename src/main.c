@@ -13,6 +13,7 @@
 #include "globals.h"
 #include "debug.h"
 #include "getopt.h"
+#include "cv_toolset.h"
 
 #include "occgrid.h"    // Occupancy Grid Map Create/Fuse
 #include "lz4.h"        // LZ4 Compression/Decompression
@@ -678,6 +679,11 @@ int main(int argc, char *argv[])
   xmit_pipe_init(); // Initialize the IEEE SDR Transmit Pipeline
   printf("Initializing the Receive pipeline...\n");
   recv_pipe_init();
+  printf("Initializing the Computer Vision toolset...\n");
+  if (cv_toolset_init() != success) {
+      printf("Computer Vision toolset initialization failed...\n");
+      exit(0);
+  }
 
   signal(SIGINT, INThandler);
   signal(SIGPIPE, SIGPIPE_handler);
@@ -824,6 +830,7 @@ int main(int argc, char *argv[])
       break;
     }
   }
+
  #if PARALLEL_PTHREADS
   // Now set up the processing threads - 1 for Lidar input, one for WiFi RECV processing (fusion)
   pthread_attr_t  pt_attr;
@@ -840,12 +847,18 @@ int main(int argc, char *argv[])
     printf("Could not start the scheduler pthread... return value %d\n", pt_ret);
     closeout_and_exit("Couldn't allocate fuse_occmap_thread...", -1);
   }
- #endif
+#endif
+
   //#ifdef INT_TIME
   gettimeofday(&start_prog, NULL);
   //#endif
   bool hit_eof = false;
+
+  /*************************************************************************/
+  /*                           M A I N   L O O P                           */
+  /*************************************************************************/
   while ((!hit_eof) && (lidar_count < max_time_steps)) {
+
     DBGOUT(printf("Calling read_all on the BAG socket...\n"); fflush(stdout));
     //int valread = read(bag_sock , l_buffer, 10);
     //#ifdef INT_TIME
@@ -868,7 +881,11 @@ int main(int argc, char *argv[])
       }
     }
 
+    /***********************************************************************/
+    /* Checking if the received message includes lidar information         */
+    /***********************************************************************/
     if(l_buffer[0] == 'L' && l_buffer[9] == 'L') {
+
       //#ifdef INT_TIME
       gettimeofday(&start_proc_lidar, NULL);
       //#endif
@@ -909,8 +926,13 @@ int main(int argc, char *argv[])
       proc_lidar_sec  += stop_proc_lidar.tv_sec  - start_proc_lidar.tv_sec;
       proc_lidar_usec += stop_proc_lidar.tv_usec - start_proc_lidar.tv_usec;
       //#endif
+
     }
+    /***********************************************************************/
+    /* Checking if the received message includes odometry information      */
+    /***********************************************************************/
     else if(l_buffer[0] == 'O' && l_buffer[9] == 'O') {
+
      #ifdef INT_TIME
       gettimeofday(&start_proc_odo, NULL);
      #endif
@@ -944,14 +966,30 @@ int main(int argc, char *argv[])
       proc_odo_sec  += stop_proc_odo.tv_sec  - start_proc_odo.tv_sec;
       proc_odo_usec += stop_proc_odo.tv_usec - start_proc_odo.tv_usec;
      #endif
+
     } else {
+
       /*DBGOUT(printf("BUFFER : '");
 	for (int ii = 0; ii < 8; ii++) {
 	printf("%c", l_buffer[ii]);
 	}
 	printf("'\n");
 	fflush(stdout));*/
+
     }
+
+    /***********************************************************************/
+    /* We next execute the computer vision task:                           */
+    /*   - We use YOLO on images coming from a source TBD.                 */
+    /*   - For testing purposes, these images can be taken initially from  */
+    /*     the ATR dataset, COCO dataset, or some other available one.     */
+    /*   - Ideally, we want these images to come from the actual car       */
+    /*     simulator (e.g. CARLA).                                         */
+    /***********************************************************************/
+
+    unsigned tr_val = 1;  // TODO: What is the parameter 'tr_val' passed to  run_object_classification()?
+    label_t out_label = run_object_classification(tr_val);
+    printf("run_object_classification returned %u\n", tr_val);
 
   }
 

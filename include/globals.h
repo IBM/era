@@ -1,6 +1,8 @@
 #ifndef GLOBALS_H_
 #define GLOBALS_H_
 
+typedef enum {error, success} status_t;
+
 //#define DBGOUT(x) x  // Uncomment for DEBUG messages
 #define DBGOUT(x)  // Uncomment for NO DEBUG messages
 
