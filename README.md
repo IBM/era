@@ -76,11 +76,16 @@ Standalone-ERA execution requires eight simultaneous processes:
  - one process to operate as the car 1 target for the final fused maps (`carla_recv_1.sh`).
  - one process to operate as the car 2 target for the final fused maps (`carla_recv_2.sh`).
 
-Currently, the simplest method to invoke/execute ERA is therefore to set up **eight terminal windows**, and to invoke the related processes in each window. It is recommended that one start the bagfiles and WiFi interconnect (socket server) processes before invocation of either the `era1` or `era2` program. A possible environment for this is illustrated below.
+We provide the following Python script that launches ERA by simultaneously running the eight processes mentioned above:
 
-<p align="center"><img src="src/era_invocation_example.png" width=1000></p>
+```
+cd era
+./launch_era.py
+```
 
-The underlying function is as follows:
+The script generates eight output files, corresponding to the eight executed processes, with names: `read_bag_1.out`, `read_bag_2.out`, `wifi_comm_1.out`, `wifi_comm_2.out`, `carla_recvr_1.out`, `carla_recvr_2.out`, `era_1.out`, and `era_2.out`.
+
+The underlying functionality of the eight processes is as follows:
 
 ### `read_bag_X.py`
 
@@ -101,9 +106,14 @@ and cooperative intelligence aspects) and return the resulting learned data (in 
 The ERA programs are the target workload, compiled from the underlying C source code, and represent the ERA functionality added to an underlying vehicle. The two programs (`era1` and `era2`) are identical, but for some compile-time assignments of TCP ports (for the sockets) and such. In practice, each program will, however, be driven by different content from within the bagfiles, and thus the execution profiles can vary according to the environment, actions, etc. of the cars as described in their bagfiles.
 
 
-### Recap
+### Alternative Execution Approach
 
-The easiest way to run Standalone-ERA is to start multiple (eight) terminals in pairs: in the first pair, invoke the bagfile reader/publisher for each car; in the second pair, start the wifi-communications proxy for each car; in the third pair, start the CARLA interfaces for each car; and in the fourth pair, start the ERA executables. Assuming a bagfile named `bagfile` and placed in `era/data`:
+Alternativelly, it is possible to invoke/execute ERA by setting up **eight terminal windows**, and invoking the related processes in each window. It is recommended to start the bagfiles and WiFi interconnect (socket server) processes before invocation of either the `era1` or `era2` program. A possible environment for this is illustrated below.
+
+<p align="center"><img src="src/era_invocation_example.png" width=1000></p>
+
+
+Assuming a bagfile named `bagfile` and placed in `era/data`:
 
 **Terminal 1:**
 
