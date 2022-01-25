@@ -69,12 +69,12 @@ Generally, running with `DEBUG_MODE` puts out **a lot** of information, and leng
 Standalone-ERA execution requires eight simultaneous processes:
  - one process to read the input bagfile for car 1 (`read_bag_1.py`).
  - one process to read the input bagfile for car 2 (`read_bag_2.py`).
- - one process to run the ERA workload for car 1 (`wifi_comm_1.sh`).
- - one process to run the ERA workload for car 2 (`wifi_comm_2.sh`).
- - one process to operate as the WiFi interconnect for car 1 -> car 2 messages (`era1`).
- - one process to operate as the WiFi interconnect for car 2 -> car 1 messages (`era2`).
+ - one process to operate as the WiFi interconnect for car 1 -> car 2 messages (`wifi_comm_1.sh`).
+ - one process to operate as the WiFi interconnect for car 2 -> car 1 messages (`wifi_comm_2.sh`).
  - one process to operate as the car 1 target for the final fused maps (`carla_recv_1.sh`).
  - one process to operate as the car 2 target for the final fused maps (`carla_recv_2.sh`).
+ - one process to run the ERA workload for car 1 (`era1`).
+ - one process to run the ERA workload for car 2 (`era2`).
 
 We provide the following Python script that launches ERA by simultaneously running the eight processes mentioned above:
 
