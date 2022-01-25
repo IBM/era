@@ -108,7 +108,7 @@ The ERA programs are the target workload, compiled from the underlying C source 
 
 ### Alternative Execution Approach
 
-Alternativelly, it is possible to invoke/execute ERA by setting up **eight terminal windows**, and invoking the related processes in each window. It is recommended to start the bagfiles and WiFi interconnect (socket server) processes before invocation of either the `era1` or `era2` program. A possible environment for this is illustrated below.
+Alternatively, it is possible to invoke/execute ERA by setting up **eight terminal windows**, and invoking the related processes in each window. It is recommended to start the bagfiles and WiFi interconnect (socket server) processes before invocation of either the `era1` or `era2` program. A possible environment for this is illustrated below.
 
 <p align="center"><img src="src/era_invocation_example.png" width=1000></p>
 
