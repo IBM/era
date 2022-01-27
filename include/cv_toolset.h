@@ -18,6 +18,7 @@
 #ifndef _CV_TOOLSET_H
 #define _CV_TOOLSET_H
 
+//#include <opencv2/opencv.hpp>
 #include "globals.h"
 
 /* Pre-defined labels used by the computer vision kernel */
@@ -33,5 +34,6 @@ typedef enum {
 
 status_t cv_toolset_init();
 label_t run_object_classification(unsigned tr_val);
+//label_t run_object_classification_2(const cv::Mat& image);
 
 #endif

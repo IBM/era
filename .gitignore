@@ -60,3 +60,6 @@ build/*
 *~
 
 *.bag
+weights.ckpt
+**/__pycache__
+

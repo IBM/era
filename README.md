@@ -17,12 +17,21 @@ Standalone-ERA has been successfully built and executed using the following set-
 
  - Ubuntu 18.04 and Python 2.7
  - Ubuntu 20.04 and Python 3.8
+ - RHEL 7.9
 
 The bagfiles are in a `rosbag` format, and the Python reader requires that the rosbag package be installed. On Ubuntu, this can be achieved with:
 
  - Python 2: `sudo apt install python-rosbag -y`
  - Python 3: `sudo apt install python3-rosbag -y`
 
+Other required packakes (mostly used by the computer vision code):
+
+ - Pillow (PIL)
+ - Torchvision
+ - Pytorch-lightning
+ - OpenCV
+ - Matplotlib
+ - Lightnet
 
 
 ## Installation and Build
@@ -36,7 +45,7 @@ git checkout standalone_era
 mkdir build
 cd build
 cmake ..
-make -j4
+make -j
 ```
 
 
@@ -80,8 +89,10 @@ We provide the following Python script that launches ERA by simultaneously runni
 
 ```
 cd era
-./launch_era.py
+./launch_era.py [n_steps > 0]
 ```
+
+`n_steps` is an optional integer argument that indicates the maximun number of iterations to run (if not specified, all the input bagfile is consumed).
 
 The script generates eight output files, corresponding to the eight executed processes, with names: `read_bag_1.out`, `read_bag_2.out`, `wifi_comm_1.out`, `wifi_comm_2.out`, `carla_recvr_1.out`, `carla_recvr_2.out`, `era_1.out`, and `era_2.out`.
 
@@ -108,7 +119,7 @@ The ERA programs are the target workload, compiled from the underlying C source 
 
 ### Alternative Execution Approach
 
-Alternatively, it is possible to invoke/execute ERA by setting up **eight terminal windows**, and invoking the related processes in each window. It is recommended to start the bagfiles and WiFi interconnect (socket server) processes before invocation of either the `era1` or `era2` program. A possible environment for this is illustrated below.
+Alternatively (i.e. not relying on the `launch_era.py` script), it is possible to invoke/execute ERA by setting up **eight terminal windows**, and invoking the related processes in each window. It is recommended to start the bagfiles and WiFi interconnect (socket server) processes before invocation of either the `era1` or `era2` program. A possible environment for this is illustrated below.
 
 <p align="center"><img src="src/era_invocation_example.png" width=1000></p>
 

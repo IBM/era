@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 2.8.11)
+cmake_minimum_required(VERSION 2.8...3.13)
 project(ERA)
 
 #This adds debugging info; remove if you want every ounce of speed, etc.
-set (CMAKE_C_FLAGS "-g ${CMAKE_C_FLAGS}")
+set (CMAKE_C_FLAGS "-g ${CMAKE_C_FLAGS} -Wstringop-overflow=1")
 
 macro(use_c99)
   if (CMAKE_VERSION VERSION_LESS "3.1")
@@ -27,10 +27,12 @@ use_c99()
 #  set (CMAKE_BUILD_TYPE "Debug" CACHE STRING "Default build type: Debug" FORCE)
 #endif()
 
-include_directories(include /usr/include/python3.8)
+include_directories(include $ENV{CONDA_PREFIX}/include/python3.8)
+#include_directories(include $ENV{CONDA_PREFIX}/include/python3.8 ${OpenCV_INCLUDE_DIRS})
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
+#find_package(OpenCV REQUIRED)
 
 #add_library(occgrid STATIC src/occgrid.c)
 #add_library(lz4 STATIC src/lz4.c)

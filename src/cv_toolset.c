@@ -18,11 +18,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <Python.h>
+//#include <opencv2/opencv.hpp>
 
 #include "cv_toolset.h"
 #include "globals.h"
 #include "debug.h"
 
+//using namespace cv;
 
 PyObject *pName, *pModule, *pFunc, *pFunc_load;
 PyObject *pArgs, *pValue, *pretValue;
@@ -55,17 +57,17 @@ status_t cv_toolset_init() {
 
   if (pModule == NULL) {
     PyErr_Print();
-    printf("Failed to load Python program, perhaps pythonpath needs to be set; export PYTHONPATH=your_mini_era_dir/cv/CNN_MIO_KERAS");
+    printf("Failed to load Python program, perhaps pythonpath needs to be set; export PYTHONPATH=<your_era_dir>/src/cv/yolo\n");
     return 1;
   } else {
-    pFunc_load = PyObject_GetAttrString(pModule, python_func_load);
+    pFunc_load = PyObject_GetAttrString(pModule, python_func_load /* loadmodel */);
 
     if (pFunc_load && PyCallable_Check(pFunc_load)) {
       PyObject_CallObject(pFunc_load, NULL);
     } else {
       if (PyErr_Occurred())
         PyErr_Print();
-      printf("Cannot find python function - loadmodel");
+      printf("Cannot find python function - loadmodel\n");
     }
     Py_XDECREF(pFunc_load);
   }
@@ -105,7 +107,7 @@ label_t run_object_classification(unsigned tr_val) {
   label_t object = (label_t)tr_val;
 
   if (pModule != NULL) {
-    pFunc = PyObject_GetAttrString(pModule, python_func);
+    pFunc = PyObject_GetAttrString(pModule, python_func /* predict */);
 
     if (pFunc && PyCallable_Check(pFunc)) {
       pArgs = PyTuple_New(1);
@@ -145,3 +147,8 @@ label_t run_object_classification(unsigned tr_val) {
 
   return object;
 }
+
+//label_t run_object_classification_2(const cv::Mat& image) {
+//
+//  return 0;
+//}

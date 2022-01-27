@@ -12,6 +12,7 @@ import lightnet as ln
 import argparse
 import sys
 import warnings
+import os
 warnings.filterwarnings("ignore", category=UserWarning)
 
 # try:
@@ -20,12 +21,15 @@ warnings.filterwarnings("ignore", category=UserWarning)
 #     raise ImportError('uh oh! import error')
 # translate_to_approxhpvm(model, "yolo_data/hpvm/", X_test, Y_test, num_classes)
 
-batch_size = 1
-num_classes = 12
-img_cols = 640
-img_rows = 480
+batch_size   = 1
+num_classes  = 12
+img_cols     = 640
+img_rows     = 480
 num_channels = 3
-run_dir = '/home/espuser/mini-era/cv/yolo/'
+
+# TODO: Fix the way we set run_dir (it should be passed during initialization)
+#run_dir = '/home/espuser/mini-era/cv/yolo/'
+run_dir = '/dccstor/epochs/ajvega/era/src/cv/yolo/'
 
 model = None
 classes = ['BMP2', 'D20', 'MTLB', 'T72', 'ZSU23', '2S3',
@@ -33,6 +37,7 @@ classes = ['BMP2', 'D20', 'MTLB', 'T72', 'ZSU23', '2S3',
 
 BOX_COLOR = (255, 0, 0) # Red
 TEXT_COLOR = (255, 255, 255) # White
+
 
 # This is to visualize the bounding box and label on the image
 def visualize_bbox(img, bbox, class_name, color=BOX_COLOR, thickness=2):
@@ -55,6 +60,7 @@ def visualize_bbox(img, bbox, class_name, color=BOX_COLOR, thickness=2):
     )
     return img
 
+
 # This is to visualize the bounding box and label on the image
 def visualize(image, bbox, class_name):
     img = image.copy()
@@ -64,6 +70,7 @@ def visualize(image, bbox, class_name):
     plt.axis('off')
     plt.imshow(img)
     plt.show()
+
 
 # this is supposed to be replaced by a C version at some point ??
 # this could also be replaced with non_eval_post_processing which
@@ -136,19 +143,20 @@ def predict(imagetype): # --> called by kernels_api.c
         maxi = len(lines) - 1
         rand = randint(mini, maxi)
         path = lines[rand][:-1]
+        path = '/dccstor/epochs/datasets/ATR-YOLO/yolo-data/' + path.replace('/home/espuser/mini-era/yolo-data/','')
     test_image = Image.open(path).convert('RGB')
     #image_num  = cv2.imread(path)
     #image_num  = cv2.cvtColor(image_num, cv2.COLOR_BGR2RGB)
 
     # transform image to proper pytorch tensor format
-    transform = transforms.Compose([
-        transforms.ToTensor()])
+    transform = transforms.Compose([transforms.ToTensor()])
     img_tensor = transform(test_image).to('cpu').unsqueeze(0)
 
     # predict and extract label from network output
     outputs = model(img_tensor)
     #print(outputs)
     print(path, imagetype)
+    sys.stdout.flush()
     dets = postprocessing(outputs, model, classes) # eventually replace with other postprocessing
     #columns of dets: 'image', 'class_label', 'id', 'x_top_left', 'y_top_left', 'width','value_type'
     x_min = dets['x_top_left']
