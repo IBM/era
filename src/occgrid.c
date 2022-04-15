@@ -437,14 +437,17 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
   updateBounds(obs_ptr, data, data_size, robot_x, robot_y, robot_z, robot_yaw, &min_x, &min_y, &max_x, &max_y);
   }*/
 
-unsigned char* cloudToOccgrid(Observation* obs_ptr,
-			      float* data, unsigned int data_size,
-			      double robot_x, double robot_y, double robot_z, double robot_yaw,
-			      bool rolling_window,
-			      double min_obstacle_height, double max_obstacle_height,
-			      double raytrace_range,
-			      unsigned int x_dim, unsigned int y_dim, double resolution/*,
-			      unsigned char default_value*/ ) {
+void cloudToOccgrid(Observation * obs_ptr,
+  float * data, unsigned int data_size,
+  double robot_x, double robot_y, double robot_z, double robot_yaw,
+  bool rolling_window,
+  double min_obstacle_height, double max_obstacle_height,
+  double raytrace_range,
+  unsigned int x_dim, unsigned int y_dim, double resolution /*,
+   unsigned char default_value*/
+) {
+  void * Section = __hetero_section_begin();
+  void * T1 = __hetero_task_begin(1, lidar_inputs, lidarin_sz, 1, lidar_outputs, lidarout_sz);
   DBGOUT(printf("In cloudToOccgrid with Odometry %.1f %.1f %.f1\n", robot_x, robot_y, robot_z));
  #ifdef INT_TIME
   gettimeofday(&ocgr_c2g_total_start, NULL);
@@ -455,6 +458,8 @@ unsigned char* cloudToOccgrid(Observation* obs_ptr,
   ocgr_c2g_initCM_sec  += ocgr_c2g_initCM_stop.tv_sec  - ocgr_c2g_total_start.tv_sec;
   ocgr_c2g_initCM_usec += ocgr_c2g_initCM_stop.tv_usec - ocgr_c2g_total_start.tv_usec;
  #endif
+  __hetero_task_end(T1);
+  void * T2 = __hetero_task_begin(1, lidar_inputs, lidarin_sz, 1, lidar_outputs, lidarout_sz);
 
   //printf("(1) Number of elements : %d ... ", data_size);
   //printf("First Coordinate = <%f, %f>\n", *data, *(data+1));
@@ -472,6 +477,8 @@ unsigned char* cloudToOccgrid(Observation* obs_ptr,
   ocgr_c2g_updOrig_sec  += ocgr_c2g_updOrig_stop.tv_sec  - ocgr_c2g_initCM_stop.tv_sec;
   ocgr_c2g_updOrig_usec += ocgr_c2g_updOrig_stop.tv_usec - ocgr_c2g_initCM_stop.tv_usec;
  #endif
+  __hetero_task_end(T2);
+  void * T3 = __hetero_task_begin(1, lidar_inputs, lidarin_sz, 1, lidar_outputs, lidarout_sz);
 
   double min_x = 1e30;
   double min_y = 1e30;
@@ -493,9 +500,9 @@ unsigned char* cloudToOccgrid(Observation* obs_ptr,
   ocgr_c2g_total_sec  += ocgr_c2g_updBnds_stop.tv_sec  - ocgr_c2g_total_start.tv_sec;
   ocgr_c2g_total_usec += ocgr_c2g_updBnds_stop.tv_usec - ocgr_c2g_total_start.tv_usec;
  #endif
-  return obs_ptr->master_costmap.costmap;
+  __hetero_task_end(T3);
+  __hetero_section_end(Section);
 }
-
 
 void updateOrigin(Observation* obs_ptr, double new_origin_x, double new_origin_y) {
   //printf("\nUpdating Map Origin\n");

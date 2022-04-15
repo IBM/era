@@ -438,6 +438,9 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
 void
 do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, float* recvd_in_imag, int* recvd_msg_len, char * recvd_msg)
 {
+  void * Section = __hetero_section_begin();
+  void * T1 = __hetero_task_begin(1, lidar_inputs, lidarin_sz, 1, lidar_outputs, lidarout_sz);
+
   DEBUG(printf("In do_recv_pipeline: num_received_vals = %u\n", num_recvd_vals); fflush(stdout));
   for (int i = 0; i < num_recvd_vals; i++) {
     input_data[i] = recvd_in_real[i] + I * recvd_in_imag[i];
@@ -454,10 +457,16 @@ do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, float* recvd_in_imag,
  #endif
   
   DEBUG(printf("CMP_MSG:\n%s\n", recvd_msg));
+  __hetero_task_end(T1);
+  __hetero_section_end(Section);
+
 }
 
 
 void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *out_msg) {
+
+  void * Section = __hetero_section_begin();
+
   uint8_t scrambled_msg[MAX_ENCODED_BITS * 3 / 4];
   DEBUG(for (int ti = 0; ti < num_inputs /*RAW_DATA_IN_MAX_SIZE*/; ti++) {
 	  printf("  %6u : TOP_INBUF %12.8f %12.8f\n", ti, crealf(input_data[ti]), cimagf(input_data[ti]));
@@ -471,6 +480,8 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
       printf(" DEL16 %5u : TMPBUF %12.8f %12.8f : INBUF %12.8f %12.8f\n", ti, crealf(delay16_out[ti]), cimagf(delay16_out[ti]), crealf(input_data[ti]), cimagf(input_data[ti]));
     });
   
+  void * T1 = __hetero_task_begin(1, lidar_inputs, lidarin_sz, 1, lidar_outputs, lidarout_sz);
+
   unsigned num_cconj_vals = num_del16_vals;
   DO_NUM_IOS_ANALYSIS(printf("Calling complex_conjugate: IN %u OUT %u\n", num_del16_vals, num_cconj_vals));
  #ifdef INT_TIME
@@ -480,9 +491,12 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
   DEBUG(for (int ti = 0; ti < num_cconj_vals; ti++) {
       printf("  CMP_CONJ %5u : CONJ_OUT %12.8f %12.8f : DEL16_IN %12.8f %12.8f\n", ti, crealf(cmpx_conj_out[ti]), cimagf(cmpx_conj_out[ti]), crealf(delay16_out[ti]), cimagf(delay16_out[ti]));
     });
-  
+  __hetero_task_end(T1);
+  void * T2 = __hetero_task_begin(1, lidar_inputs, lidarin_sz, 1, lidar_outputs, lidarout_sz);
+
   unsigned num_cmult_vals = num_cconj_vals;
   DO_NUM_IOS_ANALYSIS(printf("Calling complex_mult: IN %u OUT %u\n", num_cconj_vals, num_cmult_vals));
+
  #ifdef INT_TIME
   gettimeofday(&r_cmpmpy_start, NULL);
   r_cmpcnj_sec  += r_cmpmpy_start.tv_sec  - r_cmpcnj_start.tv_sec;
@@ -492,9 +506,15 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
   DEBUG(for (int ti = 0; ti < num_cmult_vals; ti++) {
       printf("  CMP_MULT %5u : MULT_OUT %12.8f %12.8f : CMP_CONJ %12.8f %12.8f : INBUF %12.8f %12.8f\n", ti, crealf(cmpx_mult_out[ti]), cimagf(cmpx_mult_out[ti]), crealf(cmpx_conj_out[ti]), cimagf(cmpx_conj_out[ti]), crealf(input_data[ti]), cimagf(input_data[ti]));
     });
+  __hetero_task_end(T2);
+  void * T3 = __hetero_task_begin(1, lidar_inputs, lidarin_sz, 1, lidar_outputs, lidarout_sz);
+
+
   
   unsigned num_cmpcorr_vals = num_cmult_vals;
   DO_NUM_IOS_ANALYSIS(printf("Calling firc (Moving Average 48) : IN %u OUT %u\n", num_cmult_vals, num_cmpcorr_vals));
+
+
  #ifdef INT_TIME
   gettimeofday(&r_firc_start, NULL);
   r_cmpmpy_sec  += r_firc_start.tv_sec  - r_cmpmpy_start.tv_sec;
@@ -505,9 +525,12 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
   DEBUG(for (int ti = 0; ti < num_cmpcorr_vals; ti++) {
       printf("  MV_AVG48 %5u : CORR_CMP %12.8f %12.8f : MULT_OUT %12.8f %12.8f\n", ti, crealf(correlation_complex[ti]), cimagf(correlation_complex[ti]), crealf(cmpx_mult_out[ti]), cimagf(cmpx_mult_out[ti]));
     });
-  
+  __hetero_task_end(T3);
+  void * T4 = __hetero_task_begin(1, lidar_inputs, lidarin_sz, 1, lidar_outputs, lidarout_sz);
   unsigned num_cmag_vals = num_cmpcorr_vals;
   DO_NUM_IOS_ANALYSIS(printf("Calling complex_to_magnitude: IN %u OUT %u\n", num_cmpcorr_vals, num_cmag_vals));
+
+
  #ifdef INT_TIME
   gettimeofday(&r_cmpmag_start, NULL);
   r_firc_sec  += r_cmpmag_start.tv_sec  - r_firc_start.tv_sec;
@@ -518,6 +541,9 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
       printf("  MAGNITUDE %5u : CORR %12.8f : CORR_CMP %12.8f %12.8f\n", ti, correlation[ti], crealf(correlation_complex[ti]), cimagf(correlation_complex[ti]));
     });
   
+  __hetero_task_end(T4);
+  void * T5 = __hetero_task_begin(1, lidar_inputs, lidarin_sz, 1, lidar_outputs, lidarout_sz);
+
   unsigned num_cmag2_vals = num_inputs;
   DO_NUM_IOS_ANALYSIS(printf("Calling complex_to_mag_squared (signal_power): IN %u OUT %u\n", num_inputs, num_cmag2_vals));
  #ifdef INT_TIME
@@ -529,7 +555,10 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
   DEBUG(for (int ti = 0; ti < num_cmag2_vals; ti++) {
       printf("  MAG^2 %5u : SIGN_PWR %12.8f : INBUF %12.8f %12.8f\n", ti, signal_power[ti], crealf(input_data[ti]), cimagf(input_data[ti]));
     });
-    
+
+  __hetero_task_end(T5);
+  void * T6 = __hetero_task_begin(1, lidar_inputs, lidarin_sz, 1, lidar_outputs, lidarout_sz);
+
   DEBUG(printf("\nCalling fir (Moving Average 64)...\n"));
   // fir filter
   const fx_pt1 coeff_mvgAvg[COEFF_LENGTH]={ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,   //   8
@@ -552,7 +581,9 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
   DEBUG(for (unsigned ti = 0; ti < num_mavg64_vals; ti++) {
     printf(" TOP_FIR_OUT %5u : SIGN_PWR-AVG %12.8f : SIGN_PWR %12.8f\n", ti, avg_signal_power[ti], signal_power[ti]);
     });
-  
+  __hetero_task_end(T6);
+  void * T7 = __hetero_task_begin(1, lidar_inputs, lidarin_sz, 1, lidar_outputs, lidarout_sz);
+
   unsigned num_cdiv_vals = num_mavg64_vals; // num_cmpcorr_vals;
   DO_NUM_IOS_ANALYSIS(printf("Calling division: IN %u OUT %u : CMAG %u \n", num_mavg64_vals,  num_cdiv_vals, num_cmag_vals));
   // Ensure we've picked the MIN(num_mavg64_vals, num_cmag_vals) -- should have an a-priori known relationship!
@@ -560,6 +591,10 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
     printf("ERROR : num_mavg64_vals = %u > %u = num_cmag_vals\n", num_mavg64_vals, num_cmag_vals);
     exit(-8);
   }
+
+  __hetero_task_end(T7);
+  void * T8 = __hetero_task_begin(1, lidar_inputs, lidarin_sz, 1, lidar_outputs, lidarout_sz);
+
  #ifdef INT_TIME
   gettimeofday(&r_div_start, NULL);
   r_fir_sec  += r_div_start.tv_sec  - r_fir_start.tv_sec;
@@ -570,6 +605,9 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
     printf(" TOP_DIV_OUT %5u : CORRZ %12.8f : CORRL %12.8f : SPA %12.8f\n", ti, the_correlation[ti], correlation[ti], avg_signal_power[ti]);
     });
   
+  __hetero_task_end(T8);
+  void * T9 = __hetero_task_begin(1, lidar_inputs, lidarin_sz, 1, lidar_outputs, lidarout_sz);
+
   DO_NUM_IOS_ANALYSIS(printf("Calling sync_short: IN %u\n", num_cdiv_vals));
   float ss_freq_offset;
   unsigned num_sync_short_vals;
@@ -592,6 +630,9 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
       printf("  DELAY_320 %5u : FRAME_D %12.8f %12.8f : FRAME %12.8f %12.8f\n", ti, crealf(frame_d[ti]), cimagf(frame_d[ti]), crealf(sync_short_out_frames[ti]), cimagf(sync_short_out_frames[ti]));
     });
   
+  __hetero_task_end(T9);
+  void * T10 = __hetero_task_begin(1, lidar_inputs, lidarin_sz, 1, lidar_outputs, lidarout_sz);
+
 
   DO_NUM_IOS_ANALYSIS(printf("Calling sync_long: IN %u\n", num_sync_short_vals));
   float sl_freq_offset;
@@ -608,6 +649,9 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
 	  printf("  SYNC_LONG_OUT %5u  %12.8f %12.8f : FR_D %12.8f %12.8f : D_FR_L %12.8f %12.8f\n", ti, crealf(sync_short_out_frames[ti]), cimagf(sync_short_out_frames[ti]), crealf(frame_d[ti]), cimagf(frame_d[ti]), crealf(d_sync_long_out_frames[ti]), cimagf(d_sync_long_out_frames[ti])); 
 	});
 
+  __hetero_task_end(T10);
+  void * T11 = __hetero_task_begin(1, lidar_inputs, lidarin_sz, 1, lidar_outputs, lidarout_sz);
+
   fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE];
   fx_pt1 fft_ar_i[FRAME_EQ_IN_MAX_SIZE];
   unsigned num_fft_frames = (num_sync_long_vals+63) / 64;
@@ -623,7 +667,9 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
   r_fft_sec  += r_fft_stop.tv_sec  - r_fft_start.tv_sec;
   r_fft_usec += r_fft_stop.tv_usec - r_fft_start.tv_usec;
  #endif
- 
+  __hetero_task_end(T11);
+  void * T12 = __hetero_task_begin(1, lidar_inputs, lidarin_sz, 1, lidar_outputs, lidarout_sz);
+
   // equalize
   fx_pt toBeEqualized[FRAME_EQ_IN_MAX_SIZE];
   fx_pt equalized[FRAME_EQ_OUT_MAX_SIZE];
@@ -653,6 +699,9 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
       printf(" FR_EQ_OUT %5u : toBeEQ %12.8f %12.8f : EQLZD %12.8f %12.8f : EQ_BIT %u\n", ti, crealf(toBeEqualized[ti]), cimagf(toBeEqualized[ti]), crealf(equalized[ti]), cimagf(equalized[ti]), equalized_bits[ti]);
     });
   
+  __hetero_task_end(T12);
+  void * T13 = __hetero_task_begin(1, lidar_inputs, lidarin_sz, 1, lidar_outputs, lidarout_sz);
+
   //decode signal
   DO_NUM_IOS_ANALYSIS(printf("Calling decode_signal: IN %u\n", num_eq_out_bits));
   unsigned num_dec_bits;
@@ -666,6 +715,9 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
   DEBUG(for (int ti = 0; ti < num_dec_bits; ti++) {
       printf(" DEC_OUTS %5u : EQLZD %12.8f %12.8f : DEC_BIT %u\n", ti, crealf(toBeEqualized[ti]), cimagf(toBeEqualized[ti]), scrambled_msg[ti]);
     });
+
+  __hetero_task_end(T13);
+  void * T14 = __hetero_task_begin(1, lidar_inputs, lidarin_sz, 1, lidar_outputs, lidarout_sz);
 
   //descrambler
   DO_NUM_IOS_ANALYSIS(printf("Calling sdr_descrambler with psdu = %u\n", psdu));
@@ -682,4 +734,8 @@ void compute(unsigned num_inputs, fx_pt *input_data, int* out_msg_len, uint8_t *
  #endif
   DEBUG(printf("\nDESC_MSG:\n%s\n", out_msg));
   *out_msg_len = (psdu - 28); // The message length in bytes
+
+  __hetero_task_end(T14);
+  __hetero_section_end(Section);
+
 }
