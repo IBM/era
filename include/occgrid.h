@@ -8,6 +8,8 @@
 #ifndef OCCGRID_H
 #define OCCGRID_H
 
+#define HPVM
+
 #ifdef INT_TIME
 /* This is OCC-GRID Internal Timing information (gathering resources) */
 extern uint64_t ocgr_c2g_total_sec;
@@ -49,10 +51,10 @@ extern uint64_t ocgr_upBd_regObst_usec;
 #define CMV_LETHAL_OBSTACLE   255
 
 // Moved to the CMakeLists.txt or .config file.
-//#define GRID_MAP_X_DIM     100
-//#define GRID_MAP_Y_DIM     100
-//#define GRID_MAP_RESLTN    2.0
-//#define RAYTR_RANGE        100
+#define GRID_MAP_X_DIM     100
+#define GRID_MAP_Y_DIM     100
+#define GRID_MAP_RESLTN    2.0
+#define RAYTR_RANGE        100
 
 #define COST_MAP_X_DIM     (GRID_MAP_X_DIM/(int)GRID_MAP_RESLTN)
 #define COST_MAP_Y_DIM     (GRID_MAP_Y_DIM/(int)GRID_MAP_RESLTN)
@@ -103,10 +105,17 @@ void fuseIntoLocal(Costmap2D* localMap, Costmap2D* updateMap);
 void combineGrids(unsigned char* grid1, unsigned char* grid2, double robot_x1, double robot_y1,
 		  double robot_x2, double robot_y2, unsigned int cell_size_x, unsigned int cell_size_y, double resolution/*, char def_val*/);
 
+#ifdef HPVM
+void cloudToOccgrid(Observation * obs_ptr, size_t obs_ptr_sz, float * data, unsigned int data_size,
+  double robot_x, double robot_y, double robot_z, double robot_yaw, bool rolling_window,
+  double min_obstacle_height, double max_obstacle_height, double raytrace_range,
+  unsigned int x_dim, unsigned int y_dim, double resolution);
+#else
 unsigned char* cloudToOccgrid(Observation* obs_ptr, float* data, unsigned int data_size,
 			      double robot_x, double robot_y, double robot_z, double robot_yaw, bool rolling_window,
                               double min_obstacle_height, double max_obstacle_height, double raytrace_range,
 			      unsigned int size_x, unsigned int size_y, double resolution);
+#endif
 
 void printMap();
 

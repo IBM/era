@@ -18,6 +18,8 @@
 #ifndef _RECV_PIPE_H
 #define _RECV_PIPE_H
 
+#define HPVM
+
 #include "sdr_base.h"
 #include "gr_equalizer.h"  // for INT_TIME extern declarations
 #include "sync_short.h"    // for INT_TIME extern declarations
@@ -89,6 +91,21 @@ extern uint64_t r_fHcvtout_usec;
 
 void recv_pipe_init();
 
-void do_recv_pipeline(int n_in, float* in_real, float* in_imag, int* out_msg_len, char* out_msg);
+void do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, size_t recvd_in_real_sz, 
+                      float* recvd_in_imag, size_t recvd_in_imag_sz,
+                      int* recvd_msg_len, size_t recvd_msg_len_sz, char * recvd_msg, size_t recvd_msg_sz,
+                      /*'Custom' variables used compute() which this function calls*/
+                      uint8_t* scrambled_msg /*local*/, size_t scrambled_msg_sz /*= MAX_ENCODED_BITS * 3 / 4 */,
+                      float* ss_freq_offset /*local*/, size_t ss_freq_offset_sz /*=1*/, 
+                      unsigned* num_sync_short_vals /*local*/, size_t num_sync_short_vals_sz /*=1*/,
+                      float* sl_freq_offset /*local*/, size_t sl_freq_offset_sz /*=1*/,
+                      unsigned* num_sync_long_vals /*local*/, size_t num_sync_long_vals_sz /*=1*/,
+                      fx_pt1* fft_ar_r/*local*/, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SIZE*/,
+                      fx_pt1* fft_ar_i /*local*/, size_t fft_ar_i_sz /*= FRAME_EQ_IN_MAX_SIZE*/,
+                      unsigned* num_fft_outs /*local*/, size_t num_fft_outs_sz /*=1*/,
+                      fx_pt* toBeEqualized /*local*/, size_t toBeEqualized_sz /*= FRAME_EQ_IN_MAX_SIZE*/,
+                      fx_pt* equalized /*local*/, size_t equalized_sz /*= FRAME_EQ_OUT_MAX_SIZE*/,
+                      unsigned* num_eq_out_bits /*local*/, size_t num_eq_out_bits_sz /*=1*/,
+                      unsigned* psdu /*local*/, size_t psdu_sz /*=1*/);
 
 #endif

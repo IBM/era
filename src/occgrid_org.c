@@ -7,8 +7,6 @@
 #include "globals.h"
 #include "occgrid.h"
 
-#define HPVM
-
 #ifdef INT_TIME
 /* This is OCC-GRID Internal Timing information (gathering resources) */
 struct timeval /*ocgr_c2g_total_stop,*/ ocgr_c2g_total_start;
@@ -439,39 +437,29 @@ void combineGrids(unsigned char* grid1, unsigned char* grid2,
   updateBounds(obs_ptr, data, data_size, robot_x, robot_y, robot_z, robot_yaw, &min_x, &min_y, &max_x, &max_y);
   }*/
 
-void cloudToOccgrid(Observation * obs_ptr, size_t obs_ptr_sz,
+void cloudToOccgrid(Observation * obs_ptr,
   float * data, unsigned int data_size,
   double robot_x, double robot_y, double robot_z, double robot_yaw,
   bool rolling_window,
   double min_obstacle_height, double max_obstacle_height,
   double raytrace_range,
   unsigned int x_dim, unsigned int y_dim, double resolution /*,
-   unsigned char default_value*/) {
-
-  #ifdef HPVM
+   unsigned char default_value*/
+) {
   void * Section = __hetero_section_begin();
-  void * T1 = __hetero_task_begin(11, obs_ptr, obs_ptr_sz, robot_x, robot_y, robot_z, rolling_window,
-                                  min_obstacle_height, max_obstacle_height, raytrace_range,
-                                  x_dim, y_dim, resolution, 1, obs_ptr, obs_ptr_sz);
-  #endif
-
+  void * T1 = __hetero_task_begin(1, lidar_inputs, lidarin_sz, 1, lidar_outputs, lidarout_sz);
   DBGOUT(printf("In cloudToOccgrid with Odometry %.1f %.1f %.f1\n", robot_x, robot_y, robot_z));
-  #ifdef INT_TIME
+ #ifdef INT_TIME
   gettimeofday(&ocgr_c2g_total_start, NULL);
-   #endif  
+ #endif  
   initCostmap(obs_ptr, rolling_window, min_obstacle_height, max_obstacle_height, raytrace_range, x_dim, y_dim, resolution, /*default_value,*/ robot_x, robot_y, robot_z);
-  #ifdef INT_TIME
+ #ifdef INT_TIME
   gettimeofday(&ocgr_c2g_initCM_stop, NULL);
   ocgr_c2g_initCM_sec  += ocgr_c2g_initCM_stop.tv_sec  - ocgr_c2g_total_start.tv_sec;
   ocgr_c2g_initCM_usec += ocgr_c2g_initCM_stop.tv_usec - ocgr_c2g_total_start.tv_usec;
-  #endif
-  #ifdef HPVM
+ #endif
   __hetero_task_end(T1);
-  #endif
-
-  #ifdef HPVM
-  void * T2 = __hetero_task_begin(3, obs_ptr, obs_ptr_sz, robot_x, robot_y, 1, obs_ptr, obs_ptr_sz);
-  #endif
+  void * T2 = __hetero_task_begin(1, lidar_inputs, lidarin_sz, 1, lidar_outputs, lidarout_sz);
 
   //printf("(1) Number of elements : %d ... ", data_size);
   //printf("First Coordinate = <%f, %f>\n", *data, *(data+1));
@@ -484,19 +472,13 @@ void cloudToOccgrid(Observation * obs_ptr, size_t obs_ptr_sz,
     double new_origin_y = robot_y - obs_ptr->master_costmap.y_dim / 2;
     updateOrigin(obs_ptr, new_origin_x, new_origin_y);
   }
-  #ifdef INT_TIME
+ #ifdef INT_TIME
   gettimeofday(&ocgr_c2g_updOrig_stop, NULL);
   ocgr_c2g_updOrig_sec  += ocgr_c2g_updOrig_stop.tv_sec  - ocgr_c2g_initCM_stop.tv_sec;
   ocgr_c2g_updOrig_usec += ocgr_c2g_updOrig_stop.tv_usec - ocgr_c2g_initCM_stop.tv_usec;
-  #endif
-  #ifdef HPVM
+ #endif
   __hetero_task_end(T2);
-  #endif
-
-  #ifdef HPVM
-  void * T3 = __hetero_task_begin(2, obs_ptr, obs_ptr_sz, data, data_size, robot_x, robot_y, robot_z, robot_yaw, 
-                                  1, obs_ptr, obs_ptr_sz, data, data_size);
-  #endif
+  void * T3 = __hetero_task_begin(1, lidar_inputs, lidarin_sz, 1, lidar_outputs, lidarout_sz);
 
   double min_x = 1e30;
   double min_y = 1e30;
@@ -510,18 +492,15 @@ void cloudToOccgrid(Observation * obs_ptr, size_t obs_ptr_sz,
   updateBounds(obs_ptr, data, data_size, robot_x, robot_y, robot_z, robot_yaw, &min_x, &min_y, &max_x, &max_y);
 
   //printMap();
-  #ifdef INT_TIME
+ #ifdef INT_TIME
   gettimeofday(&ocgr_c2g_updBnds_stop, NULL);
   ocgr_c2g_updBnds_sec  += ocgr_c2g_updBnds_stop.tv_sec  - ocgr_c2g_updOrig_stop.tv_sec;
   ocgr_c2g_updBnds_usec += ocgr_c2g_updBnds_stop.tv_usec - ocgr_c2g_updOrig_stop.tv_usec;
 
   ocgr_c2g_total_sec  += ocgr_c2g_updBnds_stop.tv_sec  - ocgr_c2g_total_start.tv_sec;
   ocgr_c2g_total_usec += ocgr_c2g_updBnds_stop.tv_usec - ocgr_c2g_total_start.tv_usec;
-  #endif
-  #ifdef HPVM
+ #endif
   __hetero_task_end(T3);
-  #endif
-
   __hetero_section_end(Section);
 }
 
@@ -932,5 +911,4 @@ void print_ascii_costmap(FILE*  fptr, Costmap2D* cmap)
   fprintf(fptr, "\n");
   //printf("\n");
 }
-
 

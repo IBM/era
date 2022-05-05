@@ -6,9 +6,9 @@ import os
 import sys
 
 n_cars  = 2
-bagfile = '/dccstor/epochs/ajvega/era/data/2020-09-10-14-43-09.bag'
-src_dir = '/dccstor/epochs/ajvega/era/src'
-bin_dir = '/dccstor/epochs/ajvega/era/build'
+bagfile = '/home/gaurip2/era/era/data/2020-09-10-14-43-09.bag'
+src_dir = '/home/gaurip2/era/era/src'
+bin_dir = '/home/gaurip2/era/era/build'
 
 processes = []
 cwd = os.getcwd()
