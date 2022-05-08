@@ -7,13 +7,6 @@
 #include <unistd.h>
 #include <assert.h>
 
-#define HPVM
-
-#ifdef HPVM
-#include "hpvm.h"
-#include "hetero.h"
-#endif
-
 
 #include "debug.h"
 #ifdef RECV_HW_FFT
@@ -43,6 +36,14 @@
 #include "ofdm.h"
 #include "fft.h"
 #include "recv_pipe.h"
+
+#undef HPVM
+//#define HPVM
+
+#if defined(HPVM)
+#include "hpvm.h"
+#include "hetero.h"
+#endif
 
 #ifdef INT_TIME
 /* This is RECV PIPE internal Timing information (gathering resources) */
@@ -154,7 +155,29 @@ uint8_t  decoded_message[MAX_PAYLOAD_SIZE];   // Holds the resulting decodede me
 fx_pt*   input_data = &delay16_out[16]; // [2*(RAW_DATA_IN_MAX_SIZE + 16)];  // Holds the input data (plus a "front-pad" of 16 0's for delay16
 
 
-void compute(unsigned num_inputs, fx_pt *inbuff, int* out_msg_len, uint8_t *outbuff);
+void compute(unsigned num_inputs, fx_pt *input_data, size_t input_data_sz, 
+              int* out_msg_len, size_t out_msg_len_sz, uint8_t *out_msg, size_t out_msg_sz,
+              uint8_t* scrambled_msg /*local*/, size_t scrambled_msg_sz /*= MAX_ENCODED_BITS * 3 / 4 */,
+              fx_pt* cmpx_conj_out_arg /*= cmpx_conj_out -> global*/, size_t cmpx_conj_out_arg_sz /*= CMP_CONJ_MAX_SIZE*/,
+              fx_pt* cmpx_mult_out_arg /*= cmpx_mult_out -> global*/, size_t cmpx_mult_out_arg_sz /*= CMP_MULT_MAX_SIZE*/,
+              fx_pt* correlation_complex_arg /*= correlation_complex -> global*/, size_t correlation_complex_arg_sz /*= FIRC_MAVG48_MAX_SIZE*/,
+              fx_pt1* correlation_arg /*= correlation -> global*/, size_t correlation_arg_sz /*= CMP2MAG_MAX_SIZE*/,
+              fx_pt1* signal_power_arg /*= signal_power -> global*/, size_t signal_power_arg_sz /*= CMP2MAGSQ_MAX_SIZE*/,
+              fx_pt1* avg_signal_power_arg /*= avg_signal_power -> global*/, size_t avg_signal_power_arg_sz /*= FIR_MAVG64_MAX_SIZE*/,
+              fx_pt1* the_correlation_arg /*= the_correlation -> global*/, size_t the_correlation_arg_sz /*= DIVIDE_MAX_SIZE*/,
+              fx_pt* sync_short_out_frames_arg /*= sync_short_out_frames -> global*/, size_t sync_short_out_frames_arg_sz /*=320*/,
+              float* ss_freq_offset /*local*/, size_t ss_freq_offset_sz /*=1*/, 
+              unsigned* num_sync_short_vals /*local*/, size_t num_sync_short_vals_sz /*=1*/,
+              float* sl_freq_offset /*local*/, size_t sl_freq_offset_sz /*=1*/,
+              unsigned* num_sync_long_vals /*local*/, size_t num_sync_long_vals_sz /*=1*/,
+              fx_pt* d_sync_long_out_frames_arg /*= d_sync_long_out_frames -> global*/, size_t d_sync_long_out_frames_sz_arg /*= SYNC_L_OUT_MAX_SIZE*/,
+              fx_pt1* fft_ar_r/*local*/, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SIZE*/,
+              fx_pt1* fft_ar_i /*local*/, size_t fft_ar_i_sz /*= FRAME_EQ_IN_MAX_SIZE*/,
+              unsigned* num_fft_outs /*local*/, size_t num_fft_outs_sz /*=1*/,
+              fx_pt* toBeEqualized /*local*/, size_t toBeEqualized_sz /*= FRAME_EQ_IN_MAX_SIZE*/,
+              fx_pt* equalized /*local*/, size_t equalized_sz /*= FRAME_EQ_OUT_MAX_SIZE*/,
+              unsigned* num_eq_out_bits /*local*/, size_t num_eq_out_bits_sz /*=1*/,
+              unsigned* psdu /*local*/, size_t psdu_sz /*=1*/);
 
 
 /********************************************************************************
@@ -450,7 +473,7 @@ void do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, size_t recvd_in_
                       uint8_t* scrambled_msg /*local*/, size_t scrambled_msg_sz /*= MAX_ENCODED_BITS * 3 / 4 */,
                       float* ss_freq_offset /*local*/, size_t ss_freq_offset_sz /*=1*/, 
                       unsigned* num_sync_short_vals /*local*/, size_t num_sync_short_vals_sz /*=1*/,
-                      float* sl_freq_offset /*local*/, size_t sl_freq_offset_sz /*=1*/
+                      float* sl_freq_offset /*local*/, size_t sl_freq_offset_sz /*=1*/,
                       unsigned* num_sync_long_vals /*local*/, size_t num_sync_long_vals_sz /*=1*/,
                       fx_pt1* fft_ar_r/*local*/, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SIZE*/,
                       fx_pt1* fft_ar_i /*local*/, size_t fft_ar_i_sz /*= FRAME_EQ_IN_MAX_SIZE*/,
@@ -459,9 +482,9 @@ void do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, size_t recvd_in_
                       fx_pt* equalized /*local*/, size_t equalized_sz /*= FRAME_EQ_OUT_MAX_SIZE*/,
                       unsigned* num_eq_out_bits /*local*/, size_t num_eq_out_bits_sz /*=1*/,
                       unsigned* psdu /*local*/, size_t psdu_sz /*=1*/) {
-  #ifdef HPVM
+  #if defined(HPVM)
   void * Section = __hetero_section_begin();
-  void * T1 = __hetero_task_begin(5, num_recvd_vals, recvd_in_real, recvd_in_real_sz, 
+  void * T1 = __hetero_task_begin(26, num_recvd_vals, recvd_in_real, recvd_in_real_sz, 
                                   recvd_in_imag, recvd_in_imag_sz, recvd_msg_len, recvd_msg_len_sz, 
                                   recvd_msg, recvd_msg_sz, 
                                   scrambled_msg, scrambled_msg_sz, cmpx_conj_out, CMP_CONJ_MAX_SIZE,
@@ -476,7 +499,7 @@ void do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, size_t recvd_in_
                                   fft_ar_i, fft_ar_i_sz, num_fft_outs, num_fft_outs_sz, 
                                   toBeEqualized, toBeEqualized_sz,
                                   equalized, equalized_sz, num_eq_out_bits, num_eq_out_bits_sz, 
-                                  psdu, psdu_sz, 
+                                  psdu, psdu_sz, correlation_complex, FIRC_MAVG48_MAX_SIZE, 
                                   2, recvd_msg_len, recvd_msg_len_sz, 
                                   recvd_msg, recvd_msg_sz);
   #endif
@@ -495,14 +518,15 @@ void do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, size_t recvd_in_
           (uint8_t*)recvd_msg, recvd_msg_sz,
           /*Start of 'custom' variables for compute*/
           scrambled_msg, scrambled_msg_sz, cmpx_conj_out, CMP_CONJ_MAX_SIZE,
-          cmpx_mult_out, CMP_MULT_MAX_SIZE, correlation, CMP2MAG_MAX_SIZE,
-          signal_power, CMP2MAGSQ_MAX_SIZE, avg_signal_power, FIR_MAVG64_MAX_SIZE,
-          the_correlation, DIVIDE_MAX_SIZE, sync_short_out_frames, 320,
-          ss_freq_offset, ss_freq_offset_sz, num_sync_short_vals, num_sync_short_vals_sz,
-          sl_freq_offset, sl_freq_offset_sz, num_sync_long_vals, num_sync_long_vals_sz,
-          d_sync_long_out_frames, SYNC_L_OUT_MAX_SIZE, fft_ar_r, fft_ar_r_sz,
-          fft_ar_i, fft_ar_i_sz, num_fft_outs, num_fft_outs_sz, toBeEqualized, toBeEqualized_sz,
-          equalized, equalized_sz, num_eq_out_bits, num_eq_out_bits_sz, psdu, psdu_sz);
+          cmpx_mult_out, CMP_MULT_MAX_SIZE, correlation_complex, FIRC_MAVG48_MAX_SIZE, 
+          correlation, CMP2MAG_MAX_SIZE, signal_power, CMP2MAGSQ_MAX_SIZE, 
+          avg_signal_power, FIR_MAVG64_MAX_SIZE, the_correlation, DIVIDE_MAX_SIZE, 
+          sync_short_out_frames, 320, ss_freq_offset, ss_freq_offset_sz, 
+          num_sync_short_vals, num_sync_short_vals_sz, sl_freq_offset, sl_freq_offset_sz, 
+          num_sync_long_vals, num_sync_long_vals_sz, d_sync_long_out_frames, SYNC_L_OUT_MAX_SIZE, 
+          fft_ar_r, fft_ar_r_sz, fft_ar_i, fft_ar_i_sz, num_fft_outs, num_fft_outs_sz, 
+          toBeEqualized, toBeEqualized_sz, equalized, equalized_sz, num_eq_out_bits, num_eq_out_bits_sz, 
+          psdu, psdu_sz);
 
   #ifdef INT_TIME
   gettimeofday(&r_pipe_stop, NULL);
@@ -512,7 +536,7 @@ void do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, size_t recvd_in_
   
   DEBUG(printf("CMP_MSG:\n%s\n", recvd_msg));
   
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T1);
   __hetero_section_end(Section);
   #endif
@@ -524,6 +548,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, size_t input_data_sz,
               uint8_t* scrambled_msg /*local*/, size_t scrambled_msg_sz /*= MAX_ENCODED_BITS * 3 / 4 */,
               fx_pt* cmpx_conj_out_arg /*= cmpx_conj_out -> global*/, size_t cmpx_conj_out_arg_sz /*= CMP_CONJ_MAX_SIZE*/,
               fx_pt* cmpx_mult_out_arg /*= cmpx_mult_out -> global*/, size_t cmpx_mult_out_arg_sz /*= CMP_MULT_MAX_SIZE*/,
+              fx_pt* correlation_complex_arg /*= correlation_complex -> global*/, size_t correlation_complex_arg_sz /*= FIRC_MAVG48_MAX_SIZE*/,
               fx_pt1* correlation_arg /*= correlation -> global*/, size_t correlation_arg_sz /*= CMP2MAG_MAX_SIZE*/,
               fx_pt1* signal_power_arg /*= signal_power -> global*/, size_t signal_power_arg_sz /*= CMP2MAGSQ_MAX_SIZE*/,
               fx_pt1* avg_signal_power_arg /*= avg_signal_power -> global*/, size_t avg_signal_power_arg_sz /*= FIR_MAVG64_MAX_SIZE*/,
@@ -531,9 +556,9 @@ void compute(unsigned num_inputs, fx_pt *input_data, size_t input_data_sz,
               fx_pt* sync_short_out_frames_arg /*= sync_short_out_frames -> global*/, size_t sync_short_out_frames_arg_sz /*=320*/,
               float* ss_freq_offset /*local*/, size_t ss_freq_offset_sz /*=1*/, 
               unsigned* num_sync_short_vals /*local*/, size_t num_sync_short_vals_sz /*=1*/,
-              float* sl_freq_offset /*local*/, size_t sl_freq_offset_sz /*=1*/
+              float* sl_freq_offset /*local*/, size_t sl_freq_offset_sz /*=1*/,
               unsigned* num_sync_long_vals /*local*/, size_t num_sync_long_vals_sz /*=1*/,
-              fx_pt* d_sync_long_out_frames_arg /*= d_sync_long_out_frames -> global*/, size_t d_sync_long_out_frames_sz_arg /*= SYNC_L_OUT_MAX_SIZE*/,
+              fx_pt* d_sync_long_out_frames_arg /*= d_sync_long_out_frames -> global*/, size_t d_sync_long_out_frames_arg_sz /*= SYNC_L_OUT_MAX_SIZE*/,
               fx_pt1* fft_ar_r/*local*/, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SIZE*/,
               fx_pt1* fft_ar_i /*local*/, size_t fft_ar_i_sz /*= FRAME_EQ_IN_MAX_SIZE*/,
               unsigned* num_fft_outs /*local*/, size_t num_fft_outs_sz /*=1*/,
@@ -542,7 +567,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, size_t input_data_sz,
               unsigned* num_eq_out_bits /*local*/, size_t num_eq_out_bits_sz /*=1*/,
               unsigned* psdu /*local*/, size_t psdu_sz /*=1*/) {
 
-  #ifdef HPVM
+  #if defined(HPVM)
   void * Section = __hetero_section_begin();
   void * T0 = __hetero_task_begin(1, num_inputs, input_data, input_data_sz, 0);
   #endif
@@ -561,11 +586,11 @@ void compute(unsigned num_inputs, fx_pt *input_data, size_t input_data_sz,
             cimagf(delay16_out[ti]), crealf(input_data[ti]), cimagf(input_data[ti]));
     });
 
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T0);
   #endif
   
-  #ifdef HPVM
+  #if defined(HPVM)
   void * T1 = __hetero_task_begin(1, cmpx_conj_out_arg, cmpx_conj_out_arg_sz, 
                                   1, cmpx_conj_out_arg, cmpx_conj_out_arg_sz);
   #endif
@@ -583,11 +608,11 @@ void compute(unsigned num_inputs, fx_pt *input_data, size_t input_data_sz,
             crealf(cmpx_conj_out_arg[ti]), cimagf(cmpx_conj_out_arg[ti]), crealf(delay16_out[ti]), 
             cimagf(delay16_out[ti]));
     });
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T1);
   #endif
   
-  #ifdef HPVM
+  #if defined(HPVM)
   void * T2 = __hetero_task_begin(1, cmpx_mult_out_arg, cmpx_mult_out_arg_sz, cmpx_conj_out_arg, cmpx_conj_out_arg_sz,
                                   1, cmpx_mult_out_arg, cmpx_mult_out_arg_sz);
   #endif
@@ -604,11 +629,11 @@ void compute(unsigned num_inputs, fx_pt *input_data, size_t input_data_sz,
   DEBUG(for (int ti = 0; ti < num_cmult_vals; ti++) {
       printf("  CMP_MULT %5u : MULT_OUT %12.8f %12.8f : CMP_CONJ %12.8f %12.8f : INBUF %12.8f %12.8f\n", ti, crealf(cmpx_mult_out[ti]), cimagf(cmpx_mult_out[ti]), crealf(cmpx_conj_out[ti]), cimagf(cmpx_conj_out[ti]), crealf(input_data[ti]), cimagf(input_data[ti]));
     });
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T2);
   #endif
 
-  #ifdef HPVM
+  #if defined(HPVM)
   void * T3 = __hetero_task_begin(2, correlation_complex_arg, correlation_complex_arg_sz, 
                                   cmpx_mult_out_arg, cmpx_mult_out_arg_sz, 1,
                                   correlation_complex_arg, correlation_complex_arg_sz);
@@ -629,11 +654,11 @@ void compute(unsigned num_inputs, fx_pt *input_data, size_t input_data_sz,
               crealf(correlation_complex_arg[ti]), cimagf(correlation_complex_arg[ti]), 
                 crealf(cmpx_mult_out_arg[ti]), cimagf(cmpx_mult_out_arg[ti]));
     });
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T3);
   #endif
   
-  #ifdef HPVM
+  #if defined(HPVM)
   void * T4 = __hetero_task_begin(2, correlation_arg, correlation_arg_sz, 
                                   correlation_complex_arg, correlation_complex_arg_sz, 1, 
                                   correlation_arg, correlation_arg_sz);
@@ -654,11 +679,11 @@ void compute(unsigned num_inputs, fx_pt *input_data, size_t input_data_sz,
       correlation_arg[ti], crealf(correlation_complex_arg[ti]), cimagf(correlation_complex_arg[ti]));
     });
   
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T4);
   #endif
 
-  #ifdef HPVM
+  #if defined(HPVM)
   void * T5 = __hetero_task_begin(1, signal_power_arg, signal_power_arg_sz, 1, 
                                   signal_power_arg, signal_power_arg_sz);
   #endif
@@ -675,11 +700,11 @@ void compute(unsigned num_inputs, fx_pt *input_data, size_t input_data_sz,
       printf("  MAG^2 %5u : SIGN_PWR %12.8f : INBUF %12.8f %12.8f\n", ti, signal_power_arg[ti], 
               crealf(input_data[ti]), cimagf(input_data[ti]));
     });
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T5);
   #endif
   
-  #ifdef HPVM
+  #if defined(HPVM)
   void * T6 = __hetero_task_begin(1, signal_power_arg, signal_power_arg_sz, 
                                   avg_signal_power_arg, avg_signal_power_arg_sz, 1, 
                                   avg_signal_power_arg, avg_signal_power_arg_sz);
@@ -708,11 +733,11 @@ void compute(unsigned num_inputs, fx_pt *input_data, size_t input_data_sz,
     printf(" TOP_FIR_OUT %5u : SIGN_PWR-AVG %12.8f : SIGN_PWR %12.8f\n", ti, avg_signal_power_arg[ti], signal_power_arg[ti]);
     });
 
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T6);
   #endif
 
-  #ifdef HPVM
+  #if defined(HPVM)
   void * T7 = __hetero_task_begin(1, cmpx_conj_out_arg, cmpx_conj_out_arg_sz, 
                                   1, cmpx_conj_out_arg, cmpx_conj_out_arg_sz);
   #endif
@@ -724,11 +749,11 @@ void compute(unsigned num_inputs, fx_pt *input_data, size_t input_data_sz,
     printf("ERROR : num_mavg64_vals = %u > %u = num_cmag_vals\n", num_mavg64_vals, num_cmag_vals);
     exit(-8);
   }
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T7);
   #endif
   
-  #ifdef HPVM
+  #if defined(HPVM)
   void * T8 = __hetero_task_begin(1, correlation_arg, correlation_arg_sz, avg_signal_power_arg, 
                                   avg_signal_power_arg_sz, the_correlation_arg, the_correlation_arg_sz, 
                                   1, the_correlation_arg, the_correlation_arg_sz);
@@ -744,11 +769,11 @@ void compute(unsigned num_inputs, fx_pt *input_data, size_t input_data_sz,
     printf(" TOP_DIV_OUT %5u : CORRZ %12.8f : CORRL %12.8f : SPA %12.8f\n", ti, the_correlation_arg[ti], 
             correlation_arg[ti], avg_signal_power_arg[ti]);
     });
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T8);
   #endif
 
-  #ifdef HPVM
+  #if defined(HPVM)
   void * T9 = __hetero_task_begin(5, correlation_complex_arg, correlation_complex_arg_sz,
                                   sync_short_out_frames_arg, sync_short_out_frames_arg_sz,
                                   the_correlation_arg, the_correlation_arg_sz, 
@@ -791,17 +816,17 @@ void compute(unsigned num_inputs, fx_pt *input_data, size_t input_data_sz,
               cimagf(sync_short_out_frames_arg[ti]));
     });
   
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T9);
   #endif
 
-  #ifdef HPVM
+  #if defined(HPVM)
   void * T10 = __hetero_task_begin(5, sl_freq_offset, sl_freq_offset_sz, 
                                     num_sync_long_vals, num_sync_long_vals_sz,
                                     // ss_freq_offset, ss_freq_offset_sz, 
                                     num_sync_short_vals, num_sync_short_vals_sz,
                                     sync_short_out_frames_arg, sync_short_out_frames_arg_sz, 
-                                    d_sync_long_out_frames_arg, d_sync_long_out_frames_arg_sz 3, 
+                                    d_sync_long_out_frames_arg, d_sync_long_out_frames_arg_sz, 3, 
                                     sl_freq_offset, sl_freq_offset_sz, 
                                     num_sync_long_vals, num_sync_long_vals_sz,
                                     d_sync_long_out_frames_arg, d_sync_long_out_frames_arg_sz);
@@ -815,7 +840,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, size_t input_data_sz,
   r_sshort_sec  += r_slong_start.tv_sec  - r_sshort_start.tv_sec;
   r_sshort_usec += r_slong_start.tv_usec - r_sshort_start.tv_usec;
   #endif
-  sync_long(num_sync_short_vals, sync_short_out_frames_arg, frame_d, sl_freq_offset, num_sync_long_vals, 
+  sync_long(*num_sync_short_vals, sync_short_out_frames_arg, frame_d, sl_freq_offset, num_sync_long_vals, 
             d_sync_long_out_frames_arg);
   DO_NUM_IOS_ANALYSIS(printf("Back from synch_long: OUT num_sync_long_vals = %u\n", *num_sync_long_vals));
   DEBUG(printf(" sl_freq_offset = %12.8f\n", *sl_freq_offset);
@@ -826,11 +851,11 @@ void compute(unsigned num_inputs, fx_pt *input_data, size_t input_data_sz,
             cimagf(d_sync_long_out_frames_arg[ti])); 
 	});
 
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T10);
   #endif
 
-  #ifdef HPVM
+  #if defined(HPVM)
   void * T11 = __hetero_task_begin(5, num_sync_long_vals, num_sync_long_vals_sz, fft_ar_r, fft_ar_r_sz,
                                   fft_ar_i, fft_ar_i_sz, num_fft_outs, num_fft_outs_sz, 4, 
                                   num_sync_long_vals, num_sync_long_vals_sz, fft_ar_r, fft_ar_r_sz, 
@@ -855,10 +880,11 @@ void compute(unsigned num_inputs, fx_pt *input_data, size_t input_data_sz,
   r_fft_usec += r_fft_stop.tv_usec - r_fft_start.tv_usec;
   #endif
 
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T11);
   #endif
   
+  #if defined(HPVM)
   void * T12 = __hetero_task_begin(8, fft_ar_r, fft_ar_r_sz, fft_ar_i, fft_ar_i_sz, 
                                     num_fft_outs, num_fft_outs_sz, toBeEqualized, toBeEqualized_sz, 
                                     equalized, equalized_sz, ss_freq_offset, ss_freq_offset_sz,
@@ -866,6 +892,7 @@ void compute(unsigned num_inputs, fx_pt *input_data, size_t input_data_sz,
                                     num_eq_out_bits, num_eq_out_bits_sz, psdu, psdu_sz, 4, 
                                     toBeEqualized, toBeEqualized_sz, equalized, equalized_sz,
                                     num_eq_out_bits, num_eq_out_bits_sz, psdu, psdu_sz);
+  #endif
 
   // equalize
   // fx_pt toBeEqualized[FRAME_EQ_IN_MAX_SIZE];
@@ -902,11 +929,11 @@ void compute(unsigned num_inputs, fx_pt *input_data, size_t input_data_sz,
               cimagf(equalized[ti]), equalized_bits[ti]);
     });
   
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T12);
   #endif
 
-  #ifdef HPVM
+  #if defined(HPVM)
   void * T13 = __hetero_task_begin(3, num_eq_out_bits, num_eq_out_bits_sz, toBeEqualized, toBeEqualized_sz, 
                                     equalized, equalized_sz, scrambled_msg, scrambled_msg_sz, 1, 
                                     scrambled_msg, scrambled_msg_sz);
@@ -927,13 +954,15 @@ void compute(unsigned num_inputs, fx_pt *input_data, size_t input_data_sz,
               cimagf(toBeEqualized[ti]), scrambled_msg[ti]);
     });
 
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T13);
   #endif
 
+  #if defined(HPVM)
   void * T14 = __hetero_task_begin(3, scrambled_msg, scrambled_msg_sz, psdu, psdu_sz, 
                                     out_msg_len, out_msg_len_sz, out_msg, out_msg_sz, 2, 
-                                    out_msg_len, out_msg_len_sz, out_msg, out_msg_sz,);
+                                    out_msg_len, out_msg_len_sz, out_msg, out_msg_sz);
+  #endif
 
   //descrambler
   DO_NUM_IOS_ANALYSIS(printf("Calling sdr_descrambler with psdu = %u\n", *psdu));
@@ -951,8 +980,10 @@ void compute(unsigned num_inputs, fx_pt *input_data, size_t input_data_sz,
   DEBUG(printf("\nDESC_MSG:\n%s\n", out_msg));
   *out_msg_len = (*psdu - 28); // The message length in bytes
 
+  #if defined(HPVM)
   __hetero_task_end(T14);
   __hetero_section_end(Section);
+  #endif
 
 }
 

@@ -91,7 +91,22 @@ extern uint64_t x_fHcvtout_usec;
 
 void xmit_pipe_init();
 
-void do_xmit_pipeline(int in_msg_len, char * in_msg, int* n_out, float* out_real, float* out_imag);
+void do_xmit_pipeline(int in_msg_len, char* in_msg, size_t in_msg_sz, 
+                      int* num_final_outs, size_t num_final_outs_sz,
+                      float* final_out_real, size_t final_out_real_sz,
+                      float* final_out_imag, size_t final_out_imag_sz,
+                      int* psdu_len /*local*/, size_t psdu_len_sz /*=1*/,
+                      uint8_t* pckt_hdr_out, size_t pckt_hdr_out_sz /*=64 -> though 48 may work*/, 
+                      int* pckt_hdr_len /*local*/, size_t pckt_hdr_len_sz /*=1*/,
+                      float* msg_stream_real /*local*/, size_t msg_stream_real_sz /*= MAX_SIZE*/,
+                      float* msg_stream_imag /*local*/, size_t msg_stream_imag_sz /*= MAX_SIZE*/,
+                      float* ofdm_car_str_real /*local*/, size_t ofdm_car_str_real_sz /*= ofdm_max_out_size*/,
+                      float* ofdm_car_str_imag /*local*/, size_t ofdm_car_str_imag_sz /*= ofdm_max_out_size*/,
+                      int* ofc_res /*local*/, size_t ofc_res_sz /*=1*/,
+                      float* fft_out_real /*local*/, size_t fft_out_real_sz /*= ofdm_max_out_size*/,
+                      float* fft_out_imag /*local*/, size_t fft_out_imag_sz /*= ofdm_max_out_size*/,
+                      float* cycpref_out_real, size_t cycpref_out_real_sz /*= 41360*/,
+                      float* cycpref_out_imag, size_t cycpref_out_imag_sz /*= 41360*/);
 
 
 
@@ -113,3 +128,4 @@ void generate_bits(const char *psdu, char *data_bits, frame_param *frame);
 
 
 #endif
+

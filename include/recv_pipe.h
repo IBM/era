@@ -18,8 +18,6 @@
 #ifndef _RECV_PIPE_H
 #define _RECV_PIPE_H
 
-#define HPVM
-
 #include "sdr_base.h"
 #include "gr_equalizer.h"  // for INT_TIME extern declarations
 #include "sync_short.h"    // for INT_TIME extern declarations

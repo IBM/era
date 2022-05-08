@@ -7,7 +7,14 @@
 #include "globals.h"
 #include "occgrid.h"
 
-#define HPVM
+#undef HPVM
+//#define HPVM
+
+#if defined(HPVM)
+#include "hpvm.h"
+#include "hetero.h"
+#endif
+
 
 #ifdef INT_TIME
 /* This is OCC-GRID Internal Timing information (gathering resources) */
@@ -448,7 +455,7 @@ void cloudToOccgrid(Observation * obs_ptr, size_t obs_ptr_sz,
   unsigned int x_dim, unsigned int y_dim, double resolution /*,
    unsigned char default_value*/) {
 
-  #ifdef HPVM
+  #if defined(HPVM)
   void * Section = __hetero_section_begin();
   void * T1 = __hetero_task_begin(11, obs_ptr, obs_ptr_sz, robot_x, robot_y, robot_z, rolling_window,
                                   min_obstacle_height, max_obstacle_height, raytrace_range,
@@ -465,11 +472,11 @@ void cloudToOccgrid(Observation * obs_ptr, size_t obs_ptr_sz,
   ocgr_c2g_initCM_sec  += ocgr_c2g_initCM_stop.tv_sec  - ocgr_c2g_total_start.tv_sec;
   ocgr_c2g_initCM_usec += ocgr_c2g_initCM_stop.tv_usec - ocgr_c2g_total_start.tv_usec;
   #endif
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T1);
   #endif
 
-  #ifdef HPVM
+  #if defined(HPVM)
   void * T2 = __hetero_task_begin(3, obs_ptr, obs_ptr_sz, robot_x, robot_y, 1, obs_ptr, obs_ptr_sz);
   #endif
 
@@ -489,11 +496,11 @@ void cloudToOccgrid(Observation * obs_ptr, size_t obs_ptr_sz,
   ocgr_c2g_updOrig_sec  += ocgr_c2g_updOrig_stop.tv_sec  - ocgr_c2g_initCM_stop.tv_sec;
   ocgr_c2g_updOrig_usec += ocgr_c2g_updOrig_stop.tv_usec - ocgr_c2g_initCM_stop.tv_usec;
   #endif
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T2);
   #endif
 
-  #ifdef HPVM
+  #if defined(HPVM)
   void * T3 = __hetero_task_begin(2, obs_ptr, obs_ptr_sz, data, data_size, robot_x, robot_y, robot_z, robot_yaw, 
                                   1, obs_ptr, obs_ptr_sz, data, data_size);
   #endif
@@ -518,11 +525,11 @@ void cloudToOccgrid(Observation * obs_ptr, size_t obs_ptr_sz,
   ocgr_c2g_total_sec  += ocgr_c2g_updBnds_stop.tv_sec  - ocgr_c2g_total_start.tv_sec;
   ocgr_c2g_total_usec += ocgr_c2g_updBnds_stop.tv_usec - ocgr_c2g_total_start.tv_usec;
   #endif
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T3);
-  #endif
 
   __hetero_section_end(Section);
+  #endif
 }
 
 void updateOrigin(Observation* obs_ptr, double new_origin_x, double new_origin_y) {

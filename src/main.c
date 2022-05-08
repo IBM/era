@@ -18,9 +18,10 @@
 #include "xmit_pipe.h"  // IEEE 802.11p WiFi SDR Transmit Pipeline
 #include "recv_pipe.h"  // IEEE 802.11p WiFi SDR Receive Pipeline
 
+#undef HPVM
 #define HPVM
 
-#ifdef HPVM
+#if defined(HPVM)
 #include "hpvm.h"
 #include "hetero.h"
 #endif
@@ -422,7 +423,7 @@ void * receive_and_fuse_maps_impl(Observation* observations /*=observations -> g
       unsigned num_eq_out_bits = 0; size_t num_eq_out_bits_sz = sizeof(unsigned);
       unsigned psdu = 0; size_t psdu_sz = sizeof(unsigned);
 
-      #ifdef HPVM
+      #if defined(HPVM)
       void * LaunchInner = __hetero_launch_begin(19, n_recvd_in, n_recvd_in_sz,
                                     recvd_in_real, recvd_in_real_sz, recvd_in_imag, recvd_in_imag_sz,
                                     recvd_msg_len, recvd_msg_len_sz, observations, observations_sz,
@@ -481,11 +482,11 @@ void * receive_and_fuse_maps_impl(Observation* observations /*=observations -> g
       pd_recv_pipe_usec += stop_pd_recv_pipe.tv_usec - start_pd_recv_pipe.tv_usec;
       #endif
       // do_recv_pipeline(n_xmit_out, xmit_out_real, xmit_out_imag, &recvd_msg_len, recvd_msg);
-      #ifdef HPVM
+      #if defined(HPVM)
       __hetero_task_end(T1);
       #endif
 
-      #ifdef HPVM
+      #if defined(HPVM)
       void * T2 = __hetero_task_begin(3, uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
                                       recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz, 2,
                                       uncmp_data, uncmp_data_sz, dec_bytes, dec_bytes_sz);
@@ -512,11 +513,11 @@ void * receive_and_fuse_maps_impl(Observation* observations /*=observations -> g
       pd_lz4_uncmp_usec += stop_pd_lz4_uncmp.tv_usec - start_pd_lz4_uncmp.tv_usec;
       #endif
 
-      #ifdef HPVM
+      #if defined(HPVM)
       __hetero_task_end(T2);
       #endif
 
-      #ifdef HPVM
+      #if defined(HPVM)
       void * T3 = __hetero_task_begin(3, uncmp_data, uncmp_data_sz, dec_bytes, dec_bytes_sz,
                                       observations, observations_sz,
                                       0);
@@ -555,11 +556,11 @@ void * receive_and_fuse_maps_impl(Observation* observations /*=observations -> g
       fclose(ascii_fp);
       #endif
 
-      #ifdef HPVM
+      #if defined(HPVM)
       __hetero_task_end(T3);
       #endif
 
-      #ifdef HPVM
+      #if defined(HPVM)
       void * T4 = __hetero_task_begin(2, observations, observations_sz, uncmp_data, uncmp_data_sz, 0);
       #endif
 
@@ -612,14 +613,16 @@ void * receive_and_fuse_maps_impl(Observation* observations /*=observations -> g
       write_array_to_file(local_map_cp -> costmap, COST_MAP_ENTRIES);
       #endif
 
-      #ifdef HPVM
+      #if defined(HPVM)
       __hetero_task_end(T4);
       #endif
 
+      #if defined(HPVM)
       // End graph here as we are doing IO in the following section so it should probably not be run in
-      // parallel with other sections of the code as it can create race conditions
+      // parallel with other sections of the code as it can create race conditions.
       __hetero_section_end(SectionLoop);
       __hetero_launch_end(LaunchInner);
+      #endif
 
       // This is now the fused map that should be sent to the AV(Car)
       //  The n values of the (fused) local_map Costmap
@@ -683,7 +686,7 @@ void * receive_and_fuse_maps_impl(Observation* observations /*=observations -> g
     #if PARALLEL_PTHREADS
   } // while (1)
     #endif
-
+  return NULL;
 }
 
 void * receive_and_fuse_maps(void * parm_ptr, size_t parm_ptr_sz) {
@@ -707,6 +710,8 @@ void * receive_and_fuse_maps(void * parm_ptr, size_t parm_ptr_sz) {
   pd_wifi_lmap_wait_usec += stop_pd_wifi_lmap_wait.tv_usec - start_pd_wifi_recv_th.tv_usec;
   #endif
   receive_and_fuse_maps_impl(observationsArr, sizeof(Observation)*2);
+
+  return NULL;
 }
 
 typedef struct lidar_inputs_struct {
@@ -721,7 +726,7 @@ void process_lidar_to_occgrid(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /
                                     int* n_cmp_bytes /*return by arg*/, size_t n_cmp_bytes_sz /*=1*/,
                                     unsigned char* cmp_data /*return by arg*/, size_t cmp_data_sz /*=MAX_COMPRESSED_DATA_SIZE*/) {
 
-  #ifdef HPVM
+  #if defined(HPVM)
   void * Section = __hetero_section_begin();
   void * T1 = __hetero_task_begin(2, lidar_inputs, lidarin_sz,
                                     observations, observations_sz,
@@ -759,13 +764,13 @@ void process_lidar_to_occgrid(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /
   pd_cloud2grid_sec += stop_pd_cloud2grid.tv_sec - start_pd_cloud2grid.tv_sec;
   pd_cloud2grid_usec += stop_pd_cloud2grid.tv_usec - start_pd_cloud2grid.tv_usec;
   #endif
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T1);
   #endif
 
   // Write the read-in image to a file
   // write_array_to_file(grid, COST_MAP_ENTRIES);
-  #ifdef HPVM
+  #if defined(HPVM)
   void * T2 = __hetero_task_begin(11, observations, observations_sz, n_cmp_bytes, n_cmp_bytes_sz,
                                     cmp_data, cmp_data_sz, 8, observations, observations_sz,
                                     n_cmp_bytes, n_cmp_bytes_sz, cmp_data, cmp_data_sz);
@@ -809,11 +814,11 @@ void process_lidar_to_occgrid(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /
   DBGOUT(double c_ratio = 100 * (1 - ((double)(*n_cmp_bytes) / (double)(MAX_UNCOMPRESSED_DATA_SIZE))); printf("  Back from LZ4_compress_default: %lu bytes -> %u bytes for %5.2f%%\n",
     MAX_UNCOMPRESSED_DATA_SIZE, *n_cmp_bytes, c_ratio););
 
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T2);
   #endif
 
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_section_end(Section);
   #endif
 }
@@ -825,11 +830,63 @@ void encode_transmit_occgrid(int* n_cmp_bytes /*from process_lidar_to_occgrid*/,
   DBGOUT(printf("Calling do_xmit_pipeline for %u compressed grid elements\n", n_cmp_bytes));
   int n_xmit_out;
   float xmit_out_real[MAX_XMIT_OUTPUTS];
+  size_t xmit_out_real_sz = MAX_XMIT_OUTPUTS * sizeof(float);
   float xmit_out_imag[MAX_XMIT_OUTPUTS];
+  size_t xmit_out_imag_sz = MAX_XMIT_OUTPUTS * sizeof(float);
   #ifdef INT_TIME
   gettimeofday( & start_pd_wifi_pipe, NULL);
   #endif
-  do_xmit_pipeline(*n_cmp_bytes, (char*) cmp_data, &n_xmit_out, xmit_out_real, xmit_out_imag);
+
+  // Local variables for do_xmit_pipeline
+  #define MAX_SIZE 24600  // from xmit_pipe.c
+  #define ofdm_max_out_size 33280 // from xmit_pipe.c
+
+  int psdu_len = 0; size_t psdu_len_sz = sizeof(int);
+  uint8_t pckt_hdr_out[64]; size_t pckt_hdr_out_sz = 64;
+  int pckt_hdr_len = 0; size_t pckt_hdr_len_sz = sizeof(int);
+  float msg_stream_real[MAX_SIZE]; size_t msg_stream_real_sz = MAX_SIZE * sizeof(float);
+  float msg_stream_imag[MAX_SIZE]; size_t msg_stream_imag_sz = MAX_SIZE * sizeof(float);
+  float ofdm_car_str_real[ofdm_max_out_size]; size_t ofdm_car_str_real_sz = ofdm_max_out_size * sizeof(float);
+  float ofdm_car_str_imag[ofdm_max_out_size]; size_t ofdm_car_str_imag_sz = ofdm_max_out_size * sizeof(float);
+  int ofc_res = 0; size_t ofc_res_sz = sizeof(int);
+  float fft_out_real[ofdm_max_out_size]; size_t fft_out_real_sz = ofdm_max_out_size * sizeof(float);
+  float fft_out_imag[ofdm_max_out_size]; size_t fft_out_imag_sz = ofdm_max_out_size * sizeof(float);
+  float cycpref_out_real[41360]; size_t cycpref_out_real_sz = 41360 * sizeof(float);
+  float cycpref_out_imag[41360]; size_t cycpref_out_imag_sz = 41360 * sizeof(float);
+
+  #if defined(HPVM)
+  void * LaunchInner = __hetero_launch_begin(17, n_cmp_bytes, n_cmp_bytes_sz, cmp_data, cmp_data_sz,
+                                              &n_xmit_out, sizeof(int), xmit_out_real, xmit_out_real_sz,
+                                              xmit_out_imag, xmit_out_imag_sz,
+                                              /* Start of local variables for do_xmit_pipeline*/
+                                              &psdu_len, psdu_len_sz, pckt_hdr_out, pckt_hdr_out_sz,
+                                              &pckt_hdr_len, pckt_hdr_len_sz,
+                                              msg_stream_real, msg_stream_real_sz,
+                                              msg_stream_imag, msg_stream_imag_sz,
+                                              ofdm_car_str_real, ofdm_car_str_real_sz,
+                                              ofdm_car_str_imag, ofdm_car_str_imag_sz, &ofc_res, ofc_res_sz,
+                                              fft_out_real, fft_out_real_sz, fft_out_imag, fft_out_imag_sz,
+                                              cycpref_out_real, cycpref_out_real_sz,
+                                              cycpref_out_imag, cycpref_out_imag_sz
+                                              /* End of local variables for do_xmit_pipeline*/, 3, 
+                                              &n_xmit_out, sizeof(int), xmit_out_real, xmit_out_real_sz,
+                                              xmit_out_imag, xmit_out_imag_sz
+                                            );
+  #endif
+  
+  do_xmit_pipeline(*n_cmp_bytes, (char*) cmp_data, cmp_data_sz, &n_xmit_out, sizeof(int), 
+                    xmit_out_real, xmit_out_real_sz, xmit_out_imag, xmit_out_imag_sz,
+                    &psdu_len, psdu_len_sz, pckt_hdr_out, pckt_hdr_out_sz,
+                    &pckt_hdr_len, pckt_hdr_len_sz, msg_stream_real, msg_stream_real_sz,
+                    msg_stream_imag, msg_stream_imag_sz, ofdm_car_str_real, ofdm_car_str_real_sz,
+                    ofdm_car_str_imag, ofdm_car_str_imag_sz, &ofc_res, ofc_res_sz, 
+                    fft_out_real, fft_out_real_sz, fft_out_imag, fft_out_imag_sz,
+                    cycpref_out_real, cycpref_out_real_sz, cycpref_out_imag, cycpref_out_imag_sz);
+
+  #if defined(HPVM)
+  __hetero_launch_end(LaunchInner);
+  #endif
+
   #ifdef INT_TIME
   gettimeofday( & stop_pd_wifi_pipe, NULL);
   pd_wifi_pipe_sec += stop_pd_wifi_pipe.tv_sec - start_pd_wifi_pipe.tv_sec;
@@ -881,11 +938,6 @@ void encode_transmit_occgrid(int* n_cmp_bytes /*from process_lidar_to_occgrid*/,
   #endif
 
   xmit_count++;
-
-  #if PARALLEL_PTHREADS
-  ; // nothing to do here...
-  DBGOUT(printf("Returning from process_lidat_to_occgrid\n"); fflush(stdout));
-  #else
 }
 
 
@@ -893,7 +945,7 @@ void * lidar_root(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /*=sizeof( * 
                   Observation* observations /*global observations array*/, size_t observations_sz /*=2*/,
                   int* n_cmp_bytes /*return by arg*/, size_t n_cmp_bytes_sz /*=1*/,
                   unsigned char* cmp_data /*return by arg*/, size_t cmp_data_sz /*=MAX_COMPRESSED_DATA_SIZE*/) {
-  #ifdef HPVM
+  #if defined(HPVM)
   void * Section = __hetero_section_begin();
   void * T1 = __hetero_task_begin(4, lidar_inputs, lidarin_sz, n_cmp_bytes, n_cmp_bytes_sz,
                                   cmp_data, cmp_data_sz, observations, observations_sz,
@@ -904,29 +956,33 @@ void * lidar_root(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /*=sizeof( * 
   process_lidar_to_occgrid(lidar_inputs, lidarin_sz, observations, observations_sz,
                             n_cmp_bytes, n_cmp_bytes_sz, cmp_data, cmp_data_sz); // buffer, total_bytes_read);
 
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T1);
   __hetero_section_end(Section);
   #endif
+
+  return NULL;
 }
 
-void * cv_root(label_t tr_val, label_t * out_label, size_t outlabel_sz) {
-  #ifdef HPVM
+void * cv_root(unsigned tr_val, label_t * out_label, size_t outlabel_sz) {
+  #if defined(HPVM)
   void * Section = __hetero_section_begin();
   void * T1 = __hetero_task_begin(2, tr_val, out_label, outlabel_sz, 1, out_label, outlabel_sz);
   #endif
 
   *out_label = run_object_classification(tr_val);
 
-  #ifdef HPVM
+  #if defined(HPVM)
   __hetero_task_end(T1);
   __hetero_section_end(Section);
   #endif
+
+  return NULL;
 }
 
 int main(int argc, char * argv[]) {
 
-  // #ifdef HPVM
+  // #if defined(HPVM)
   // DEBUG(printf("Using HPVM!\n");)
   // RootIn * DFGArgs = hpvm_initialize();
   // #endif
@@ -1135,7 +1191,7 @@ int main(int argc, char * argv[]) {
     //#ifdef INT_TIME
     gettimeofday( & start_proc_rdbag, NULL);
     //#endif
-    int valread = read_all(bag_sock, l_buffer, 10);
+    int valread = read_all(bag_sock, (char*) l_buffer, 10);
     //#ifdef INT_TIME
     gettimeofday( & stop_proc_rdbag, NULL);
     proc_rdbag_sec += stop_proc_rdbag.tv_sec - start_proc_rdbag.tv_sec;
@@ -1161,7 +1217,7 @@ int main(int argc, char * argv[]) {
       gettimeofday( & start_proc_lidar, NULL);
       //#endif
       char * ptr;
-      int message_size = strtol(l_buffer + 1, & ptr, 10);
+      int message_size = strtol((char*) l_buffer + 1, & ptr, 10);
       DBGOUT(printf("Lidar: expecting message size: %d\n", message_size));
       send(bag_sock, ack, 2, 0);
 
@@ -1190,19 +1246,19 @@ int main(int argc, char * argv[]) {
       //#endif
       int n_cmp_bytes = 0;
       unsigned char cmp_data[MAX_COMPRESSED_DATA_SIZE];
-      #ifdef HPVM
-      void* lidarDAG = __hetero__launch((void*)lidar_root, 4, &lidar_inputs, sizeof(lidar_inputs_t),
-                  observationsArr, sizeof(Observation) * 2, &n_cmp_bytes, sizeof(int),
-                  cmp_data, MAX_COMPRESSED_DATA_SIZE, 4, &lidar_inputs, sizeof(lidar_inputs_t), &n_cmp_bytes, sizeof(int),
-                  cmp_data, MAX_COMPRESSED_DATA_SIZE, observationsArr, sizeof(Observation) * 2);
-      __hetero__wait(lidarDAG);
+      #if defined(HPVM)
+      void* lidarDAG = __hetero_launch((void*)lidar_root, &lidar_inputs, sizeof(lidar_inputs_t),
+                  observationsArr, sizeof(Observation) * 2,
+                  &n_cmp_bytes, sizeof(int),
+                  cmp_data, MAX_COMPRESSED_DATA_SIZE);
+      __hetero_wait(lidarDAG);
       #else
       lidar_root(&lidar_inputs, sizeof(lidar_inputs_t),
                   observationsArr, sizeof(Observation) * 2,
                   &n_cmp_bytes, sizeof(int),
                   cmp_data, MAX_COMPRESSED_DATA_SIZE);
       #endif
-      encode_transmit_occgrid(n_cmp_bytes, sizeof(int), cmp_data, MAX_COMPRESSED_DATA_SIZE);
+      encode_transmit_occgrid(&n_cmp_bytes, sizeof(int), cmp_data, MAX_COMPRESSED_DATA_SIZE);
       #if PARALLEL_PTHREADS
         ; // nothing to do here...
       #else
@@ -1228,14 +1284,14 @@ int main(int argc, char * argv[]) {
       gettimeofday( & start_proc_odo, NULL);
       #endif
       char * ptr;
-      int message_size = strtol(l_buffer + 1, & ptr, 10);
+      int message_size = strtol((char*) l_buffer + 1, & ptr, 10);
       DBGOUT(printf("Odometry: expecting message size: %d\n", message_size));
       send(bag_sock, ack, 2, 0);
 
       int total_bytes_read = 0;
 
       //valread = read(bag_sock , buffer, 10000);
-      valread = read_all(bag_sock, l_buffer, message_size);
+      valread = read_all(bag_sock, (char*) l_buffer, message_size);
       DBGOUT(printf("read %d bytes\n", valread));
       if (valread < message_size) {
         if (valread == 0) {
@@ -1276,7 +1332,6 @@ int main(int argc, char * argv[]) {
     /*     simulator (e.g. CARLA).                                         */
     /***********************************************************************/
 
-    /***********************************
     // TODO: What is the parameter 'tr_val' passed to  run_object_classification()?
     unsigned tr_val = 1;
     //#ifdef INT_TIME
@@ -1285,19 +1340,23 @@ int main(int argc, char * argv[]) {
 
     // HPVM task
     label_t out_label;
-    void * dfg = __hetero__launch((void *) cv_root, 1, tr_val, 1, &out_label, sizeof(out_label));
-    __hetero__wait(dfg);
+    #if defined(HPVM)
+    void * dfg = __hetero_launch((void *) cv_root, 3, tr_val, &out_label, sizeof(out_label), 
+		    			1, &out_label, sizeof(out_label));
+    __hetero_wait(dfg);
+    #else
+    cv_root(tr_val, &out_label, sizeof(label_t));
+    #endif
     cv_count++;
     //#ifdef INT_TIME
     gettimeofday(&stop_proc_cv, NULL);
     proc_cv_sec += stop_proc_cv.tv_sec - start_proc_cv.tv_sec;
     proc_cv_usec += stop_proc_cv.tv_usec - start_proc_cv.tv_usec;
-    printf("run_object_classification time in usec %u\n",
+    printf("run_object_classification time in usec %ld\n",
       (stop_proc_cv.tv_sec - start_proc_cv.tv_sec) * 1000000 + (stop_proc_cv.tv_usec -
         start_proc_cv.tv_usec));
     //#endif
     printf("run_object_classification returned %u\n", out_label);
-    *************/
   }
 
   dump_final_run_statistics();
@@ -1305,9 +1364,6 @@ int main(int argc, char * argv[]) {
   close(xmit_sock);
   close(recv_sock);
 
-  #ifdef HPVM
-  //hpvm_cleanup(DFGArgs);
-  #endif
 }
 
 void dump_final_run_statistics() {
