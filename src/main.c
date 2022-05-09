@@ -19,7 +19,7 @@
 #include "recv_pipe.h"  // IEEE 802.11p WiFi SDR Receive Pipeline
 
 #undef HPVM
-#define HPVM
+//#define HPVM
 
 #if defined(HPVM)
 #include "hpvm.h"
