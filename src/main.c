@@ -149,7 +149,7 @@ uint64_t pd_wifi_car_sec = 0LL;
 uint64_t pd_wifi_car_usec = 0LL;
 #endif
 
-int counter = 0;
+int arr_counter = 0;
 int ascii_counter = 0;
 
 unsigned odo_count = 0;
@@ -247,7 +247,7 @@ void write_array_to_file(unsigned char * data, long size) {
 
   char file_name[32];
 
-  snprintf(file_name, sizeof(char) * 32, "%s%04d.ppm", IMAGE_FN, counter);
+  snprintf(file_name, sizeof(char) * 32, "%s%04d.ppm", IMAGE_FN, arr_counter);
 
   FILE * fp = fopen(file_name, "w");
   fprintf(fp, "P3 %d %d 255\n", dimx, dimy);
@@ -257,7 +257,7 @@ void write_array_to_file(unsigned char * data, long size) {
   }
 
   fclose(fp);
-  counter++;
+  arr_counter++;
 }
 
 #define MAX_UNCOMPRESSED_DATA_SIZE sizeof(Costmap2D) // MAX_GRID_SIZE
