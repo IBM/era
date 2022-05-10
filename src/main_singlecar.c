@@ -10,14 +10,25 @@
 #include <arpa/inet.h> // for inet_addr
 #include <sys/time.h>
 
+
 #include "globals.h"
 #include "debug.h"
 #include "getopt.h"
+
+#undef HPVM
 
 #include "occgrid.h"    // Occupancy Grid Map Create/Fuse
 #include "lz4.h"        // LZ4 Compression/Decompression
 #include "xmit_pipe.h"  // IEEE 802.11p WiFi SDR Transmit Pipeline
 #include "recv_pipe.h"  // IEEE 802.11p WiFi SDR Receive Pipeline
+
+#undef VERBOSE
+char* IMAGE_FN = "gridimage_era1_"; // TODO: Change value based on test being compiled; look at CMake like
+#define BAG_PORT 5556
+#define XMIT_PORT 5558
+#define RECV_PORT 5560
+#define CAR_PORT 5562
+
 
 // The PORTS are defined in the compilation process, and comforms to the
 // definition in the read_bag_x.py files and wifi_comm_x.py files.

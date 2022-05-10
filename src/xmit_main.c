@@ -28,6 +28,9 @@
 #include "getopt.h"
 #include "debug.h"
 
+#undef HPVM
+#undef VERBOSE
+
 #include "xmit_pipe.h"  // IEEE 802.11p WiFi SDR Transmit Pipeline
 
 #define TIME

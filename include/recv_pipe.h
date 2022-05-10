@@ -89,6 +89,7 @@ extern uint64_t r_fHcvtout_usec;
 
 void recv_pipe_init();
 
+#ifdef HPVM
 void do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, size_t recvd_in_real_sz, 
                       float* recvd_in_imag, size_t recvd_in_imag_sz,
                       int* recvd_msg_len, size_t recvd_msg_len_sz, char * recvd_msg, size_t recvd_msg_sz,
@@ -105,5 +106,9 @@ void do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, size_t recvd_in_
                       fx_pt* equalized /*local*/, size_t equalized_sz /*= FRAME_EQ_OUT_MAX_SIZE*/,
                       unsigned* num_eq_out_bits /*local*/, size_t num_eq_out_bits_sz /*=1*/,
                       unsigned* psdu /*local*/, size_t psdu_sz /*=1*/);
+#else
+void do_recv_pipeline(int n_in, float* in_real, float* in_imag, int* out_msg_len, char* out_msg);
+#endif
+
 
 #endif

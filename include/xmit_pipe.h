@@ -91,6 +91,7 @@ extern uint64_t x_fHcvtout_usec;
 
 void xmit_pipe_init();
 
+#ifdef HPVM
 void do_xmit_pipeline(int in_msg_len, char* in_msg, size_t in_msg_sz, 
                       int* num_final_outs, size_t num_final_outs_sz,
                       float* final_out_real, size_t final_out_real_sz,
@@ -107,7 +108,10 @@ void do_xmit_pipeline(int in_msg_len, char* in_msg, size_t in_msg_sz,
                       float* fft_out_imag /*local*/, size_t fft_out_imag_sz /*= ofdm_max_out_size*/,
                       float* cycpref_out_real, size_t cycpref_out_real_sz /*= 41360*/,
                       float* cycpref_out_imag, size_t cycpref_out_imag_sz /*= 41360*/);
-
+#else
+void do_xmit_pipeline(int in_msg_len, char* in_msg, int* num_final_outs, float* final_out_real, 
+                      float* final_out_imag);
+#endif
 
 
 void generate_mac_data_frame(const char *msdu, int msdu_size, /*char **psdu,*/ int *psdu_size /*, char seq*/);

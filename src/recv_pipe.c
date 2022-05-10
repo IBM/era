@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <assert.h>
 
+#undef VERBOSE
 
 #include "debug.h"
 #ifdef RECV_HW_FFT

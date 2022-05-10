@@ -24,9 +24,13 @@
 #include <unistd.h>
 #include <getopt.h>
 
+#undef VERBOSE
+
 #include "globals.h"
 #include "getopt.h"
 #include "debug.h"
+
+#undef HPVM
 
 #include "recv_pipe.h"  // IEEE 802.11p WiFi SDR Transmit Pipeline
 

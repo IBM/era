@@ -8,8 +8,6 @@
 #ifndef OCCGRID_H
 #define OCCGRID_H
 
-#define HPVM
-
 #ifdef INT_TIME
 /* This is OCC-GRID Internal Timing information (gathering resources) */
 extern uint64_t ocgr_c2g_total_sec;
