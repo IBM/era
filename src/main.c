@@ -20,6 +20,9 @@
 #include "xmit_pipe.h"  // IEEE 802.11p WiFi SDR Transmit Pipeline
 #include "recv_pipe.h"  // IEEE 802.11p WiFi SDR Receive Pipeline
 
+#include <stdint.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image/stb_image.h"
 
 // The PORTS are defined in the compilation process, and comforms to the
 // definition in the read_bag_x.py files and wifi_comm_x.py files.
@@ -35,6 +38,7 @@ int recv_sock = 0;
 int car_sock = 0;
 
 char *ack = "OK";
+bool hit_eof = false;
 
 float odometry[] = {0.0, 0.0, 0.0};
 
@@ -159,8 +163,13 @@ void print_usage(char * pname) {
   printf("    -s <Num>   : exit run after <Num> Lidar time-steps (msgs)\n");
 }
 
+
 void INThandler(int dummy)
 {
+  hit_eof = true;
+  fflush(stdout);
+  fflush(stderr);
+
   printf("In SIGINT INThandler -- Closing the connection and exiting\n");
   closeout_and_exit("Received a SIGINT...", -1);
 }
@@ -655,6 +664,8 @@ void process_lidar_to_occgrid(lidar_inputs_t* lidar_inputs)
   DBGOUT(printf("Returning from process_lidat_to_occgrid\n"); fflush(stdout));
 }
 
+
+
 int main(int argc, char *argv[])
 {
   struct sockaddr_in bag_servaddr;
@@ -680,11 +691,26 @@ int main(int argc, char *argv[])
   xmit_pipe_init(); // Initialize the IEEE SDR Transmit Pipeline
   printf("Initializing the Receive pipeline...\n");
   recv_pipe_init();
+
   printf("Initializing the Computer Vision toolset...\n");
+#ifdef USE_OLD_MODEL
+
   if (cv_toolset_init() != success) {
       printf("Computer Vision toolset initialization failed...\n");
       exit(0);
   }
+
+#else
+
+  /*****************************************************************************/
+  /* NEW: PyTorch TinyYOLOv2 support (May 2022)                                */
+  if (cv_toolset_init("tiny_yolov2_coco", "yolov2-tiny.weights") != 0) {
+      printf("Computer Vision toolset initialization failed...\n");
+      exit(1);
+  }
+  /*****************************************************************************/
+
+#endif
 
   signal(SIGINT, INThandler);
   signal(SIGPIPE, SIGPIPE_handler);
@@ -853,7 +879,6 @@ int main(int argc, char *argv[])
   //#ifdef INT_TIME
   gettimeofday(&start_prog, NULL);
   //#endif
-  bool hit_eof = false;
 
   /*************************************************************************/
   /*                           M A I N   L O O P                           */
@@ -988,9 +1013,42 @@ int main(int argc, char *argv[])
     /*     simulator (e.g. CARLA).                                         */
     /***********************************************************************/
 
+#ifdef USE_OLD_MODEL
+
     unsigned tr_val = 1;  // TODO: What is the parameter 'tr_val' passed to  run_object_classification()?
     label_t out_label = run_object_classification(tr_val);
     printf("run_object_classification returned %u\n", tr_val);
+
+#else
+
+    /*****************************************************************************/
+    /* NEW: PyTorch TinyYOLOv2 support (May 2022)                                */
+    int width, height, channels;
+    uint8_t* rgb_image = stbi_load("test.jpg", &width, &height, &channels, 3);
+
+    if (rgb_image != NULL) {
+
+	char filename[300];
+	int nboxes = 0;
+	snprintf(filename, 270, "test_output.jpg");
+
+	dim_t dimensions;
+	dimensions.width  = width;
+	dimensions.height = height;
+	dimensions.c      = channels;
+
+	detection_t *dets = run_object_classification(rgb_image, dimensions, filename, &nboxes);
+
+	if (dets == NULL)
+	  printf("run_object_classification failed (skipping this frame)\n");
+
+	stbi_image_free(rgb_image);
+    } else {
+	printf("test.jpg image not found\n");
+    }
+    /*****************************************************************************/
+
+#endif
 
   }
 
