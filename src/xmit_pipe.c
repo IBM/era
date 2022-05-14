@@ -30,6 +30,8 @@
 
 //#define VERBOSE  // Turn on all debug output
 
+#define HPVM
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -63,10 +65,7 @@
 
 #include "fft.h"
 
-#undef HPVM
-//#define HPVM
-
-#if defined(HPVM)
+#if defined(HPVM) 
 #include "hpvm.h"
 #include "hetero.h"
 #endif
@@ -1851,10 +1850,28 @@ void do_xmit_pipeline(int in_msg_len, char* in_msg, size_t in_msg_sz,
                       float* fft_out_imag /*local*/, size_t fft_out_imag_sz /*= ofdm_max_out_size*/,
                       float* cycpref_out_real, size_t cycpref_out_real_sz /*= 41360*/,
                       float* cycpref_out_imag, size_t cycpref_out_imag_sz /*= 41360*/) {
-  #if defined(HPVM)
+  #if defined(HPVM) 
   void * Section = __hetero_section_begin();
-  void * T1 = __hetero_task_begin(3, in_msg_len, in_msg, in_msg_sz, psdu_len, psdu_len_sz, 
-                                  1, psdu_len, psdu_len_sz);
+ void * T1 = __hetero_task_begin(3, in_msg_len, in_msg, in_msg_sz, psdu_len, psdu_len_sz, 
+                                 1, psdu_len, psdu_len_sz);
+//  void * T1 = __hetero_task_begin(17, in_msg_len, in_msg, in_msg_sz,
+ //                     num_final_outs, num_final_outs_sz,
+  //                    final_out_real, final_out_real_sz,
+   //                   final_out_imag, final_out_imag_sz,
+    //                  psdu_len /*local*/, psdu_len_sz /*=1*/,
+     //                 pckt_hdr_out, pckt_hdr_out_sz /*=64 -> though 48 may work*/,
+      //                pckt_hdr_len /*local*/, pckt_hdr_len_sz /*=1*/,
+       //               msg_stream_real /*local*/, msg_stream_real_sz /*= MAX_SIZE*/,
+        //              msg_stream_imag /*local*/, msg_stream_imag_sz /*= MAX_SIZE*/,
+         //             ofdm_car_str_real /*local*/, ofdm_car_str_real_sz /*= ofdm_max_out_size*/,
+          //            ofdm_car_str_imag /*local*/, ofdm_car_str_imag_sz /*= ofdm_max_out_size*/,
+           //           ofc_res /*local*/, ofc_res_sz /*=1*/,
+            //          fft_out_real /*local*/, fft_out_real_sz /*= ofdm_max_out_size*/,
+             //         fft_out_imag /*local*/, fft_out_imag_sz /*= ofdm_max_out_size*/,
+              //        cycpref_out_real, cycpref_out_real_sz /*= 41360*/,
+               //       cycpref_out_imag, cycpref_out_imag_sz /*= 41360*/, 3, num_final_outs, num_final_outs_sz,
+                //      final_out_real, final_out_real_sz,
+                 //     final_out_imag, final_out_imag_sz);
   #endif
 
   DO_NUM_IOS_ANALYSIS(printf("In do_xmit_pipeline: MSG_LEN %u\n", in_msg_len));
@@ -2048,8 +2065,7 @@ void do_xmit_pipeline(int in_msg_len, char* in_msg, size_t in_msg_sz,
   void * T7 = __hetero_task_begin(5, ofc_res, ofc_res_sz, fft_out_real, fft_out_real_sz, 
                                   fft_out_imag, fft_out_imag_sz, cycpref_out_real, cycpref_out_real_sz, 
                                   cycpref_out_imag, cycpref_out_imag_sz, 2, 
-                                  cycpref_out_real, cycpref_out_real_sz, 
-                                  cycpref_out_imag, cycpref_out_imag_sz);
+                                  cycpref_out_real, cycpref_out_real_sz, cycpref_out_imag, cycpref_out_imag_sz);
   #endif
 
   //#include "gold_fft_outputs.c"
@@ -2082,14 +2098,12 @@ void do_xmit_pipeline(int in_msg_len, char* in_msg, size_t in_msg_sz,
   #endif
   
   #if defined(HPVM)
-  void * T8 = __hetero_task_begin(3, num_final_outs, num_final_outs_sz, final_out_real, final_out_real_sz, 
+  void * T8 = __hetero_task_begin(6, num_final_outs, num_final_outs_sz, final_out_real, final_out_real_sz, 
                                   final_out_imag, final_out_imag_sz, cycpref_out_real, cycpref_out_real_sz,
-                                  cycpref_out_imag, cycpref_out_imag_sz, 3, 
+                                  cycpref_out_imag, cycpref_out_imag_sz, ofc_res, ofc_res_sz, 3, 
                                   num_final_outs, num_final_outs_sz, final_out_real, final_out_real_sz, 
-                                  final_out_imag, final_out_imag_sz
-  );
-  // HPVM should be able to just copy down the definition for num_cycpref_outs as it is just a simple
-  // arithmetic computation. So, num_cycpref_outs isn't included as the input
+                                  final_out_imag, final_out_imag_sz);
+  int num_cycpref_outs_cp = (*ofc_res) * (d_fft_len + d_cp_size) + 1; // copied from above task
   #endif
 
   // The next "stage" is the "packet_pad2" which adds 500 zeros to the front (and no zeros to the rear) of the output
@@ -2103,22 +2117,22 @@ void do_xmit_pipeline(int in_msg_len, char* in_msg, size_t in_msg_sz,
 
   // Now set the Final Outputs
   DEBUG(printf("\nFinal XMIT output:\n"));
-  *num_final_outs = num_pre_pad + num_cycpref_outs + num_post_pad;
+  *num_final_outs = num_pre_pad + num_cycpref_outs_cp + num_post_pad;
   DO_NUM_IOS_ANALYSIS(printf("Set num_finalouts to %u = pre-pad %u + %u num_cycpref_outs\n", 
-                      *num_final_outs, num_pre_pad, num_cycpref_outs));
+                      *num_final_outs, num_pre_pad, num_cycpref_outs_cp));
   for (int i = 0; i < num_pre_pad; i++) {
     final_out_real[i] = 0.0;
     final_out_imag[i] = 0.0;
     DEBUG(printf(" fin_xmit_out %6u : %11.8f + %11.8f i\n", i, final_out_real[i], final_out_imag[i]));
   }
-  for (int i = 0; i < num_cycpref_outs; i++) {
+  for (int i = 0; i < num_cycpref_outs_cp; i++) {
     int iidx = num_pre_pad + i;
     final_out_real[iidx] = cycpref_out_real[i];
     final_out_imag[iidx] = cycpref_out_imag[i];
     DEBUG(printf(" fin_xmit_out %6u : %11.8f + %11.8f i\n", iidx, final_out_real[iidx], final_out_imag[iidx]));
   }
   /* for (int i = 0; i < num_post_pad; i++) { */
-  /*   int iidx = num_pre_pad + num_cycpref_outs + i; */
+  /*   int iidx = num_pre_pad + num_cycpref_outs_cp + i; */
   /*   final_out_real[iidx] = 0.0; */
   /*   final_out_imag[iidx] = 0.0; */
   /*   DEBUG(printf(" fin_xmit_out %6u : %11.8f + %11.8f i\n", iidx, final_out_real[iidx], final_out_imag[iidx])); */
@@ -2137,10 +2151,7 @@ void do_xmit_pipeline(int in_msg_len, char* in_msg, size_t in_msg_sz,
 
  #if defined(HPVM)
   __hetero_task_end(T8);
-
   __hetero_section_end(Section);
   #endif
 }
-
-
 

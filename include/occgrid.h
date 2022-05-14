@@ -5,6 +5,15 @@
 #include <string.h>
 #include <math.h>
 
+// TODO: This is a simple fix for now; later move this struct definition to a global.h file so main.c and occgrid.c can just include that
+typedef struct lidar_inputs_struct {
+        float odometry[3];
+        int data_size;
+        char data[200002];
+}
+lidar_inputs_t;
+
+
 #ifndef OCCGRID_H
 #define OCCGRID_H
 
@@ -103,17 +112,16 @@ void fuseIntoLocal(Costmap2D* localMap, Costmap2D* updateMap);
 void combineGrids(unsigned char* grid1, unsigned char* grid2, double robot_x1, double robot_y1,
 		  double robot_x2, double robot_y2, unsigned int cell_size_x, unsigned int cell_size_y, double resolution/*, char def_val*/);
 
-#ifdef HPVM
-void cloudToOccgrid(Observation * obs_ptr, size_t obs_ptr_sz, float * data, unsigned int data_size,
-  double robot_x, double robot_y, double robot_z, double robot_yaw, bool rolling_window,
-  double min_obstacle_height, double max_obstacle_height, double raytrace_range,
-  unsigned int x_dim, unsigned int y_dim, double resolution);
-#else
-unsigned char* cloudToOccgrid(Observation* obs_ptr, float* data, unsigned int data_size,
-			      double robot_x, double robot_y, double robot_z, double robot_yaw, bool rolling_window,
-                              double min_obstacle_height, double max_obstacle_height, double raytrace_range,
-			      unsigned int size_x, unsigned int size_y, double resolution);
-#endif
+void cloudToOccgrid(Observation * obs_ptr, size_t obs_ptr_sz,
+                lidar_inputs_t* lidar_inputs, size_t lidar_inputs_sz /*=sizeof(*lidar_inputs*/,
+                double* robot_yaw, size_t robot_yaw_sz /*=sizeof(double)*/,
+                bool* rolling_window, size_t rolling_window_sz /*=sizeof(bool)*/,
+                double* min_obstacle_height, size_t min_obstable_height_sz /*=sizeof(double)*/,
+                double* max_obstacle_height, size_t max_obstable_height_sz /*=sizeof(double)*/,
+                double* raytrace_range, size_t raytrace_range_sz /*=sizeof(double)*/,
+                unsigned int* x_dim, size_t x_dim_sz /*=sizeof(unsigned int)*/,
+                unsigned int* y_dim, size_t y_dim_sz /*=sizeof(unsigned int)*/,
+                unsigned int* resolution, size_t resolution_sz /*=sizeof(unsigned int)*/ /*, unsigned char default_value*/);
 
 void printMap();
 

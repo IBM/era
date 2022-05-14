@@ -14,4 +14,6 @@ typedef enum {error, success} status_t;
 
 void closeout_and_exit(char* last_msg, int rv);
 
+
+
 #endif // GLOBALS_H_
