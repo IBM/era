@@ -13,10 +13,12 @@
 
 #define HPVM
 
+
 #include "globals.h"
 #include "debug.h"
 #include "getopt.h"
 #include "cv_toolset.h"
+#include "globalsOccgrid.h"
 #include "occgrid.h"    // Occupancy Grid Map Create/Fuse
 #include "lz4.h"        // LZ4 Compression/Decompression
 #include "xmit_pipe.h"  // IEEE 802.11p WiFi SDR Transmit Pipeline
@@ -717,7 +719,7 @@ void * receive_and_fuse_maps(void * parm_ptr, size_t parm_ptr_sz) {
 	return NULL;
 }
 
-/*
+/* Moved to occgrid.h
    typedef struct lidar_inputs_struct {
    float odometry[3];
    int data_size;
@@ -734,10 +736,17 @@ void process_lidar_to_occgrid(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /
 		int* curr_obs_cp /*=curr_obs -> global*/, size_t curr_obs_cp_sz /*=sizeof(int)*/,
 		int* next_obs_cp /*=next_obs -> global*/, size_t next_obs_cp_sz /*=sizeof(int)*/,
 		int* lidar_count_cp /*lidar_count -> global*/, size_t lidar_count_cp_sz /*=sizeof(unsigned)*/,
-				struct timeval* start_pd_cloud2grid_cp /*start_pd_cloud2grid -> global*/, size_t start_pd_cloud2grid_cp_sz /*=sizeof(timeval)*/,
-				struct timeval* stop_pd_cloud2grid_cp /*stop_pd_cloud2grid -> global*/, size_t stop_pd_cloud2grid_cp_sz /*=sizeof(timeval)*/,
-				uint64_t* pd_cloud2grid_sec_cp /*pd_cloud2grid_sec -> global*/, size_t pd_cloud2grid_sec_cp_sz /*=sizeof(uint64_t)*/,
-				uint64_t* pd_cloud2grid_usec_cp /*pd_cloud2grid_usec -> global*/, size_t pd_cloud2grid_usec_cp_sz /*=sizeof(uint64_t)*/,
+		int* lmap_count_cp /*=lmap_count -> global*/, size_t lmap_count_cp_sz /*=sizeof(unsigned)*/,
+
+		struct timeval* start_pd_cloud2grid_cp /*start_pd_cloud2grid->global*/, size_t start_pd_cloud2grid_cp_sz /*=sizeof(timeval)*/,
+		struct timeval* stop_pd_cloud2grid_cp /*stop_pd_cloud2grid->global*/, size_t stop_pd_cloud2grid_cp_sz /*=sizeof(timeval)*/,
+		uint64_t* pd_cloud2grid_sec_cp /*pd_cloud2grid_sec -> global*/, size_t pd_cloud2grid_sec_cp_sz /*=sizeof(uint64_t)*/,
+		uint64_t* pd_cloud2grid_usec_cp /*pd_cloud2grid_usec -> global*/, size_t pd_cloud2grid_usec_cp_sz /*=sizeof(uint64_t)*/,
+
+		struct timeval* start_pd_lz4_cmp_cp /*start_pd_lz4_cmp -> global*/, size_t start_pd_lz4_cmp_cp_sz /*sizeof(timeval)*/, 
+		struct timeval* stop_pd_lz4_cmp_cp /*stop_pd_lz4_cmp -> global*/, size_t stop_pd_lz4_cmp_cp_sz /*sizeof(timeval)*/,
+		uint64_t* pd_lz4_cmp_sec_cp /*pd_lz4_cmp_sec -> global*/, size_t pd_lz4_cmp_sec_cp_sz /*sizeof(uint64_t)*/,
+		uint64_t* pd_lz4_cmp_usec_cp /*pd_lz4_cmp_usec -> global*/, size_t pd_lz4_cmp_usec_cp_sz /*sizeof(uint64_t)*/,
 		// End of global variables used internally by function
 		// Start of arguments to cloudToOccgrid (called indirectly by lidar_root)
 		double* AVxyzw, size_t AVxyzw_sz /*=sizeof(double)*/,
@@ -747,22 +756,119 @@ void process_lidar_to_occgrid(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /
 		double* raytrace_range, size_t raytrace_range_sz /*=sizeof(double)*/,
 		unsigned int* size_x, size_t size_x_sz /*=sizeof(unsigned int)*/,
 		unsigned int* size_y, size_t size_y_sz /*=sizeof(unsigned int)*/,
-		unsigned int* resolution, size_t resolution_sz /*=sizeof(unsigned int)*/
+		unsigned int* resolution, size_t resolution_sz /*=sizeof(unsigned int)*/,
+		struct timeval* ocgr_c2g_total_start_cp, size_t ocgr_c2g_total_start_cp_sz /*=sizeof(struct timeval)*/,
+    struct timeval* ocgr_c2g_total_stop_cp, size_t ocgr_c2g_total_stop_cp_sz /*=sizeof(struct timeval)*/,
+    uint64_t* ocgr_c2g_total_sec_cp, size_t ocgr_c2g_total_sec_cp_sz /*=sizeof(uint64_t)*/,
+    uint64_t* ocgr_c2g_total_usec_cp, size_t ocgr_c2g_total_usec_cp_sz /*=sizeof(uint64_t)*/,
+
+    struct timeval* ocgr_c2g_initCM_start_cp, size_t ocgr_c2g_initCM_start_cp_sz /*=sizeof(struct timeval)*/,
+    struct timeval* ocgr_c2g_initCM_stop_cp, size_t ocgr_c2g_initCM_stop_cp_sz /*=sizeof(struct timeval)*/,
+    uint64_t* ocgr_c2g_initCM_sec_cp, size_t ocgr_c2g_initCM_sec_cp_sz /*=sizeof(uint64_t)*/,
+    uint64_t* ocgr_c2g_initCM_usec_cp, size_t ocgr_c2g_initCM_usec_cp_sz /*=sizeof(uint64_t)*/,
+
+    struct timeval* ocgr_c2g_updOrig_start_cp, size_t ocgr_c2g_updOrig_start_cp_sz /*=sizeof(struct timeval)*/,
+    struct timeval* ocgr_c2g_updOrig_stop_cp, size_t ocgr_c2g_updOrig_stop_cp_sz /*=sizeof(struct timeval)*/,
+    uint64_t* ocgr_c2g_updOrig_sec_cp, size_t ocgr_c2g_updOrig_sec_cp_sz /*=sizeof(uint64_t)*/,
+    uint64_t* ocgr_c2g_updOrig_usec_cp, size_t ocgr_c2g_updOrig_usec_cp_sz /*=sizeof(uint64_t)*/,
+
+    struct timeval* ocgr_c2g_updBnds_start_cp, size_t ocgr_c2g_updBnds_start_cp_sz /*=sizeof(struct timeval)*/,
+    struct timeval* ocgr_c2g_updBnds_stop_cp, size_t ocgr_c2g_updBnds_stop_cp_sz /*=sizeof(struct timeval)*/,
+    uint64_t* ocgr_c2g_updBnds_sec_cp, size_t ocgr_c2g_updBnds_sec_cp_sz /*=sizeof(uint64_t)*/,
+    uint64_t* ocgr_c2g_updBnds_usec_cp, size_t ocgr_c2g_updBnds_usec_cp_sz /*=sizeof(uint64_t)*/,
+
+    struct timeval* ocgr_c2g_upBd_total_start_cp, size_t ocgr_c2g_upBd_total_start_cp_sz /*=sizeof(struct timeval)*/,
+    struct timeval* ocgr_c2g_upBd_total_stop_cp, size_t ocgr_c2g_upBd_total_stop_cp_sz /*=sizeof(struct timeval)*/,
+    uint64_t* ocgr_c2g_upBd_total_sec_cp, size_t ocgr_c2g_upBd_total_sec_cp_sz /*=sizeof(uint64_t)*/,
+    uint64_t* ocgr_c2g_upBd_total_usec_cp, size_t ocgr_c2g_upBd_total_usec_cp_sz /*=sizeof(uint64_t)*/,
+
+		struct timeval* ocgr_c2g_upBd_rayFSp_start_cp, size_t ocgr_c2g_upBd_rayFSp_start_cp_sz /*=sizeof(struct timeval)*/,
+    struct timeval* ocgr_c2g_upBd_rayFSp_stop_cp, size_t ocgr_c2g_upBd_rayFSp_stop_cp_sz /*=sizeof(struct timeval)*/,
+    uint64_t* ocgr_c2g_upBd_rayFSp_sec_cp, size_t ocgr_c2g_upBd_rayFSp_sec_cp_sz /*=sizeof(uint64_t)*/,
+    uint64_t* ocgr_c2g_upBd_rayFSp_usec_cp, size_t ocgr_c2g_upBd_rayFSp_usec_cp_sz /*=sizeof(uint64_t)*/,
+
+    struct timeval* ocgr_c2g_upBd_regObst_start_cp, size_t ocgr_c2g_upBd_regObst_start_cp_sz /*=sizeof(struct timeval)*/,
+    struct timeval* ocgr_c2g_upBd_regObst_stop_cp, size_t ocgr_c2g_upBd_regObst_stop_cp_sz /*=sizeof(struct timeval)*/,
+    uint64_t* ocgr_c2g_upBd_regObst_sec_cp, size_t ocgr_c2g_upBd_regObst_sec_cp_sz /*=sizeof(uint64_t)*/,
+    uint64_t* ocgr_c2g_upBd_regObst_usec_cp, size_t ocgr_c2g_upBd_regObst_usec_cp_sz /*=sizeof(uint64_t)*/,
 		// End of arguments to cloudToOccgrid (called indirectly by lidar_root)
+		int* timer_sequentialize, size_t timer_sequentialize_sz /*=sizeof(int) */
 		) {
 
 
 #if defined(HPVM) && true
 			void * Section = __hetero_section_begin();
-			void * T1 = __hetero_task_begin(17, lidar_inputs, lidarin_sz, observations, observations_sz, 
+#endif
+
+#if defined(HPVM) && true
+			void * T1_timer_start = __hetero_task_begin(5, lidar_count_cp, lidar_count_cp_sz, next_obs_cp, next_obs_cp_sz, 
+											lidar_inputs, lidarin_sz, start_pd_cloud2grid_cp, start_pd_cloud2grid_cp_sz, 
+											timer_sequentialize, timer_sequentialize_sz,
+											2, start_pd_cloud2grid_cp, start_pd_cloud2grid_cp_sz, timer_sequentialize, timer_sequentialize_sz,
+											"cloudToOccgrid_Timer_Start");
+#endif
+
+			DBGOUT(printf("Lidar step %u : Calling cloudToOccgrid next_obs = %d with odometry %.1f %.1f %.1f\n",
+						*lidar_count_cp, *next_obs_cp, lidar_inputs->odometry[0], lidar_inputs->odometry[1],
+						lidar_inputs->odometry[2]));
+			// int valread = 0; // This is not being used in this function
+#if defined(INT_TIME)
+			*timer_sequentialize = 1;
+			gettimeofday(start_pd_cloud2grid_cp, NULL);
+#endif
+
+#if defined(HPVM) && true
+			__hetero_task_end(T1_timer_start);
+#endif
+
+#if defined(HPVM) && true
+			void * T1 = __hetero_task_begin(42, lidar_inputs, lidarin_sz, observations, observations_sz, 
+					// Args to CloudToOccgrid
 					AVxyzw, AVxyzw_sz, rolling_window, rolling_window_sz,
 					min_obstracle_height, min_obstracle_height_sz,
 					max_obstracle_height, max_obstracle_height_sz, raytrace_range, raytrace_range_sz,
 					size_x, size_x_sz, size_y, size_y_sz, resolution, resolution_sz,
 					curr_obs_cp, curr_obs_cp_sz, next_obs_cp, next_obs_cp_sz, lidar_count_cp, lidar_count_cp_sz,
-					start_pd_cloud2grid_cp, start_pd_cloud2grid_cp_sz, stop_pd_cloud2grid_cp, stop_pd_cloud2grid_cp_sz,
-					pd_cloud2grid_sec_cp, pd_cloud2grid_sec_cp_sz, pd_cloud2grid_usec_cp, pd_cloud2grid_usec_cp_sz,
-					2, lidar_inputs, lidarin_sz, observations, observations_sz);
+					// Timer argument to cloudToOccgrid
+					ocgr_c2g_total_start_cp, ocgr_c2g_total_start_cp_sz,
+					ocgr_c2g_total_stop_cp, ocgr_c2g_total_stop_cp_sz,
+					ocgr_c2g_total_sec_cp, ocgr_c2g_total_sec_cp_sz,
+					ocgr_c2g_total_usec_cp, ocgr_c2g_total_usec_cp_sz,
+
+					ocgr_c2g_initCM_start_cp, ocgr_c2g_initCM_start_cp_sz,
+          ocgr_c2g_initCM_stop_cp, ocgr_c2g_initCM_stop_cp_sz,
+          ocgr_c2g_initCM_sec_cp, ocgr_c2g_initCM_sec_cp_sz,
+          ocgr_c2g_initCM_usec_cp, ocgr_c2g_initCM_usec_cp_sz,
+
+          ocgr_c2g_updOrig_start_cp, ocgr_c2g_updOrig_start_cp_sz,
+          ocgr_c2g_updOrig_stop_cp, ocgr_c2g_updOrig_stop_cp_sz,
+          ocgr_c2g_updOrig_sec_cp, ocgr_c2g_updOrig_sec_cp_sz,
+          ocgr_c2g_updOrig_usec_cp, ocgr_c2g_updOrig_usec_cp_sz,
+
+          ocgr_c2g_updBnds_start_cp, ocgr_c2g_updBnds_start_cp_sz,
+          ocgr_c2g_updBnds_stop_cp, ocgr_c2g_updBnds_stop_cp_sz,
+          ocgr_c2g_updBnds_sec_cp, ocgr_c2g_updBnds_sec_cp_sz,
+          ocgr_c2g_updBnds_usec_cp, ocgr_c2g_updBnds_usec_cp_sz,
+
+          ocgr_c2g_upBd_total_start_cp, ocgr_c2g_upBd_total_start_cp_sz,
+          ocgr_c2g_upBd_total_stop_cp, ocgr_c2g_upBd_total_stop_cp_sz,
+          ocgr_c2g_upBd_total_sec_cp, ocgr_c2g_upBd_total_sec_cp_sz,
+          ocgr_c2g_upBd_total_usec_cp, ocgr_c2g_upBd_total_usec_cp_sz,
+
+          ocgr_c2g_upBd_rayFSp_start_cp, ocgr_c2g_upBd_rayFSp_start_cp_sz,
+          ocgr_c2g_upBd_rayFSp_stop_cp, ocgr_c2g_upBd_rayFSp_stop_cp_sz,
+          ocgr_c2g_upBd_rayFSp_sec_cp, ocgr_c2g_upBd_rayFSp_sec_cp_sz,
+          ocgr_c2g_upBd_rayFSp_usec_cp, ocgr_c2g_upBd_rayFSp_usec_cp_sz,
+
+          ocgr_c2g_upBd_regObst_start_cp, ocgr_c2g_upBd_regObst_start_cp_sz,
+          ocgr_c2g_upBd_regObst_stop_cp, ocgr_c2g_upBd_regObst_stop_cp_sz,
+          ocgr_c2g_upBd_regObst_sec_cp, ocgr_c2g_upBd_regObst_sec_cp_sz,
+          ocgr_c2g_upBd_regObst_usec_cp, ocgr_c2g_upBd_regObst_usec_cp_sz,
+					// Take the following arguments as inputs (and outputs) to ensure there is an edge from T1_timer_start to
+					// T1 and then from T1 to T1_timer_end
+					timer_sequentialize, timer_sequentialize_sz,
+					3, lidar_inputs, lidarin_sz, observations, observations_sz, timer_sequentialize, timer_sequentialize_sz,
+					"cloudToOccgrid_Task");
 			// observations is an input because cloudtoOccgrid modifies observations[next_obs]. It's an output because
 			// the next task (T2) takes it as an input and it needs to get the updated value of observations (i.e.
 			// after call to cloudtoOccgrid)
@@ -771,40 +877,92 @@ void process_lidar_to_occgrid(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /
 			// as indicated by lidar_inputs
 #endif
 
-			DBGOUT(printf("Lidar step %u : Calling cloudToOccgrid next_obs = %d with odometry %.1f %.1f %.1f\n",
-						*lidar_count_cp, *next_obs_cp, lidar_inputs -> odometry[0], lidar_inputs -> odometry[1],
-						lidar_inputs -> odometry[2]));
-			// int valread = 0; // This is not being used in this function
-#if defined(INT_TIME)
-			gettimeofday(start_pd_cloud2grid_cp, NULL);
-#endif
-
+			*timer_sequentialize = 2;
 			cloudToOccgrid(&observations[*next_obs_cp], observations_sz, lidar_inputs, lidarin_sz,
 					AVxyzw /*=1.5*/, AVxyzw_sz, rolling_window /*=false*/, rolling_window_sz,
 					min_obstracle_height /*=0.05*/, min_obstracle_height_sz,
 					max_obstracle_height /*=2.05*/, max_obstracle_height_sz,
 					raytrace_range /*=RAYTR_RANGE*/, raytrace_range_sz,
 					size_x /*=GRID_MAP_X_DIM*/, size_x_sz, size_y /*=GRID_MAP_Y_DIM*/, size_y_sz,
-				resolution /*=GRID_MAP_RESLTN*/, resolution_sz);
+					resolution /*=GRID_MAP_RESLTN*/, resolution_sz,
+					// Timer argument to cloudToOccgrid
+					ocgr_c2g_total_start_cp, ocgr_c2g_total_start_cp_sz,
+					ocgr_c2g_total_stop_cp, ocgr_c2g_total_stop_cp_sz,
+					ocgr_c2g_total_sec_cp, ocgr_c2g_total_sec_cp_sz,
+					ocgr_c2g_total_usec_cp, ocgr_c2g_total_usec_cp_sz,
+
+					ocgr_c2g_initCM_start_cp, ocgr_c2g_initCM_start_cp_sz,
+          ocgr_c2g_initCM_stop_cp, ocgr_c2g_initCM_stop_cp_sz,
+          ocgr_c2g_initCM_sec_cp, ocgr_c2g_initCM_sec_cp_sz,
+          ocgr_c2g_initCM_usec_cp, ocgr_c2g_initCM_usec_cp_sz,
+
+          ocgr_c2g_updOrig_start_cp, ocgr_c2g_updOrig_start_cp_sz,
+          ocgr_c2g_updOrig_stop_cp, ocgr_c2g_updOrig_stop_cp_sz,
+          ocgr_c2g_updOrig_sec_cp, ocgr_c2g_updOrig_sec_cp_sz,
+          ocgr_c2g_updOrig_usec_cp, ocgr_c2g_updOrig_usec_cp_sz,
+
+          ocgr_c2g_updBnds_start_cp, ocgr_c2g_updBnds_start_cp_sz,
+          ocgr_c2g_updBnds_stop_cp, ocgr_c2g_updBnds_stop_cp_sz,
+          ocgr_c2g_updBnds_sec_cp, ocgr_c2g_updBnds_sec_cp_sz,
+          ocgr_c2g_updBnds_usec_cp, ocgr_c2g_updBnds_usec_cp_sz,
+
+          ocgr_c2g_upBd_total_start_cp, ocgr_c2g_upBd_total_start_cp_sz,
+          ocgr_c2g_upBd_total_stop_cp, ocgr_c2g_upBd_total_stop_cp_sz,
+          ocgr_c2g_upBd_total_sec_cp, ocgr_c2g_upBd_total_sec_cp_sz,
+          ocgr_c2g_upBd_total_usec_cp, ocgr_c2g_upBd_total_usec_cp_sz,
+
+          ocgr_c2g_upBd_rayFSp_start_cp, ocgr_c2g_upBd_rayFSp_start_cp_sz,
+          ocgr_c2g_upBd_rayFSp_stop_cp, ocgr_c2g_upBd_rayFSp_stop_cp_sz,
+          ocgr_c2g_upBd_rayFSp_sec_cp, ocgr_c2g_upBd_rayFSp_sec_cp_sz,
+          ocgr_c2g_upBd_rayFSp_usec_cp, ocgr_c2g_upBd_rayFSp_usec_cp_sz,
+
+          ocgr_c2g_upBd_regObst_start_cp, ocgr_c2g_upBd_regObst_start_cp_sz,
+          ocgr_c2g_upBd_regObst_stop_cp, ocgr_c2g_upBd_regObst_stop_cp_sz,
+          ocgr_c2g_upBd_regObst_sec_cp, ocgr_c2g_upBd_regObst_sec_cp_sz,
+          ocgr_c2g_upBd_regObst_usec_cp, ocgr_c2g_upBd_regObst_usec_cp_sz,
+
+					timer_sequentialize, timer_sequentialize_sz);
+
+#if defined(HPVM) && true
+			__hetero_task_end(T1);
+#endif
+
+#if defined(HPVM) && true
+			void * T1_timer_end = __hetero_task_begin(5, stop_pd_cloud2grid_cp, stop_pd_cloud2grid_cp_sz, 
+											pd_cloud2grid_sec_cp, pd_cloud2grid_sec_cp_sz, pd_cloud2grid_usec_cp, pd_cloud2grid_usec_cp_sz,
+											start_pd_cloud2grid_cp, start_pd_cloud2grid_cp_sz, 
+											timer_sequentialize, timer_sequentialize_sz,
+											4, stop_pd_cloud2grid_cp, stop_pd_cloud2grid_cp_sz, timer_sequentialize, timer_sequentialize_sz,
+											pd_cloud2grid_sec_cp, pd_cloud2grid_sec_cp_sz, pd_cloud2grid_usec_cp, pd_cloud2grid_usec_cp_sz,
+											"cloudToOccgrid_Timer_End");
+#endif
 
 #ifdef INT_TIME 
+			*timer_sequentialize = 3;
 			gettimeofday(stop_pd_cloud2grid_cp, NULL);
 			*pd_cloud2grid_sec_cp += stop_pd_cloud2grid_cp->tv_sec - start_pd_cloud2grid_cp->tv_sec;
 			*pd_cloud2grid_usec_cp += stop_pd_cloud2grid_cp->tv_usec - start_pd_cloud2grid_cp->tv_usec;
 #endif
+
 #if defined(HPVM) && true
-			__hetero_task_end(T1);
+			__hetero_task_end(T1_timer_end);
 #endif
 
 			// Write the read-in image to a file
 			// write_array_to_file(grid, COST_MAP_ENTRIES);
 #if defined(HPVM) && true
-			void * T2 = __hetero_task_begin(3, observations, observations_sz, n_cmp_bytes, n_cmp_bytes_sz,
-					cmp_data, cmp_data_sz, 3, observations, observations_sz,
+			void * T2 = __hetero_task_begin(10, observations, observations_sz, n_cmp_bytes, n_cmp_bytes_sz,
+					cmp_data, cmp_data_sz, next_obs_cp, next_obs_cp_sz, curr_obs_cp, curr_obs_cp_sz, 
+					lmap_count_cp, lmap_count_cp_sz, start_pd_lz4_cmp_cp, start_pd_lz4_cmp_cp_sz, 
+					stop_pd_lz4_cmp_cp, stop_pd_lz4_cmp_cp_sz, pd_lz4_cmp_sec_cp, pd_lz4_cmp_sec_cp_sz,
+					pd_lz4_cmp_usec_cp, pd_lz4_cmp_usec_cp_sz, 
+					7, observations, observations_sz,
+					start_pd_lz4_cmp_cp, start_pd_lz4_cmp_cp_sz, stop_pd_lz4_cmp_cp, stop_pd_lz4_cmp_cp_sz, 
+					pd_lz4_cmp_sec_cp, pd_lz4_cmp_sec_cp_sz, pd_lz4_cmp_usec_cp, pd_lz4_cmp_usec_cp_sz,
 					n_cmp_bytes, n_cmp_bytes_sz, cmp_data, cmp_data_sz);
 #endif
 			// Now we compress the grid for transmission...
-			Costmap2D * local_map = & (observations[next_obs].master_costmap);
+			Costmap2D * local_map = & (observations[*next_obs_cp].master_costmap);
 			DBGOUT(printf("Calling LZ4_compress_default...\n"));
 			DBGOUT(printf("  Input CostMAP: AV x %lf y %lf z %lf\n", local_map -> av_x, local_map -> av_y,
 						local_map -> av_z); 
@@ -822,24 +980,23 @@ void process_lidar_to_occgrid(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /
 			print_ascii_costmap(ascii_fp, local_map);
 			fclose(ascii_fp);
 #endif
-			// Now we update the current_observation index and the next_observation index
-			// curr_obs and next_obs switch between 0 and 1
-			curr_obs = 1 - curr_obs;
-			next_obs = 1 - next_obs;
-			lmap_count++;
+			// Now we update the current observation index and the next observation index
+			// 	Switch curr_obs (global referred to by curr_obs_cp) and next_obs (global referred to by next_obs_cp) 
+			// 	between 0 and 1
+			*curr_obs_cp = 1 - *curr_obs_cp;
+			*next_obs_cp = 1 - *next_obs_cp;
+			(*lmap_count_cp)++;
 			// And now we compress to encode for Wifi transmission, etc.
-			// unsigned char cmp_data[MAX_COMPRESSED_DATA_SIZE]; // TODO: Will it work to just remove this?
 #ifdef INT_TIME
-			gettimeofday( & start_pd_lz4_cmp, NULL);
+			gettimeofday(start_pd_lz4_cmp_cp, NULL);
 #endif
 			*n_cmp_bytes = LZ4_compress_default((char * ) local_map, (char * ) cmp_data,
 					MAX_UNCOMPRESSED_DATA_SIZE, MAX_COMPRESSED_DATA_SIZE);
 
-
 #ifdef INT_TIME
-			gettimeofday( & stop_pd_lz4_cmp, NULL);
-			pd_lz4_cmp_sec += stop_pd_lz4_cmp.tv_sec - start_pd_lz4_cmp.tv_sec;
-			pd_lz4_cmp_usec += stop_pd_lz4_cmp.tv_usec - start_pd_lz4_cmp.tv_usec;
+			gettimeofday(stop_pd_lz4_cmp_cp, NULL);
+			*pd_lz4_cmp_sec_cp += stop_pd_lz4_cmp_cp->tv_sec - start_pd_lz4_cmp_cp->tv_sec;
+			*pd_lz4_cmp_usec_cp += stop_pd_lz4_cmp_cp->tv_usec - start_pd_lz4_cmp_cp->tv_usec;
 #endif
 			DBGOUT(double c_ratio = 100 * (1 - ((double)(*n_cmp_bytes) / (double)(MAX_UNCOMPRESSED_DATA_SIZE))); printf("  Back from LZ4_compress_default: %lu bytes -> %u bytes for %5.2f%%\n",
 						MAX_UNCOMPRESSED_DATA_SIZE, *n_cmp_bytes, c_ratio););
@@ -848,6 +1005,7 @@ void process_lidar_to_occgrid(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /
 			__hetero_task_end(T2);
 			__hetero_section_end(Section);
 #endif
+
 		}
 
 void do_xmit_pipeline_wrapper(int* n_cmp_bytes, size_t n_cmp_bytes_sz, char* cmp_data, size_t cmp_data_sz,
@@ -903,7 +1061,7 @@ void do_xmit_pipeline_wrapper(int* n_cmp_bytes, size_t n_cmp_bytes_sz, char* cmp
 }
 
 void encode_transmit_occgrid(int* n_cmp_bytes /*from process_lidar_to_occgrid*/, size_t n_cmp_bytes_sz /*=1*/,
-		unsigned char* cmp_data /*from process_lidar_to_occgrid*/, size_t cmp_data_sz /*=MAX_COMPRESSED_DATA_SIZE*/) {
+	unsigned char* cmp_data /*from process_lidar_to_occgrid*/, size_t cmp_data_sz /*=MAX_COMPRESSED_DATA_SIZE*/) {
 	// This section has no tasks as we are doing IO; introducing tasks can lead to race conditions
 	// Now we encode and transmit the grid...
 	DBGOUT(printf("Calling do_xmit_pipeline for %u compressed grid elements\n", n_cmp_bytes));
@@ -1032,10 +1190,16 @@ void lidar_root(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /*=sizeof( * li
 		int* curr_obs_cp /*=curr_obs -> global*/, size_t curr_obs_cp_sz /*=sizeof(int)*/,
 		int* next_obs_cp /*=next_obs -> global*/, size_t next_obs_cp_sz /*=sizeof(int)*/,
 		int* lidar_count_cp /*=lidar_count -> global*/, size_t lidar_count_cp_sz /*=sizeof(unsigned)*/,
-				struct timeval* start_pd_cloud2grid_cp /*start_pd_cloud2grid -> global*/, size_t start_pd_cloud2grid_cp_sz /*=sizeof(timeval)*/,
-				struct timeval* stop_pd_cloud2grid_cp /*stop_pd_cloud2grid -> global*/, size_t stop_pd_cloud2grid_cp_sz /*=sizeof(timeval)*/,
-				uint64_t* pd_cloud2grid_sec_cp /*pd_cloud2grid_sec -> global*/, size_t pd_cloud2grid_sec_cp_sz /*=sizeof(uint64_t)*/,
-				uint64_t* pd_cloud2grid_usec_cp /*pd_cloud2grid_usec -> global*/, size_t pd_cloud2grid_usec_cp_sz /*=sizeof(uint64_t)*/,
+		int* lmap_count_cp /*=lmap_count -> global*/, size_t lmap_count_cp_sz /*=sizeof(unsigned)*/,
+		struct timeval* start_pd_cloud2grid_cp /*start_pd_cloud2grid -> global*/, size_t start_pd_cloud2grid_cp_sz /*=sizeof(timeval)*/,
+		struct timeval* stop_pd_cloud2grid_cp /*stop_pd_cloud2grid -> global*/, size_t stop_pd_cloud2grid_cp_sz /*=sizeof(timeval)*/,
+		uint64_t* pd_cloud2grid_sec_cp /*pd_cloud2grid_sec -> global*/, size_t pd_cloud2grid_sec_cp_sz /*=sizeof(uint64_t)*/,
+		uint64_t* pd_cloud2grid_usec_cp /*pd_cloud2grid_usec -> global*/, size_t pd_cloud2grid_usec_cp_sz /*=sizeof(uint64_t)*/,
+
+		struct timeval* start_pd_lz4_cmp_cp /*start_pd_lz4_cmp -> global*/, size_t start_pd_lz4_cmp_cp_sz /*sizeof(timeval)*/, 
+		struct timeval* stop_pd_lz4_cmp_cp /*stop_pd_lz4_cmp -> global*/, size_t stop_pd_lz4_cmp_cp_sz /*sizeof(timeval)*/,
+		uint64_t* pd_lz4_cmp_sec_cp /*pd_lz4_cmp_sec -> global*/, size_t pd_lz4_cmp_sec_cp_sz /*sizeof(uint64_t)*/,
+		uint64_t* pd_lz4_cmp_usec_cp /*pd_lz4_cmp_usec -> global*/, size_t pd_lz4_cmp_usec_cp_sz /*sizeof(uint64_t)*/,
 		// End of global variables used internally by function
 		// Start of arguments to cloudToOccgrid (called indirectly by lidar_root)
 		double* AVxyzw, size_t AVxyzw_sz /*=sizeof(double)*/,
@@ -1045,24 +1209,97 @@ void lidar_root(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /*=sizeof( * li
 		double* raytrace_range, size_t raytrace_range_sz /*=sizeof(double)*/,
 		unsigned int* size_x, size_t size_x_sz /*=sizeof(unsigned int)*/,
 		unsigned int* size_y, size_t size_y_sz /*=sizeof(unsigned int)*/,
-		unsigned int* resolution, size_t resolution_sz /*=sizeof(unsigned int)*/
+		unsigned int* resolution, size_t resolution_sz /*=sizeof(unsigned int)*/,
+		struct timeval* ocgr_c2g_total_start_cp, size_t ocgr_c2g_total_start_cp_sz /*=sizeof(struct timeval)*/,
+		struct timeval* ocgr_c2g_total_stop_cp, size_t ocgr_c2g_total_stop_cp_sz /*=sizeof(struct timeval)*/,
+		uint64_t* ocgr_c2g_total_sec_cp, size_t ocgr_c2g_total_sec_cp_sz /*=sizeof(uint64_t)*/,
+		uint64_t* ocgr_c2g_total_usec_cp, size_t ocgr_c2g_total_usec_cp_sz /*=sizeof(uint64_t)*/,
+
+		struct timeval* ocgr_c2g_initCM_start_cp, size_t ocgr_c2g_initCM_start_cp_sz /*=sizeof(struct timeval)*/,
+		struct timeval* ocgr_c2g_initCM_stop_cp, size_t ocgr_c2g_initCM_stop_cp_sz /*=sizeof(struct timeval)*/,
+		uint64_t* ocgr_c2g_initCM_sec_cp, size_t ocgr_c2g_initCM_sec_cp_sz /*=sizeof(uint64_t)*/,
+		uint64_t* ocgr_c2g_initCM_usec_cp, size_t ocgr_c2g_initCM_usec_cp_sz /*=sizeof(uint64_t)*/,
+
+		struct timeval* ocgr_c2g_updOrig_start_cp, size_t ocgr_c2g_updOrig_start_cp_sz /*=sizeof(struct timeval)*/,
+		struct timeval* ocgr_c2g_updOrig_stop_cp, size_t ocgr_c2g_updOrig_stop_cp_sz /*=sizeof(struct timeval)*/,
+		uint64_t* ocgr_c2g_updOrig_sec_cp, size_t ocgr_c2g_updOrig_sec_cp_sz /*=sizeof(uint64_t)*/,
+		uint64_t* ocgr_c2g_updOrig_usec_cp, size_t ocgr_c2g_updOrig_usec_cp_sz /*=sizeof(uint64_t)*/,
+
+		struct timeval* ocgr_c2g_updBnds_start_cp, size_t ocgr_c2g_updBnds_start_cp_sz /*=sizeof(struct timeval)*/,
+		struct timeval* ocgr_c2g_updBnds_stop_cp, size_t ocgr_c2g_updBnds_stop_cp_sz /*=sizeof(struct timeval)*/,
+		uint64_t* ocgr_c2g_updBnds_sec_cp, size_t ocgr_c2g_updBnds_sec_cp_sz /*=sizeof(uint64_t)*/,
+		uint64_t* ocgr_c2g_updBnds_usec_cp, size_t ocgr_c2g_updBnds_usec_cp_sz /*=sizeof(uint64_t)*/,
+
+		struct timeval* ocgr_c2g_upBd_total_start_cp, size_t ocgr_c2g_upBd_total_start_cp_sz /*=sizeof(struct timeval)*/,
+		struct timeval* ocgr_c2g_upBd_total_stop_cp, size_t ocgr_c2g_upBd_total_stop_cp_sz /*=sizeof(struct timeval)*/,
+		uint64_t* ocgr_c2g_upBd_total_sec_cp, size_t ocgr_c2g_upBd_total_sec_cp_sz /*=sizeof(uint64_t)*/,
+		uint64_t* ocgr_c2g_upBd_total_usec_cp, size_t ocgr_c2g_upBd_total_usec_cp_sz /*=sizeof(uint64_t)*/,
+
+		struct timeval* ocgr_c2g_upBd_rayFSp_start_cp, size_t ocgr_c2g_upBd_rayFSp_start_cp_sz /*=sizeof(struct timeval)*/,
+		struct timeval* ocgr_c2g_upBd_rayFSp_stop_cp, size_t ocgr_c2g_upBd_rayFSp_stop_cp_sz /*=sizeof(struct timeval)*/,
+		uint64_t* ocgr_c2g_upBd_rayFSp_sec_cp, size_t ocgr_c2g_upBd_rayFSp_sec_cp_sz /*=sizeof(uint64_t)*/,
+		uint64_t* ocgr_c2g_upBd_rayFSp_usec_cp, size_t ocgr_c2g_upBd_rayFSp_usec_cp_sz /*=sizeof(uint64_t)*/,
+
+		struct timeval* ocgr_c2g_upBd_regObst_start_cp, size_t ocgr_c2g_upBd_regObst_start_cp_sz /*=sizeof(struct timeval)*/,
+		struct timeval* ocgr_c2g_upBd_regObst_stop_cp, size_t ocgr_c2g_upBd_regObst_stop_cp_sz /*=sizeof(struct timeval)*/,
+		uint64_t* ocgr_c2g_upBd_regObst_sec_cp, size_t ocgr_c2g_upBd_regObst_sec_cp_sz /*=sizeof(uint64_t)*/,
+		uint64_t* ocgr_c2g_upBd_regObst_usec_cp, size_t ocgr_c2g_upBd_regObst_usec_cp_sz /*=sizeof(uint64_t)*/,
 		// End of arguments to cloudToOccgrid (called indirectly by lidar_root)
+		int* timer_sequentialize, size_t timer_sequentialize_sz /*=sizeof(int) */
 		) {
 #if defined(HPVM) && true
 			void * Section = __hetero_section_begin();
-			void * T1 = __hetero_task_begin(19, lidar_inputs, lidarin_sz, n_cmp_bytes, n_cmp_bytes_sz,
-					cmp_data, cmp_data_sz, observations, observations_sz, 
+			void * T1 = __hetero_task_begin(53, lidar_inputs, lidarin_sz, n_cmp_bytes, n_cmp_bytes_sz,
+					cmp_data, cmp_data_sz, observations, observations_sz, timer_sequentialize, timer_sequentialize_sz,
 					// Args for cloudToOccgrid
 					AVxyzw, AVxyzw_sz, 
 					rolling_window, rolling_window_sz, min_obstracle_height, min_obstracle_height_sz, 
 					max_obstracle_height, max_obstracle_height_sz, raytrace_range, raytrace_range_sz, 
 					size_x, size_x_sz, size_y, size_y_sz, resolution, resolution_sz,
+					ocgr_c2g_total_start_cp, ocgr_c2g_total_start_cp_sz,
+					ocgr_c2g_total_stop_cp, ocgr_c2g_total_stop_cp_sz,
+					ocgr_c2g_total_sec_cp, ocgr_c2g_total_sec_cp_sz,
+					ocgr_c2g_total_usec_cp, ocgr_c2g_total_usec_cp_sz,
+
+					ocgr_c2g_initCM_start_cp, ocgr_c2g_initCM_start_cp_sz,
+					ocgr_c2g_initCM_stop_cp, ocgr_c2g_initCM_stop_cp_sz,
+					ocgr_c2g_initCM_sec_cp, ocgr_c2g_initCM_sec_cp_sz,
+					ocgr_c2g_initCM_usec_cp, ocgr_c2g_initCM_usec_cp_sz,
+
+					ocgr_c2g_updOrig_start_cp, ocgr_c2g_updOrig_start_cp_sz,
+					ocgr_c2g_updOrig_stop_cp, ocgr_c2g_updOrig_stop_cp_sz,
+					ocgr_c2g_updOrig_sec_cp, ocgr_c2g_updOrig_sec_cp_sz,
+					ocgr_c2g_updOrig_usec_cp, ocgr_c2g_updOrig_usec_cp_sz,
+
+					ocgr_c2g_updBnds_start_cp, ocgr_c2g_updBnds_start_cp_sz,
+					ocgr_c2g_updBnds_stop_cp, ocgr_c2g_updBnds_stop_cp_sz,
+					ocgr_c2g_updBnds_sec_cp, ocgr_c2g_updBnds_sec_cp_sz,
+					ocgr_c2g_updBnds_usec_cp, ocgr_c2g_updBnds_usec_cp_sz,
+
+					ocgr_c2g_upBd_total_start_cp, ocgr_c2g_upBd_total_start_cp_sz,
+					ocgr_c2g_upBd_total_stop_cp, ocgr_c2g_upBd_total_stop_cp_sz,
+					ocgr_c2g_upBd_total_sec_cp, ocgr_c2g_upBd_total_sec_cp_sz,
+					ocgr_c2g_upBd_total_usec_cp, ocgr_c2g_upBd_total_usec_cp_sz,
+
+					ocgr_c2g_upBd_rayFSp_start_cp, ocgr_c2g_upBd_rayFSp_start_cp_sz,
+					ocgr_c2g_upBd_rayFSp_stop_cp, ocgr_c2g_upBd_rayFSp_stop_cp_sz,
+					ocgr_c2g_upBd_rayFSp_sec_cp, ocgr_c2g_upBd_rayFSp_sec_cp_sz,
+					ocgr_c2g_upBd_rayFSp_usec_cp, ocgr_c2g_upBd_rayFSp_usec_cp_sz,
+
+					ocgr_c2g_upBd_regObst_start_cp, ocgr_c2g_upBd_regObst_start_cp_sz,
+					ocgr_c2g_upBd_regObst_stop_cp, ocgr_c2g_upBd_regObst_stop_cp_sz,
+					ocgr_c2g_upBd_regObst_sec_cp, ocgr_c2g_upBd_regObst_sec_cp_sz,
+					ocgr_c2g_upBd_regObst_usec_cp, ocgr_c2g_upBd_regObst_usec_cp_sz,
 					// Global vars used by process_lidar_to_occgrid
 					curr_obs_cp, curr_obs_cp_sz, next_obs_cp, next_obs_cp_sz, lidar_count_cp, lidar_count_cp_sz,
-										start_pd_cloud2grid_cp, start_pd_cloud2grid_cp_sz,
-										stop_pd_cloud2grid_cp, stop_pd_cloud2grid_cp_sz,
-										pd_cloud2grid_sec_cp, pd_cloud2grid_sec_cp_sz,
-										pd_cloud2grid_usec_cp, pd_cloud2grid_usec_cp_sz,
+					lmap_count_cp, lmap_count_cp_sz, start_pd_cloud2grid_cp, start_pd_cloud2grid_cp_sz,
+					stop_pd_cloud2grid_cp, stop_pd_cloud2grid_cp_sz,
+					pd_cloud2grid_sec_cp, pd_cloud2grid_sec_cp_sz,
+					pd_cloud2grid_usec_cp, pd_cloud2grid_usec_cp_sz,
+					start_pd_lz4_cmp_cp, start_pd_lz4_cmp_cp_sz, 
+					stop_pd_lz4_cmp_cp, stop_pd_lz4_cmp_cp_sz,
+					pd_lz4_cmp_sec_cp, pd_lz4_cmp_sec_cp_sz,
+					pd_lz4_cmp_usec_cp, pd_lz4_cmp_usec_cp_sz,
 					// Output
 					3, observations, observations_sz, n_cmp_bytes, n_cmp_bytes_sz, cmp_data, cmp_data_sz);
 #endif
@@ -1071,15 +1308,56 @@ void lidar_root(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /*=sizeof( * li
 					n_cmp_bytes, n_cmp_bytes_sz, cmp_data, cmp_data_sz, 
 					// Global vars used by process_lidar_to_occgrid
 					curr_obs_cp, curr_obs_cp_sz, next_obs_cp, next_obs_cp_sz, lidar_count_cp, lidar_count_cp_sz, 
-										start_pd_cloud2grid_cp, start_pd_cloud2grid_cp_sz, 
-										stop_pd_cloud2grid_cp, stop_pd_cloud2grid_cp_sz, 
-										pd_cloud2grid_sec_cp, pd_cloud2grid_sec_cp_sz, 
-										pd_cloud2grid_usec_cp, pd_cloud2grid_usec_cp_sz, 
+					lmap_count_cp, lmap_count_cp_sz, start_pd_cloud2grid_cp, start_pd_cloud2grid_cp_sz, 
+					stop_pd_cloud2grid_cp, stop_pd_cloud2grid_cp_sz, 
+					pd_cloud2grid_sec_cp, pd_cloud2grid_sec_cp_sz, 
+					pd_cloud2grid_usec_cp, pd_cloud2grid_usec_cp_sz, 
+					start_pd_lz4_cmp_cp, start_pd_lz4_cmp_cp_sz, 
+					stop_pd_lz4_cmp_cp, stop_pd_lz4_cmp_cp_sz,
+					pd_lz4_cmp_sec_cp, pd_lz4_cmp_sec_cp_sz,
+					pd_lz4_cmp_usec_cp, pd_lz4_cmp_usec_cp_sz,
 					// Args for cloudToOccgrid
 					AVxyzw, AVxyzw_sz, rolling_window, rolling_window_sz, min_obstracle_height, min_obstracle_height_sz, 
 					max_obstracle_height, max_obstracle_height_sz, raytrace_range, raytrace_range_sz, 
-					size_x, size_x_sz, size_y, size_y_sz, resolution, resolution_sz
-					); // buffer, total_bytes_read);*/
+					size_x, size_x_sz, size_y, size_y_sz, resolution, resolution_sz,
+
+					ocgr_c2g_total_start_cp, ocgr_c2g_total_start_cp_sz,
+					ocgr_c2g_total_stop_cp, ocgr_c2g_total_stop_cp_sz,
+					ocgr_c2g_total_sec_cp, ocgr_c2g_total_sec_cp_sz,
+					ocgr_c2g_total_usec_cp, ocgr_c2g_total_usec_cp_sz,
+						
+					ocgr_c2g_initCM_start_cp, ocgr_c2g_initCM_start_cp_sz,
+         	ocgr_c2g_initCM_stop_cp, ocgr_c2g_initCM_stop_cp_sz,
+         	ocgr_c2g_initCM_sec_cp, ocgr_c2g_initCM_sec_cp_sz,
+         	ocgr_c2g_initCM_usec_cp, ocgr_c2g_initCM_usec_cp_sz,
+						
+         	ocgr_c2g_updOrig_start_cp, ocgr_c2g_updOrig_start_cp_sz,
+         	ocgr_c2g_updOrig_stop_cp, ocgr_c2g_updOrig_stop_cp_sz,
+         	ocgr_c2g_updOrig_sec_cp, ocgr_c2g_updOrig_sec_cp_sz,
+         	ocgr_c2g_updOrig_usec_cp, ocgr_c2g_updOrig_usec_cp_sz,
+
+         	ocgr_c2g_updBnds_start_cp, ocgr_c2g_updBnds_start_cp_sz,
+         	ocgr_c2g_updBnds_stop_cp, ocgr_c2g_updBnds_stop_cp_sz,
+         	ocgr_c2g_updBnds_sec_cp, ocgr_c2g_updBnds_sec_cp_sz,
+         	ocgr_c2g_updBnds_usec_cp, ocgr_c2g_updBnds_usec_cp_sz,
+
+         	ocgr_c2g_upBd_total_start_cp, ocgr_c2g_upBd_total_start_cp_sz,
+         	ocgr_c2g_upBd_total_stop_cp, ocgr_c2g_upBd_total_stop_cp_sz,
+         	ocgr_c2g_upBd_total_sec_cp, ocgr_c2g_upBd_total_sec_cp_sz,
+         	ocgr_c2g_upBd_total_usec_cp, ocgr_c2g_upBd_total_usec_cp_sz,
+
+         	ocgr_c2g_upBd_rayFSp_start_cp, ocgr_c2g_upBd_rayFSp_start_cp_sz,
+         	ocgr_c2g_upBd_rayFSp_stop_cp, ocgr_c2g_upBd_rayFSp_stop_cp_sz,
+         	ocgr_c2g_upBd_rayFSp_sec_cp, ocgr_c2g_upBd_rayFSp_sec_cp_sz,
+         	ocgr_c2g_upBd_rayFSp_usec_cp, ocgr_c2g_upBd_rayFSp_usec_cp_sz,
+
+         	ocgr_c2g_upBd_regObst_start_cp, ocgr_c2g_upBd_regObst_start_cp_sz,
+         	ocgr_c2g_upBd_regObst_stop_cp, ocgr_c2g_upBd_regObst_stop_cp_sz,
+         	ocgr_c2g_upBd_regObst_sec_cp, ocgr_c2g_upBd_regObst_sec_cp_sz,
+         	ocgr_c2g_upBd_regObst_usec_cp, ocgr_c2g_upBd_regObst_usec_cp_sz,
+					// Timer argument to process_lidar_by_occgrid
+					timer_sequentialize, timer_sequentialize_sz
+					); // buffer, total_bytes_read);
 
 #if defined(HPVM) && true
 			__hetero_task_end(T1);
@@ -1102,21 +1380,6 @@ void cv_root(unsigned tr_val, label_t * out_label, size_t outlabel_sz) {
 }
 
 int main(int argc, char * argv[]) {
-
-	/*
-	   int my_int = 0;
-	   void * launch = __hetero_launch_begin(1, &my_int, sizeof(int), 1, &my_int, sizeof(int));
-	   void * section = __hetero_section_begin();
-	   void * task = __hetero_task_begin(1, &my_int, sizeof(int), 1, &my_int, sizeof(int));
-	   printf("hello world");
-	   __hetero_task_end(task);
-	   __hetero_section_end(section);
-	   __hetero_launch_end(launch);
-
-	   return 0;
-	   */
-
-
 	struct sockaddr_in bag_servaddr;
 	struct sockaddr_in xmit_servaddr;
 	struct sockaddr_in recv_servaddr;
@@ -1389,33 +1652,126 @@ int main(int argc, char * argv[]) {
 			unsigned int size_y = GRID_MAP_Y_DIM; 
 			unsigned int resolution = GRID_MAP_RESLTN;
 			// End of arguments to cloudToOccgrid (indirectly called by lidar_root)
+			
+			int timer_sequentialize = 0; 
 
 #if defined(HPVM) && true
-			void* lidarDAG = __hetero_launch((void*)lidar_root, 19, &lidar_inputs, sizeof(lidar_inputs_t),
+			void* lidarDAG = __hetero_launch((void*)lidar_root, 53, &lidar_inputs, sizeof(lidar_inputs_t),
 					observationsArr, sizeof(Observation) * 2, &n_cmp_bytes, sizeof(int),
 					cmp_data, MAX_COMPRESSED_DATA_SIZE, 
 					// Global vars passed for internal use in lidar_root
 					&curr_obs, sizeof(int), &next_obs, sizeof(int), &lidar_count, sizeof(unsigned),
-										&start_pd_cloud2grid, sizeof(struct timeval), 
-										&stop_pd_cloud2grid, sizeof(struct timeval),
-										&pd_cloud2grid_sec, sizeof(uint64_t), &pd_cloud2grid_usec, sizeof(uint64_t),
+					&lmap_count, sizeof(unsigned), &start_pd_cloud2grid, sizeof(struct timeval), 
+					&stop_pd_cloud2grid, sizeof(struct timeval),
+					&pd_cloud2grid_sec, sizeof(uint64_t), &pd_cloud2grid_usec, sizeof(uint64_t),
+					&start_pd_lz4_cmp, sizeof(struct timeval), 
+					&stop_pd_lz4_cmp, sizeof(struct timeval),
+					&pd_lz4_cmp_sec, sizeof(uint64_t),
+					&pd_lz4_cmp_usec, sizeof(uint64_t),
 					// Args to cloudToOccgrid
 					&AVxyzw, sizeof(double), &rolling_window, sizeof(bool), 
 					&min_obstracle_heght, sizeof(double), &max_obstracle_heght, sizeof(double), 
 					&raytrace_range, sizeof(double), &size_x, sizeof(unsigned int), 
 					&size_y, sizeof(unsigned int), &resolution, sizeof(unsigned int),
+                                        // Start of global variables used for timing sections of cloudToOccgrid
+                                        &ocgr_c2g_total_start, sizeof(struct timeval),
+                                        &ocgr_c2g_total_stop, sizeof(struct timeval),
+                                        &ocgr_c2g_total_sec, sizeof(uint64_t),
+                                        &ocgr_c2g_total_usec, sizeof(uint64_t),
+
+                                        &ocgr_c2g_initCM_start, sizeof(struct timeval),
+                                        &ocgr_c2g_initCM_stop, sizeof(struct timeval),
+                                        &ocgr_c2g_initCM_sec, sizeof(uint64_t),
+                                        &ocgr_c2g_initCM_usec, sizeof(uint64_t),
+
+                                        &ocgr_c2g_updOrig_start, sizeof(struct timeval),
+                                        &ocgr_c2g_updOrig_stop, sizeof(struct timeval),
+                                        &ocgr_c2g_updOrig_sec, sizeof(uint64_t),
+                                        &ocgr_c2g_updOrig_usec, sizeof(uint64_t),
+
+                                        &ocgr_c2g_updBnds_start, sizeof(struct timeval),
+                                        &ocgr_c2g_updBnds_stop, sizeof(struct timeval),
+                                        &ocgr_c2g_updBnds_sec, sizeof(uint64_t),
+                                        &ocgr_c2g_updBnds_usec, sizeof(uint64_t),
+
+                                        &ocgr_upBd_total_start, sizeof(struct timeval),
+                                        &ocgr_upBd_total_stop, sizeof(struct timeval),
+                                        &ocgr_upBd_total_sec, sizeof(uint64_t),
+                                        &ocgr_upBd_total_usec, sizeof(uint64_t),
+
+                                        &ocgr_upBd_rayFSp_start, sizeof(struct timeval),
+                                        &ocgr_upBd_rayFSp_stop, sizeof(struct timeval),
+                                        &ocgr_upBd_rayFSp_sec, sizeof(uint64_t),
+                                        &ocgr_upBd_rayFSp_usec, sizeof(uint64_t),
+
+                                        &ocgr_upBd_regObst_start, sizeof(struct timeval),
+                                        &ocgr_upBd_regObst_stop, sizeof(struct timeval),
+                                        &ocgr_upBd_regObst_sec, sizeof(uint64_t),
+                                        &ocgr_upBd_regObst_usec, sizeof(uint64_t),
+                                        // End of global variables used for timing sections of cloudToOccgrid
+					// Args to sequentialized timer start and end calls along with the code being time
+					&timer_sequentialize, sizeof(int),
 					// Outputs
 					3, &n_cmp_bytes, sizeof(int), cmp_data, MAX_COMPRESSED_DATA_SIZE, 
 					observationsArr, sizeof(Observation)*2);
 			__hetero_wait(lidarDAG);
 #else
-			lidar_root(&lidar_inputs, sizeof(lidar_inputs_t), observationsArr, sizeof(Observation)*2,
-					&n_cmp_bytes, sizeof(int), cmp_data, MAX_COMPRESSED_DATA_SIZE, 
+			lidar_root(&lidar_inputs, sizeof(lidar_inputs_t),
+					observationsArr, sizeof(Observation) * 2, &n_cmp_bytes, sizeof(int),
+					cmp_data, MAX_COMPRESSED_DATA_SIZE, 
+					// Global vars passed for internal use in lidar_root
+					&curr_obs, sizeof(int), &next_obs, sizeof(int), &lidar_count, sizeof(unsigned),
+					&lmap_count, sizeof(unsigned), &start_pd_cloud2grid, sizeof(struct timeval), 
+					&stop_pd_cloud2grid, sizeof(struct timeval),
+					&pd_cloud2grid_sec, sizeof(uint64_t), &pd_cloud2grid_usec, sizeof(uint64_t),
+					&start_pd_lz4_cmp, sizeof(struct timeval), 
+					&stop_pd_lz4_cmp, sizeof(struct timeval),
+					&pd_lz4_cmp_sec, sizeof(uint64_t),
+					&pd_lz4_cmp_usec, sizeof(uint64_t),
+					// Args to cloudToOccgrid
 					&AVxyzw, sizeof(double), &rolling_window, sizeof(bool), 
 					&min_obstracle_heght, sizeof(double), &max_obstracle_heght, sizeof(double), 
 					&raytrace_range, sizeof(double), &size_x, sizeof(unsigned int), 
-					&size_y, sizeof(unsigned int), &resolution, sizeof(unsigned int));
+					&size_y, sizeof(unsigned int), &resolution, sizeof(unsigned int),
+                                        &ocgr_c2g_total_start, sizeof(struct timeval),
+                                        &ocgr_c2g_total_stop, sizeof(struct timeval),
+                                        &ocgr_c2g_total_sec, sizeof(uint64_t),
+                                        &ocgr_c2g_total_usec, sizeof(uint64_t),
+
+                                        &ocgr_c2g_initCM_start, sizeof(struct timeval),
+                                        &ocgr_c2g_initCM_stop, sizeof(struct timeval),
+                                        &ocgr_c2g_initCM_sec, sizeof(uint64_t),
+                                        &ocgr_c2g_initCM_usec, sizeof(uint64_t),
+
+                                        &ocgr_c2g_updOrig_start, sizeof(struct timeval),
+                                        &ocgr_c2g_updOrig_stop, sizeof(struct timeval),
+                                        &ocgr_c2g_updOrig_sec, sizeof(uint64_t),
+                                        &ocgr_c2g_updOrig_usec, sizeof(uint64_t),
+
+                                        &ocgr_c2g_updBnds_start, sizeof(struct timeval),
+                                        &ocgr_c2g_updBnds_stop, sizeof(struct timeval),
+                                        &ocgr_c2g_updBnds_sec, sizeof(uint64_t),
+                                        &ocgr_c2g_updBnds_usec, sizeof(uint64_t),
+
+                                        &ocgr_upBd_total_start, sizeof(struct timeval),
+                                        &ocgr_upBd_total_stop, sizeof(struct timeval),
+                                        &ocgr_upBd_total_sec, sizeof(uint64_t),
+                                        &ocgr_upBd_total_usec, sizeof(uint64_t),
+
+                                        &ocgr_upBd_rayFSp_start, sizeof(struct timeval),
+                                        &ocgr_upBd_rayFSp_stop, sizeof(struct timeval),
+                                        &ocgr_upBd_rayFSp_sec, sizeof(uint64_t),
+                                        &ocgr_upBd_rayFSp_usec, sizeof(uint64_t),
+
+                                        &ocgr_upBd_regObst_start, sizeof(struct timeval),
+                                        &ocgr_upBd_regObst_stop, sizeof(struct timeval),
+                                        &ocgr_upBd_regObst_sec, sizeof(uint64_t),
+                                        &ocgr_upBd_regObst_usec, sizeof(uint64_t),
+                                        // End of global variables used for timing sections of cloudToOccgrid
+					// Args to sequentialized timer start and end calls along with the code being time
+					&timer_sequentialize, sizeof(int));
 #endif
+
 			encode_transmit_occgrid(&n_cmp_bytes, sizeof(int), cmp_data, MAX_COMPRESSED_DATA_SIZE);
 #if PARALLEL_PTHREADS
 			; // nothing to do here...

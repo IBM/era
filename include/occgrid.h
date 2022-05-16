@@ -112,16 +112,58 @@ void fuseIntoLocal(Costmap2D* localMap, Costmap2D* updateMap);
 void combineGrids(unsigned char* grid1, unsigned char* grid2, double robot_x1, double robot_y1,
 		  double robot_x2, double robot_y2, unsigned int cell_size_x, unsigned int cell_size_y, double resolution/*, char def_val*/);
 
-void cloudToOccgrid(Observation * obs_ptr, size_t obs_ptr_sz,
-                lidar_inputs_t* lidar_inputs, size_t lidar_inputs_sz /*=sizeof(*lidar_inputs*/,
+void cloudToOccgrid(
+		Observation * obs_ptr, size_t obs_ptr_sz,
+                lidar_inputs_t* lidar_inputs, size_t lidar_inputs_sz /*=sizeof(*lidar_inputs)*/,
                 double* robot_yaw, size_t robot_yaw_sz /*=sizeof(double)*/,
                 bool* rolling_window, size_t rolling_window_sz /*=sizeof(bool)*/,
-                double* min_obstacle_height, size_t min_obstable_height_sz /*=sizeof(double)*/,
-                double* max_obstacle_height, size_t max_obstable_height_sz /*=sizeof(double)*/,
+                double* min_obstacle_height, size_t min_obstacle_height_sz /*=sizeof(double)*/,
+                double* max_obstacle_height, size_t max_obstacle_height_sz /*=sizeof(double)*/,
                 double* raytrace_range, size_t raytrace_range_sz /*=sizeof(double)*/,
                 unsigned int* x_dim, size_t x_dim_sz /*=sizeof(unsigned int)*/,
                 unsigned int* y_dim, size_t y_dim_sz /*=sizeof(unsigned int)*/,
-                unsigned int* resolution, size_t resolution_sz /*=sizeof(unsigned int)*/ /*, unsigned char default_value*/);
+                unsigned int* resolution, size_t resolution_sz /*=sizeof(unsigned int)*/,
+
+                // Start of global variables used for timing sections of cloudToOccgrid
+                struct timeval* ocgr_c2g_total_start_cp, size_t ocgr_c2g_total_start_cp_sz /*=sizeof(struct timeval)*/,
+                struct timeval* ocgr_c2g_total_stop_cp, size_t ocgr_c2g_total_stop_cp_sz /*=sizeof(struct timeval)*/,
+                uint64_t* ocgr_c2g_total_sec_cp, size_t ocgr_c2g_total_sec_cp_sz /*=sizeof(uint64_t)*/,
+                uint64_t* ocgr_c2g_total_usec_cp, size_t ocgr_c2g_total_usec_cp_sz /*=sizeof(uint64_t)*/,
+
+                struct timeval* ocgr_c2g_initCM_start_cp, size_t ocgr_c2g_initCM_start_cp_sz /*=sizeof(struct timeval)*/,
+                struct timeval* ocgr_c2g_initCM_stop_cp, size_t ocgr_c2g_initCM_stop_cp_sz /*=sizeof(struct timeval)*/,
+                uint64_t* ocgr_c2g_initCM_sec_cp, size_t ocgr_c2g_initCM_sec_cp_sz /*=sizeof(uint64_t)*/,
+                uint64_t* ocgr_c2g_initCM_usec_cp, size_t ocgr_c2g_initCM_usec_cp_sz /*=sizeof(uint64_t)*/,
+
+                struct timeval* ocgr_c2g_updOrig_start_cp, size_t ocgr_c2g_updOrig_start_cp_sz /*=sizeof(struct timeval)*/,
+                struct timeval* ocgr_c2g_updOrig_stop_cp, size_t ocgr_c2g_updOrig_stop_cp_sz /*=sizeof(struct timeval)*/,
+                uint64_t* ocgr_c2g_updOrig_sec_cp, size_t ocgr_c2g_updOrig_sec_cp_sz /*=sizeof(uint64_t)*/,
+                uint64_t* ocgr_c2g_updOrig_usec_cp, size_t ocgr_c2g_updOrig_usec_cp_sz /*=sizeof(uint64_t)*/,
+
+                struct timeval* ocgr_c2g_updBnds_start_cp, size_t ocgr_c2g_updBnds_start_cp_sz /*=sizeof(struct timeval)*/,
+                struct timeval* ocgr_c2g_updBnds_stop_cp, size_t ocgr_c2g_updBnds_stop_cp_sz /*=sizeof(struct timeval)*/,
+                uint64_t* ocgr_c2g_updBnds_sec_cp, size_t ocgr_c2g_updBnds_sec_cp_sz /*=sizeof(uint64_t)*/,
+                uint64_t* ocgr_c2g_updBnds_usec_cp, size_t ocgr_c2g_updBnds_usec_cp_sz /*=sizeof(uint64_t)*/,
+
+                struct timeval* ocgr_c2g_upBd_total_start_cp, size_t ocgr_c2g_upBd_total_start_cp_sz /*=sizeof(struct timeval)*/,
+                struct timeval* ocgr_c2g_upBd_total_stop_cp, size_t ocgr_c2g_upBd_total_stop_cp_sz /*=sizeof(struct timeval)*/,
+                uint64_t* ocgr_c2g_upBd_total_sec_cp, size_t ocgr_c2g_upBd_total_sec_cp_sz /*=sizeof(uint64_t)*/,
+                uint64_t* ocgr_c2g_upBd_total_usec_cp, size_t ocgr_c2g_upBd_total_usec_cp_sz /*=sizeof(uint64_t)*/,
+
+                struct timeval* ocgr_c2g_upBd_rayFSp_start_cp, size_t ocgr_c2g_upBd_rayFSp_start_cp_sz /*=sizeof(struct timeval)*/,
+                struct timeval* ocgr_c2g_upBd_rayFSp_stop_cp, size_t ocgr_c2g_upBd_rayFSp_stop_cp_sz /*=sizeof(struct timeval)*/,
+                uint64_t* ocgr_c2g_upBd_rayFSp_sec_cp, size_t ocgr_c2g_upBd_rayFSp_sec_cp_sz /*=sizeof(uint64_t)*/,
+                uint64_t* ocgr_c2g_upBd_rayFSp_usec_cp, size_t ocgr_c2g_upBd_rayFSp_usec_cp_sz /*=sizeof(uint64_t)*/,
+
+                struct timeval* ocgr_c2g_upBd_regObst_start_cp, size_t ocgr_c2g_upBd_regObst_start_cp_sz /*=sizeof(struct timeval)*/,
+                struct timeval* ocgr_c2g_upBd_regObst_stop_cp, size_t ocgr_c2g_upBd_regObst_stop_cp_sz /*=sizeof(struct timeval)*/,
+                uint64_t* ocgr_c2g_upBd_regObst_sec_cp, size_t ocgr_c2g_upBd_regObst_sec_cp_sz /*=sizeof(uint64_t)*/,
+                uint64_t* ocgr_c2g_upBd_regObst_usec_cp, size_t ocgr_c2g_upBd_regObst_usec_cp_sz /*=sizeof(uint64_t)*/,
+                // The following argument is used to ensure that task wrapping call to start timer occurs before the call to
+                // return ending time after time section of code completes.
+                int* timer_sequentialize, size_t timer_sequentialize_sz /*sizeof(int)*/
+                // End of global variables used for timing sections of cloudToOccgrid
+		);
 
 void printMap();
 

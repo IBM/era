@@ -1838,6 +1838,7 @@ void do_xmit_pipeline(int in_msg_len, char* in_msg, size_t in_msg_sz,
                       int* num_final_outs, size_t num_final_outs_sz,
                       float* final_out_real, size_t final_out_real_sz,
                       float* final_out_imag, size_t final_out_imag_sz,
+		      // Start of local variables used by do_xmit_pipeline
                       int* psdu_len /*local*/, size_t psdu_len_sz /*=1*/,
                       uint8_t* pckt_hdr_out, size_t pckt_hdr_out_sz /*=64 -> though 48 may work*/, 
                       int* pckt_hdr_len /*local*/, size_t pckt_hdr_len_sz /*=1*/,
@@ -1849,29 +1850,18 @@ void do_xmit_pipeline(int in_msg_len, char* in_msg, size_t in_msg_sz,
                       float* fft_out_real /*local*/, size_t fft_out_real_sz /*= ofdm_max_out_size*/,
                       float* fft_out_imag /*local*/, size_t fft_out_imag_sz /*= ofdm_max_out_size*/,
                       float* cycpref_out_real, size_t cycpref_out_real_sz /*= 41360*/,
-                      float* cycpref_out_imag, size_t cycpref_out_imag_sz /*= 41360*/) {
+                      float* cycpref_out_imag, size_t cycpref_out_imag_sz /*= 41360*/
+		      // End of local variables used by do_xmit_pipeline
+		      // Start of globals used by do_xmit_pipeline
+//		      x_pipe_start_cp, size_t x_pipe_start_cp_sz, x_genmacfr_stop_cp, size_t x_genmacfr_stop_cp_sz,
+//		      x_genmacfr_sec_cp, size_t x_genmacfr_sec_cp_sz, x_genmacfr_usec_cp, size_t x_genmacfr_usec_cp_sz,
+
+		      // End of globals used by do_xmit_pipeline
+		      ) {
   #if defined(HPVM) 
   void * Section = __hetero_section_begin();
  void * T1 = __hetero_task_begin(3, in_msg_len, in_msg, in_msg_sz, psdu_len, psdu_len_sz, 
-                                 1, psdu_len, psdu_len_sz);
-//  void * T1 = __hetero_task_begin(17, in_msg_len, in_msg, in_msg_sz,
- //                     num_final_outs, num_final_outs_sz,
-  //                    final_out_real, final_out_real_sz,
-   //                   final_out_imag, final_out_imag_sz,
-    //                  psdu_len /*local*/, psdu_len_sz /*=1*/,
-     //                 pckt_hdr_out, pckt_hdr_out_sz /*=64 -> though 48 may work*/,
-      //                pckt_hdr_len /*local*/, pckt_hdr_len_sz /*=1*/,
-       //               msg_stream_real /*local*/, msg_stream_real_sz /*= MAX_SIZE*/,
-        //              msg_stream_imag /*local*/, msg_stream_imag_sz /*= MAX_SIZE*/,
-         //             ofdm_car_str_real /*local*/, ofdm_car_str_real_sz /*= ofdm_max_out_size*/,
-          //            ofdm_car_str_imag /*local*/, ofdm_car_str_imag_sz /*= ofdm_max_out_size*/,
-           //           ofc_res /*local*/, ofc_res_sz /*=1*/,
-            //          fft_out_real /*local*/, fft_out_real_sz /*= ofdm_max_out_size*/,
-             //         fft_out_imag /*local*/, fft_out_imag_sz /*= ofdm_max_out_size*/,
-              //        cycpref_out_real, cycpref_out_real_sz /*= 41360*/,
-               //       cycpref_out_imag, cycpref_out_imag_sz /*= 41360*/, 3, num_final_outs, num_final_outs_sz,
-                //      final_out_real, final_out_real_sz,
-                 //     final_out_imag, final_out_imag_sz);
+                                 1, psdu_len, psdu_len_sz, "mac_data_task");
   #endif
 
   DO_NUM_IOS_ANALYSIS(printf("In do_xmit_pipeline: MSG_LEN %u\n", in_msg_len));
@@ -1882,22 +1872,26 @@ void do_xmit_pipeline(int in_msg_len, char* in_msg, size_t in_msg_sz,
   printf("\n");
   fflush(stdout));
   #ifdef INT_TIME
-  gettimeofday(&x_pipe_start, NULL);
+ // gettimeofday(&x_pipe_start, NULL);
   #endif
   *psdu_len = 0;
   // do_wifi_mac(in_msg_len, in_msg, &psdu_len);
   generate_mac_data_frame(in_msg, in_msg_len, psdu_len);
   #ifdef INT_TIME
   gettimeofday(&x_genmacfr_stop, NULL);
-  x_genmacfr_sec += x_genmacfr_stop.tv_sec - x_pipe_start.tv_sec;
-  x_genmacfr_usec += x_genmacfr_stop.tv_usec - x_pipe_start.tv_usec;
+  //x_genmacfr_sec += x_genmacfr_stop.tv_sec - x_pipe_start.tv_sec;
+  //x_genmacfr_usec += x_genmacfr_stop.tv_usec - x_pipe_start.tv_usec;
   #endif
   #if defined(HPVM)
   __hetero_task_end(T1);
   #endif
 
   #if defined(HPVM)
-  void * T2 = __hetero_task_begin(1, psdu_len, psdu_len_sz, 1, psdu_len, psdu_len_sz);
+  void * T2 = __hetero_task_begin(1, psdu_len, psdu_len_sz, 1, psdu_len, psdu_len_sz, "mapper_task");
+  #endif
+
+  #ifdef INT_TIME
+  //gettimeofday(&x_domapwk_start, NULL);
   #endif
 
   // do_mapper_work(32768, psdu_len); // noutput always seems to be 32768 ? Actualy data size is 24528 ?
@@ -1907,6 +1901,8 @@ void do_xmit_pipeline(int in_msg_len, char* in_msg, size_t in_msg_sz,
   gettimeofday(&x_domapwk_stop, NULL);
   x_domapwk_sec += x_domapwk_stop.tv_sec - x_genmacfr_stop.tv_sec;
   x_domapwk_usec += x_domapwk_stop.tv_usec - x_genmacfr_stop.tv_usec;
+  //x_domapwk_sec += x_domapwk_stop.tv_sec - x_domapwk_start.tv_sec;
+  //x_domapwk_usec += x_domapwk_stop.tv_usec - x_domapwk_start.tv_usec;
   #endif
   #if defined(HPVM)
   __hetero_task_end(T2);
@@ -1914,7 +1910,7 @@ void do_xmit_pipeline(int in_msg_len, char* in_msg, size_t in_msg_sz,
 
   #if defined(HPVM)
   void * T3 = __hetero_task_begin(2, pckt_hdr_out, pckt_hdr_out_sz, pckt_hdr_len, pckt_hdr_len_sz, 
-                                  2, pckt_hdr_out, pckt_hdr_out_sz, pckt_hdr_len, pckt_hdr_len_sz);
+                                  2, pckt_hdr_out, pckt_hdr_out_sz, pckt_hdr_len, pckt_hdr_len_sz, "packer_hdr_task");
   #endif
 
   int mapper_payload_size = d_frame.n_encoded_bits;
@@ -1940,7 +1936,7 @@ void do_xmit_pipeline(int in_msg_len, char* in_msg, size_t in_msg_sz,
   void * T4 = __hetero_task_begin(4, pckt_hdr_out, pckt_hdr_out_sz, pckt_hdr_len, pckt_hdr_len_sz,
                                   msg_stream_real, msg_stream_real_sz, msg_stream_imag, msg_stream_imag_sz,
                                   2, msg_stream_real, msg_stream_real_sz, 
-                                  msg_stream_imag, msg_stream_imag_sz);
+                                  msg_stream_imag, msg_stream_imag_sz, "chuck_strm_task");
   #endif
 
   // Convert the header chunks to symbols (uses simple BPSK_1_2 map: 0 -> -1+0i and 1 -> +1+0i)
@@ -1994,7 +1990,8 @@ void do_xmit_pipeline(int in_msg_len, char* in_msg, size_t in_msg_sz,
                                   ofdm_car_str_real, ofdm_car_str_real_sz, 
                                   ofdm_car_str_imag, ofdm_car_str_imag_sz, ofc_res, ofc_res_sz, 
                                   3, ofdm_car_str_real, ofdm_car_str_real_sz, 
-                                  ofdm_car_str_imag, ofdm_car_str_imag_sz, ofc_res, ofc_res_sz);
+                                  ofdm_car_str_imag, ofdm_car_str_imag_sz, ofc_res, ofc_res_sz, 
+				  "carrier_alloc_task");
   #endif
 
   // DEBUG(printf("\nCalling do_ofdm_carrier_allocator_cvc_impl_work( %u, %u, msg_stream)\n", 520, 24576));
@@ -2033,7 +2030,7 @@ void do_xmit_pipeline(int in_msg_len, char* in_msg, size_t in_msg_sz,
   void * T6 = __hetero_task_begin(5, ofc_res, ofc_res_sz, ofdm_car_str_real, ofdm_car_str_real_sz, 
                                   ofdm_car_str_imag, ofdm_car_str_imag_sz, fft_out_real, fft_out_real_sz, 
                                   fft_out_imag, fft_out_imag_sz, 2, fft_out_real, fft_out_real_sz,
-                                  fft_out_imag, fft_out_imag_sz);
+                                  fft_out_imag, fft_out_imag_sz, "xmit_fft_task");
   #endif
 
   // The FFT operation...  This is where we are currently "broken"
@@ -2065,7 +2062,8 @@ void do_xmit_pipeline(int in_msg_len, char* in_msg, size_t in_msg_sz,
   void * T7 = __hetero_task_begin(5, ofc_res, ofc_res_sz, fft_out_real, fft_out_real_sz, 
                                   fft_out_imag, fft_out_imag_sz, cycpref_out_real, cycpref_out_real_sz, 
                                   cycpref_out_imag, cycpref_out_imag_sz, 2, 
-                                  cycpref_out_real, cycpref_out_real_sz, cycpref_out_imag, cycpref_out_imag_sz);
+                                  cycpref_out_real, cycpref_out_real_sz, cycpref_out_imag, cycpref_out_imag_sz,
+				  "cyclic_prefix_task");
   #endif
 
   //#include "gold_fft_outputs.c"
@@ -2102,7 +2100,7 @@ void do_xmit_pipeline(int in_msg_len, char* in_msg, size_t in_msg_sz,
                                   final_out_imag, final_out_imag_sz, cycpref_out_real, cycpref_out_real_sz,
                                   cycpref_out_imag, cycpref_out_imag_sz, ofc_res, ofc_res_sz, 3, 
                                   num_final_outs, num_final_outs_sz, final_out_real, final_out_real_sz, 
-                                  final_out_imag, final_out_imag_sz);
+                                  final_out_imag, final_out_imag_sz, "padding_task");
   int num_cycpref_outs_cp = (*ofc_res) * (d_fft_len + d_cp_size) + 1; // copied from above task
   #endif
 
@@ -2154,4 +2152,5 @@ void do_xmit_pipeline(int in_msg_len, char* in_msg, size_t in_msg_sz,
   __hetero_section_end(Section);
   #endif
 }
+
 
