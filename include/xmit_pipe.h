@@ -92,22 +92,67 @@ extern uint64_t x_fHcvtout_usec;
 void xmit_pipe_init();
 
 #ifdef HPVM
-void do_xmit_pipeline(int in_msg_len, char* in_msg, size_t in_msg_sz, 
-                      int* num_final_outs, size_t num_final_outs_sz,
-                      float* final_out_real, size_t final_out_real_sz,
-                      float* final_out_imag, size_t final_out_imag_sz,
-                      int* psdu_len /*local*/, size_t psdu_len_sz /*=1*/,
-                      uint8_t* pckt_hdr_out, size_t pckt_hdr_out_sz /*=64 -> though 48 may work*/, 
-                      int* pckt_hdr_len /*local*/, size_t pckt_hdr_len_sz /*=1*/,
-                      float* msg_stream_real /*local*/, size_t msg_stream_real_sz /*= MAX_SIZE*/,
-                      float* msg_stream_imag /*local*/, size_t msg_stream_imag_sz /*= MAX_SIZE*/,
-                      float* ofdm_car_str_real /*local*/, size_t ofdm_car_str_real_sz /*= ofdm_max_out_size*/,
-                      float* ofdm_car_str_imag /*local*/, size_t ofdm_car_str_imag_sz /*= ofdm_max_out_size*/,
-                      int* ofc_res /*local*/, size_t ofc_res_sz /*=1*/,
-                      float* fft_out_real /*local*/, size_t fft_out_real_sz /*= ofdm_max_out_size*/,
-                      float* fft_out_imag /*local*/, size_t fft_out_imag_sz /*= ofdm_max_out_size*/,
-                      float* cycpref_out_real, size_t cycpref_out_real_sz /*= 41360*/,
-                      float* cycpref_out_imag, size_t cycpref_out_imag_sz /*= 41360*/);
+void do_xmit_pipeline(int in_msg_len, char * in_msg, size_t in_msg_sz,
+    int * num_final_outs, size_t num_final_outs_sz,
+    float * final_out_real, size_t final_out_real_sz,
+    float * final_out_imag, size_t final_out_imag_sz,
+    // Start of local variables used by do_xmit_pipeline
+    int * psdu_len /*local*/ , size_t psdu_len_sz /*=1*/,
+    uint8_t * pckt_hdr_out, size_t pckt_hdr_out_sz /*=64 -> though 48 may work*/,
+    int * pckt_hdr_len /*local*/ , size_t pckt_hdr_len_sz /*=1*/,
+    float * msg_stream_real /*local*/ , size_t msg_stream_real_sz /*= MAX_SIZE*/,
+    float * msg_stream_imag /*local*/ , size_t msg_stream_imag_sz /*= MAX_SIZE*/,
+    float * ofdm_car_str_real /*local*/ , size_t ofdm_car_str_real_sz /*= ofdm_max_out_size*/,
+    float * ofdm_car_str_imag /*local*/ , size_t ofdm_car_str_imag_sz /*= ofdm_max_out_size*/,
+    int * ofc_res /*local*/ , size_t ofc_res_sz /*=1*/ ,
+    float * fft_out_real /*local*/ , size_t fft_out_real_sz /*= ofdm_max_out_size*/,
+    float * fft_out_imag /*local*/ , size_t fft_out_imag_sz /*= ofdm_max_out_size*/,
+    float * cycpref_out_real, size_t cycpref_out_real_sz /*= 41360*/,
+    float * cycpref_out_imag, size_t cycpref_out_imag_sz /*= 41360*/,
+    // End of local variables used by do_xmit_pipeline
+    // Start of variables used for timing
+    struct timeval * x_pipe_start_cp, size_t x_pipe_start_cp_sz,
+    struct timeval * x_pipe_stop_cp, size_t x_pipe_stop_cp_sz,
+    uint64_t * x_pipe_sec_cp, size_t x_pipe_sec_cp_sz,
+    uint64_t * x_pipe_usec_cp, size_t x_pipe_usec_cp_sz,
+
+    struct timeval * x_genmacfr_start_cp, size_t x_genmacfr_start_cp_sz,
+    struct timeval * x_genmacfr_stop_cp, size_t x_genmacfr_stop_cp_sz,
+    uint64_t * x_genmacfr_sec_cp, size_t x_genmacfr_sec_cp_sz,
+    uint64_t * x_genmacfr_usec_cp, size_t x_genmacfr_usec_cp_sz,
+
+    struct timeval * x_domapwk_start_cp, size_t x_domapwk_start_cp_sz,
+    struct timeval * x_domapwk_stop_cp, size_t x_domapwk_stop_cp_sz,
+    uint64_t * x_domapwk_sec_cp, size_t x_domapwk_sec_cp_sz,
+    uint64_t * x_domapwk_usec_cp, size_t x_domapwk_usec_cp_sz,
+
+    struct timeval * x_phdrgen_start_cp, size_t x_phdrgen_start_cp_sz,
+    struct timeval * x_phdrgen_stop_cp, size_t x_phdrgen_stop_cp_sz,
+    uint64_t * x_phdrgen_sec_cp, size_t x_phdrgen_sec_cp_sz,
+    uint64_t * x_phdrgen_usec_cp, size_t x_phdrgen_usec_cp_sz,
+
+    struct timeval * x_ck2sym_start_cp, size_t x_ck2sym_start_cp_sz,
+    struct timeval * x_ck2sym_stop_cp, size_t x_ck2sym_stop_cp_sz,
+    uint64_t * x_ck2sym_sec_cp, size_t x_ck2sym_sec_cp_sz,
+    uint64_t * x_ck2sym_usec_cp, size_t x_ck2sym_usec_cp_sz,
+
+    struct timeval * x_ocaralloc_start_cp, size_t x_ocaralloc_start_cp_sz,
+    struct timeval * x_ocaralloc_stop_cp, size_t x_ocaralloc_stop_cp_sz,
+    uint64_t * x_ocaralloc_sec_cp, size_t x_ocaralloc_sec_cp_sz,
+    uint64_t * x_ocaralloc_usec_cp, size_t x_ocaralloc_usec_cp_sz,
+
+    struct timeval * x_fft_start_cp, size_t x_fft_start_cp_sz,
+    struct timeval * x_fft_stop_cp, size_t x_fft_stop_cp_sz,
+    uint64_t * x_fft_sec_cp, size_t x_fft_sec_cp_sz,
+    uint64_t * x_fft_usec_cp, size_t x_fft_usec_cp_sz,
+
+    struct timeval * x_ocycpref_start_cp, size_t x_ocycpref_start_cp_sz,
+    struct timeval * x_ocycpref_stop_cp, size_t x_ocycpref_stop_cp_sz,
+    uint64_t * x_ocycpref_sec_cp, size_t x_ocycpref_sec_cp_sz,
+    uint64_t * x_ocycpref_usec_cp, size_t x_ocycpref_usec_cp_sz,
+    // End of variables used for timing
+    int * timer_sequentialize, size_t timer_sequentialize_sz
+);
 #else
 void do_xmit_pipeline(int in_msg_len, char* in_msg, int* num_final_outs, float* final_out_real, 
                       float* final_out_imag);

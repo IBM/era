@@ -21,6 +21,7 @@
 #include "globalsOccgrid.h"
 #include "occgrid.h"    // Occupancy Grid Map Create/Fuse
 #include "lz4.h"        // LZ4 Compression/Decompression
+#include "globalsXmitPipe.h"
 #include "xmit_pipe.h"  // IEEE 802.11p WiFi SDR Transmit Pipeline
 #include "recv_pipe.h"  // IEEE 802.11p WiFi SDR Receive Pipeline
 
@@ -757,6 +758,7 @@ void process_lidar_to_occgrid(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /
 		unsigned int* size_x, size_t size_x_sz /*=sizeof(unsigned int)*/,
 		unsigned int* size_y, size_t size_y_sz /*=sizeof(unsigned int)*/,
 		unsigned int* resolution, size_t resolution_sz /*=sizeof(unsigned int)*/,
+		// 	Args used by cloudToOccgrid for timing information
 		struct timeval* ocgr_c2g_total_start_cp, size_t ocgr_c2g_total_start_cp_sz /*=sizeof(struct timeval)*/,
     struct timeval* ocgr_c2g_total_stop_cp, size_t ocgr_c2g_total_stop_cp_sz /*=sizeof(struct timeval)*/,
     uint64_t* ocgr_c2g_total_sec_cp, size_t ocgr_c2g_total_sec_cp_sz /*=sizeof(uint64_t)*/,
@@ -782,7 +784,7 @@ void process_lidar_to_occgrid(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /
     uint64_t* ocgr_c2g_upBd_total_sec_cp, size_t ocgr_c2g_upBd_total_sec_cp_sz /*=sizeof(uint64_t)*/,
     uint64_t* ocgr_c2g_upBd_total_usec_cp, size_t ocgr_c2g_upBd_total_usec_cp_sz /*=sizeof(uint64_t)*/,
 
-		struct timeval* ocgr_c2g_upBd_rayFSp_start_cp, size_t ocgr_c2g_upBd_rayFSp_start_cp_sz /*=sizeof(struct timeval)*/,
+    struct timeval* ocgr_c2g_upBd_rayFSp_start_cp, size_t ocgr_c2g_upBd_rayFSp_start_cp_sz /*=sizeof(struct timeval)*/,
     struct timeval* ocgr_c2g_upBd_rayFSp_stop_cp, size_t ocgr_c2g_upBd_rayFSp_stop_cp_sz /*=sizeof(struct timeval)*/,
     uint64_t* ocgr_c2g_upBd_rayFSp_sec_cp, size_t ocgr_c2g_upBd_rayFSp_sec_cp_sz /*=sizeof(uint64_t)*/,
     uint64_t* ocgr_c2g_upBd_rayFSp_usec_cp, size_t ocgr_c2g_upBd_rayFSp_usec_cp_sz /*=sizeof(uint64_t)*/,
@@ -1024,15 +1026,57 @@ void do_xmit_pipeline_wrapper(int* n_cmp_bytes, size_t n_cmp_bytes_sz, char* cmp
 		float* fft_out_real, size_t fft_out_real_sz,
 		float* fft_out_imag, size_t fft_out_imag_sz,
 		float* cycpref_out_real, size_t cycpref_out_real_sz,
-		float* cycpref_out_imag, size_t cycpref_out_imag_sz
+		float* cycpref_out_imag, size_t cycpref_out_imag_sz,
+		// Start of variables used for timing
+		struct timeval * x_pipe_start_cp, size_t x_pipe_start_cp_sz,
+		struct timeval * x_pipe_stop_cp, size_t x_pipe_stop_cp_sz,
+		uint64_t * x_pipe_sec_cp, size_t x_pipe_sec_cp_sz,
+		uint64_t * x_pipe_usec_cp, size_t x_pipe_usec_cp_sz,
+
+		struct timeval * x_genmacfr_start_cp, size_t x_genmacfr_start_cp_sz,
+		struct timeval * x_genmacfr_stop_cp, size_t x_genmacfr_stop_cp_sz,
+		uint64_t * x_genmacfr_sec_cp, size_t x_genmacfr_sec_cp_sz,
+		uint64_t * x_genmacfr_usec_cp, size_t x_genmacfr_usec_cp_sz,
+
+		struct timeval * x_domapwk_start_cp, size_t x_domapwk_start_cp_sz,
+		struct timeval * x_domapwk_stop_cp, size_t x_domapwk_stop_cp_sz,
+		uint64_t * x_domapwk_sec_cp, size_t x_domapwk_sec_cp_sz,
+		uint64_t * x_domapwk_usec_cp, size_t x_domapwk_usec_cp_sz,
+
+		struct timeval * x_phdrgen_start_cp, size_t x_phdrgen_start_cp_sz,
+		struct timeval * x_phdrgen_stop_cp, size_t x_phdrgen_stop_cp_sz,
+		uint64_t * x_phdrgen_sec_cp, size_t x_phdrgen_sec_cp_sz,
+		uint64_t * x_phdrgen_usec_cp, size_t x_phdrgen_usec_cp_sz,
+
+		struct timeval * x_ck2sym_start_cp, size_t x_ck2sym_start_cp_sz,
+		struct timeval * x_ck2sym_stop_cp, size_t x_ck2sym_stop_cp_sz,
+		uint64_t * x_ck2sym_sec_cp, size_t x_ck2sym_sec_cp_sz,
+		uint64_t * x_ck2sym_usec_cp, size_t x_ck2sym_usec_cp_sz,
+
+		struct timeval * x_ocaralloc_start_cp, size_t x_ocaralloc_start_cp_sz,
+		struct timeval * x_ocaralloc_stop_cp, size_t x_ocaralloc_stop_cp_sz,
+		uint64_t * x_ocaralloc_sec_cp, size_t x_ocaralloc_sec_cp_sz,
+		uint64_t * x_ocaralloc_usec_cp, size_t x_ocaralloc_usec_cp_sz,
+
+		struct timeval * x_fft_start_cp, size_t x_fft_start_cp_sz,
+		struct timeval * x_fft_stop_cp, size_t x_fft_stop_cp_sz,
+		uint64_t * x_fft_sec_cp, size_t x_fft_sec_cp_sz,
+		uint64_t * x_fft_usec_cp, size_t x_fft_usec_cp_sz,
+
+		struct timeval * x_ocycpref_start_cp, size_t x_ocycpref_start_cp_sz,
+		struct timeval * x_ocycpref_stop_cp, size_t x_ocycpref_stop_cp_sz,
+		uint64_t * x_ocycpref_sec_cp, size_t x_ocycpref_sec_cp_sz,
+		uint64_t * x_ocycpref_usec_cp, size_t x_ocycpref_usec_cp_sz,
+		// End of variables used for timing
+		int * timer_sequentialize, size_t timer_sequentialize_sz
 		) {
 #if defined(HPVM) && true
 	void* Section = __hetero_section_begin();
-	void* T = __hetero_task_begin(17,
+	void* T = __hetero_task_begin(50,
 			n_cmp_bytes, n_cmp_bytes_sz, cmp_data, cmp_data_sz,
 			n_xmit_out, n_xmit_out_sz, xmit_out_real, xmit_out_real_sz,
 			xmit_out_imag, xmit_out_imag_sz,
-			/* Start of local variables for do_xmit_pipeline*/
+			// Start of local variables for do_xmit_pipeline
 			psdu_len, psdu_len_sz, pckt_hdr_out, pckt_hdr_out_sz,
 			pckt_hdr_len, pckt_hdr_len_sz,
 			msg_stream_real, msg_stream_real_sz,
@@ -1041,11 +1085,56 @@ void do_xmit_pipeline_wrapper(int* n_cmp_bytes, size_t n_cmp_bytes_sz, char* cmp
 			ofdm_car_str_imag, ofdm_car_str_imag_sz, ofc_res, ofc_res_sz,
 			fft_out_real, fft_out_real_sz, fft_out_imag, fft_out_imag_sz,
 			cycpref_out_real, cycpref_out_real_sz,
-			cycpref_out_imag, cycpref_out_imag_sz
-			/* End of local variables for do_xmit_pipeline*/, 3,
+			cycpref_out_imag, cycpref_out_imag_sz,
+			// End of local variables for do_xmit_pipeline 
+    	// Start of variables used for timing
+			x_pipe_start_cp, x_pipe_start_cp_sz,
+			x_pipe_stop_cp, x_pipe_stop_cp_sz,
+			x_pipe_sec_cp, x_pipe_sec_cp_sz,
+			x_pipe_usec_cp, x_pipe_usec_cp_sz,
+
+			x_genmacfr_start_cp, x_genmacfr_start_cp_sz,
+			x_genmacfr_stop_cp, x_genmacfr_stop_cp_sz,
+			x_genmacfr_sec_cp, x_genmacfr_sec_cp_sz,
+			x_genmacfr_usec_cp, x_genmacfr_usec_cp_sz,
+
+			x_domapwk_start_cp, x_domapwk_start_cp_sz,
+			x_domapwk_stop_cp, x_domapwk_stop_cp_sz,
+			x_domapwk_sec_cp, x_domapwk_sec_cp_sz,
+			x_domapwk_usec_cp, x_domapwk_usec_cp_sz,
+
+			x_phdrgen_start_cp, x_phdrgen_start_cp_sz,
+			x_phdrgen_stop_cp, x_phdrgen_stop_cp_sz,
+			x_phdrgen_sec_cp, x_phdrgen_sec_cp_sz,
+			x_phdrgen_usec_cp, x_phdrgen_usec_cp_sz,
+
+			x_ck2sym_start_cp, x_ck2sym_start_cp_sz,
+			x_ck2sym_stop_cp, x_ck2sym_stop_cp_sz,
+			x_ck2sym_sec_cp, x_ck2sym_sec_cp_sz,
+			x_ck2sym_usec_cp, x_ck2sym_usec_cp_sz,
+
+			x_ocaralloc_start_cp, x_ocaralloc_start_cp_sz,
+			x_ocaralloc_stop_cp, x_ocaralloc_stop_cp_sz,
+			x_ocaralloc_sec_cp, x_ocaralloc_sec_cp_sz,
+			x_ocaralloc_usec_cp, x_ocaralloc_usec_cp_sz,
+
+			x_fft_start_cp, x_fft_start_cp_sz,
+			x_fft_stop_cp, x_fft_stop_cp_sz,
+			x_fft_sec_cp, x_fft_sec_cp_sz,
+			x_fft_usec_cp, x_fft_usec_cp_sz,
+
+			x_ocycpref_start_cp, x_ocycpref_start_cp_sz,
+			x_ocycpref_stop_cp, x_ocycpref_stop_cp_sz,
+			x_ocycpref_sec_cp, x_ocycpref_sec_cp_sz,
+			x_ocycpref_usec_cp, x_ocycpref_usec_cp_sz,
+
+			timer_sequentialize, timer_sequentialize_sz,
+			// End of variables used for timing
+			3,
 			n_xmit_out, n_xmit_out_sz, xmit_out_real, xmit_out_real_sz,
 			xmit_out_imag, xmit_out_imag_sz);
 #endif
+
 	do_xmit_pipeline(*n_cmp_bytes, cmp_data, cmp_data_sz, n_xmit_out, n_xmit_out_sz, 
 			xmit_out_real, xmit_out_real_sz, xmit_out_imag, xmit_out_imag_sz,
 			psdu_len, psdu_len_sz, pckt_hdr_out, pckt_hdr_out_sz,
@@ -1053,7 +1142,51 @@ void do_xmit_pipeline_wrapper(int* n_cmp_bytes, size_t n_cmp_bytes_sz, char* cmp
 			msg_stream_imag, msg_stream_imag_sz, ofdm_car_str_real, ofdm_car_str_real_sz,
 			ofdm_car_str_imag, ofdm_car_str_imag_sz, ofc_res, ofc_res_sz, 
 			fft_out_real, fft_out_real_sz, fft_out_imag, fft_out_imag_sz,
-			cycpref_out_real, cycpref_out_real_sz, cycpref_out_imag, cycpref_out_imag_sz);
+			cycpref_out_real, cycpref_out_real_sz, cycpref_out_imag, cycpref_out_imag_sz,
+    	// Start of variables used for timing
+			x_pipe_start_cp, x_pipe_start_cp_sz,
+			x_pipe_stop_cp, x_pipe_stop_cp_sz,
+			x_pipe_sec_cp, x_pipe_sec_cp_sz,
+			x_pipe_usec_cp, x_pipe_usec_cp_sz,
+
+			x_genmacfr_start_cp, x_genmacfr_start_cp_sz,
+			x_genmacfr_stop_cp, x_genmacfr_stop_cp_sz,
+			x_genmacfr_sec_cp, x_genmacfr_sec_cp_sz,
+			x_genmacfr_usec_cp, x_genmacfr_usec_cp_sz,
+
+			x_domapwk_start_cp, x_domapwk_start_cp_sz,
+			x_domapwk_stop_cp, x_domapwk_stop_cp_sz,
+			x_domapwk_sec_cp, x_domapwk_sec_cp_sz,
+			x_domapwk_usec_cp, x_domapwk_usec_cp_sz,
+
+			x_phdrgen_start_cp, x_phdrgen_start_cp_sz,
+			x_phdrgen_stop_cp, x_phdrgen_stop_cp_sz,
+			x_phdrgen_sec_cp, x_phdrgen_sec_cp_sz,
+			x_phdrgen_usec_cp, x_phdrgen_usec_cp_sz,
+
+			x_ck2sym_start_cp, x_ck2sym_start_cp_sz,
+			x_ck2sym_stop_cp, x_ck2sym_stop_cp_sz,
+			x_ck2sym_sec_cp, x_ck2sym_sec_cp_sz,
+			x_ck2sym_usec_cp, x_ck2sym_usec_cp_sz,
+
+			x_ocaralloc_start_cp, x_ocaralloc_start_cp_sz,
+			x_ocaralloc_stop_cp, x_ocaralloc_stop_cp_sz,
+			x_ocaralloc_sec_cp, x_ocaralloc_sec_cp_sz,
+			x_ocaralloc_usec_cp, x_ocaralloc_usec_cp_sz,
+
+			x_fft_start_cp, x_fft_start_cp_sz,
+			x_fft_stop_cp, x_fft_stop_cp_sz,
+			x_fft_sec_cp, x_fft_sec_cp_sz,
+			x_fft_usec_cp, x_fft_usec_cp_sz,
+
+			x_ocycpref_start_cp, x_ocycpref_start_cp_sz,
+			x_ocycpref_stop_cp, x_ocycpref_stop_cp_sz,
+			x_ocycpref_sec_cp, x_ocycpref_sec_cp_sz,
+			x_ocycpref_usec_cp, x_ocycpref_usec_cp_sz,
+
+			timer_sequentialize, timer_sequentialize_sz
+			// End of variables used for timing
+				);
 #if defined(HPVM) && true
 	__hetero_task_end(T);
 	__hetero_section_end(Section);
@@ -1090,13 +1223,14 @@ void encode_transmit_occgrid(int* n_cmp_bytes /*from process_lidar_to_occgrid*/,
 	float fft_out_imag[ofdm_max_out_size]; size_t fft_out_imag_sz = ofdm_max_out_size * sizeof(float);
 	float cycpref_out_real[41360]; size_t cycpref_out_real_sz = 41360 * sizeof(float);
 	float cycpref_out_imag[41360]; size_t cycpref_out_imag_sz = 41360 * sizeof(float);
+	int timer_sequentialize = 0;
 
 #if defined(HPVM) && true
-	void * LaunchInner = __hetero_launch((void*) do_xmit_pipeline_wrapper, 17, 
+	void * LaunchInner = __hetero_launch((void*) do_xmit_pipeline_wrapper, 50, 
 			n_cmp_bytes, n_cmp_bytes_sz, (char*) cmp_data, cmp_data_sz,
 			&n_xmit_out, sizeof(int), xmit_out_real, xmit_out_real_sz,
 			xmit_out_imag, xmit_out_imag_sz,
-			/* Start of local variables for do_xmit_pipeline*/
+			// Start of local variables for do_xmit_pipeline
 			&psdu_len, psdu_len_sz, pckt_hdr_out, pckt_hdr_out_sz,
 			&pckt_hdr_len, pckt_hdr_len_sz,
 			msg_stream_real, msg_stream_real_sz,
@@ -1105,8 +1239,51 @@ void encode_transmit_occgrid(int* n_cmp_bytes /*from process_lidar_to_occgrid*/,
 			ofdm_car_str_imag, ofdm_car_str_imag_sz, &ofc_res, ofc_res_sz,
 			fft_out_real, fft_out_real_sz, fft_out_imag, fft_out_imag_sz,
 			cycpref_out_real, cycpref_out_real_sz,
-			cycpref_out_imag, cycpref_out_imag_sz
-			/* End of local variables for do_xmit_pipeline*/, 3, 
+			cycpref_out_imag, cycpref_out_imag_sz,
+			// End of local variables for do_xmit_pipeline 
+			// Start of variables used for timing
+			&x_pipe_start, sizeof(struct timeval),
+			&x_pipe_stop, sizeof(struct timeval),
+			&x_pipe_sec, sizeof(uint64_t),
+			&x_pipe_usec, sizeof(uint64_t),
+
+			&x_genmacfr_start, sizeof(struct timeval),
+			&x_genmacfr_stop, sizeof(struct timeval),
+			&x_genmacfr_sec, sizeof(uint64_t),
+			&x_genmacfr_usec, sizeof(uint64_t),
+
+			&x_domapwk_start, sizeof(struct timeval),
+			&x_domapwk_stop, sizeof(struct timeval),
+			&x_domapwk_sec, sizeof(uint64_t),
+			&x_domapwk_usec, sizeof(uint64_t),
+
+			&x_phdrgen_start, sizeof(struct timeval),
+			&x_phdrgen_stop, sizeof(struct timeval),
+			&x_phdrgen_sec, sizeof(uint64_t),
+			&x_phdrgen_usec, sizeof(uint64_t),
+
+			&x_ck2sym_start, sizeof(struct timeval),
+			&x_ck2sym_stop, sizeof(struct timeval),
+			&x_ck2sym_sec, sizeof(uint64_t),
+			&x_ck2sym_usec, sizeof(uint64_t),
+
+			&x_ocaralloc_start, sizeof(struct timeval),
+			&x_ocaralloc_stop, sizeof(struct timeval),
+			&x_ocaralloc_sec, sizeof(uint64_t),
+			&x_ocaralloc_usec, sizeof(uint64_t),
+
+			&x_fft_start, sizeof(struct timeval),
+			&x_fft_stop, sizeof(struct timeval),
+			&x_fft_sec, sizeof(uint64_t),
+			&x_fft_usec, sizeof(uint64_t),
+
+			&x_ocycpref_start, sizeof(struct timeval),
+			&x_ocycpref_stop, sizeof(struct timeval),
+			&x_ocycpref_sec, sizeof(uint64_t),
+			&x_ocycpref_usec, sizeof(uint64_t),
+			// End of variables used for timing
+			&timer_sequentialize, sizeof(int),
+			3, 
 			&n_xmit_out, sizeof(int), xmit_out_real, xmit_out_real_sz,
 			xmit_out_imag, xmit_out_imag_sz
 			);
@@ -1124,7 +1301,50 @@ void encode_transmit_occgrid(int* n_cmp_bytes /*from process_lidar_to_occgrid*/,
 			ofdm_car_str_imag, ofdm_car_str_imag_sz, &ofc_res, ofc_res_sz,
 			fft_out_real, fft_out_real_sz, fft_out_imag, fft_out_imag_sz,
 			cycpref_out_real, cycpref_out_real_sz,
-			cycpref_out_imag, cycpref_out_imag_sz);
+			cycpref_out_imag, cycpref_out_imag_sz,
+			// Start of variables used for timing
+			&x_pipe_start, sizeof(struct timeval),
+			&x_pipe_stop, sizeof(struct timeval),
+			&x_pipe_sec, sizeof(uint64_t),
+			&x_pipe_usec, sizeof(uint64_t),
+
+			&x_genmacfr_start, sizeof(struct timeval),
+			&x_genmacfr_stop, sizeof(struct timeval),
+			&x_genmacfr_sec, sizeof(uint64_t),
+			&x_genmacfr_usec, sizeof(uint64_t),
+
+			&x_domapwk_start, sizeof(struct timeval),
+			&x_domapwk_stop, sizeof(struct timeval),
+			&x_domapwk_sec, sizeof(uint64_t),
+			&x_domapwk_usec, sizeof(uint64_t),
+
+			&x_phdrgen_start, sizeof(struct timeval),
+			&x_phdrgen_stop, sizeof(struct timeval),
+			&x_phdrgen_sec, sizeof(uint64_t),
+			&x_phdrgen_usec, sizeof(uint64_t),
+
+			&x_ck2sym_start, sizeof(struct timeval),
+			&x_ck2sym_stop, sizeof(struct timeval),
+			&x_ck2sym_sec, sizeof(uint64_t),
+			&x_ck2sym_usec, sizeof(uint64_t),
+
+			&x_ocaralloc_start, sizeof(struct timeval),
+			&x_ocaralloc_stop, sizeof(struct timeval),
+			&x_ocaralloc_sec, sizeof(uint64_t),
+			&x_ocaralloc_usec, sizeof(uint64_t),
+
+			&x_fft_start, sizeof(struct timeval),
+			&x_fft_stop, sizeof(struct timeval),
+			&x_fft_sec, sizeof(uint64_t),
+			&x_fft_usec, sizeof(uint64_t),
+
+			&x_ocycpref_start, sizeof(struct timeval),
+			&x_ocycpref_stop, sizeof(struct timeval),
+			&x_ocycpref_sec, sizeof(uint64_t),
+			&x_ocycpref_usec, sizeof(uint64_t),
+			// End of variables used for timing
+			&timer_sequentialize, sizeof(int),
+				);
 #endif
 
 
@@ -1673,42 +1893,42 @@ int main(int argc, char * argv[]) {
 					&min_obstracle_heght, sizeof(double), &max_obstracle_heght, sizeof(double), 
 					&raytrace_range, sizeof(double), &size_x, sizeof(unsigned int), 
 					&size_y, sizeof(unsigned int), &resolution, sizeof(unsigned int),
-                                        // Start of global variables used for timing sections of cloudToOccgrid
-                                        &ocgr_c2g_total_start, sizeof(struct timeval),
-                                        &ocgr_c2g_total_stop, sizeof(struct timeval),
-                                        &ocgr_c2g_total_sec, sizeof(uint64_t),
-                                        &ocgr_c2g_total_usec, sizeof(uint64_t),
+          // Start of global variables used for timing sections of cloudToOccgrid
+          &ocgr_c2g_total_start, sizeof(struct timeval),
+          &ocgr_c2g_total_stop, sizeof(struct timeval),
+          &ocgr_c2g_total_sec, sizeof(uint64_t),
+          &ocgr_c2g_total_usec, sizeof(uint64_t),
 
-                                        &ocgr_c2g_initCM_start, sizeof(struct timeval),
-                                        &ocgr_c2g_initCM_stop, sizeof(struct timeval),
-                                        &ocgr_c2g_initCM_sec, sizeof(uint64_t),
-                                        &ocgr_c2g_initCM_usec, sizeof(uint64_t),
+          &ocgr_c2g_initCM_start, sizeof(struct timeval),
+          &ocgr_c2g_initCM_stop, sizeof(struct timeval),
+          &ocgr_c2g_initCM_sec, sizeof(uint64_t),
+          &ocgr_c2g_initCM_usec, sizeof(uint64_t),
 
-                                        &ocgr_c2g_updOrig_start, sizeof(struct timeval),
-                                        &ocgr_c2g_updOrig_stop, sizeof(struct timeval),
-                                        &ocgr_c2g_updOrig_sec, sizeof(uint64_t),
-                                        &ocgr_c2g_updOrig_usec, sizeof(uint64_t),
+          &ocgr_c2g_updOrig_start, sizeof(struct timeval),
+          &ocgr_c2g_updOrig_stop, sizeof(struct timeval),
+          &ocgr_c2g_updOrig_sec, sizeof(uint64_t),
+          &ocgr_c2g_updOrig_usec, sizeof(uint64_t),
 
-                                        &ocgr_c2g_updBnds_start, sizeof(struct timeval),
-                                        &ocgr_c2g_updBnds_stop, sizeof(struct timeval),
-                                        &ocgr_c2g_updBnds_sec, sizeof(uint64_t),
-                                        &ocgr_c2g_updBnds_usec, sizeof(uint64_t),
+          &ocgr_c2g_updBnds_start, sizeof(struct timeval),
+          &ocgr_c2g_updBnds_stop, sizeof(struct timeval),
+          &ocgr_c2g_updBnds_sec, sizeof(uint64_t),
+          &ocgr_c2g_updBnds_usec, sizeof(uint64_t),
 
-                                        &ocgr_upBd_total_start, sizeof(struct timeval),
-                                        &ocgr_upBd_total_stop, sizeof(struct timeval),
-                                        &ocgr_upBd_total_sec, sizeof(uint64_t),
-                                        &ocgr_upBd_total_usec, sizeof(uint64_t),
+          &ocgr_upBd_total_start, sizeof(struct timeval),
+          &ocgr_upBd_total_stop, sizeof(struct timeval),
+          &ocgr_upBd_total_sec, sizeof(uint64_t),
+          &ocgr_upBd_total_usec, sizeof(uint64_t),
 
-                                        &ocgr_upBd_rayFSp_start, sizeof(struct timeval),
-                                        &ocgr_upBd_rayFSp_stop, sizeof(struct timeval),
-                                        &ocgr_upBd_rayFSp_sec, sizeof(uint64_t),
-                                        &ocgr_upBd_rayFSp_usec, sizeof(uint64_t),
+          &ocgr_upBd_rayFSp_start, sizeof(struct timeval),
+          &ocgr_upBd_rayFSp_stop, sizeof(struct timeval),
+          &ocgr_upBd_rayFSp_sec, sizeof(uint64_t),
+          &ocgr_upBd_rayFSp_usec, sizeof(uint64_t),
 
-                                        &ocgr_upBd_regObst_start, sizeof(struct timeval),
-                                        &ocgr_upBd_regObst_stop, sizeof(struct timeval),
-                                        &ocgr_upBd_regObst_sec, sizeof(uint64_t),
-                                        &ocgr_upBd_regObst_usec, sizeof(uint64_t),
-                                        // End of global variables used for timing sections of cloudToOccgrid
+          &ocgr_upBd_regObst_start, sizeof(struct timeval),
+          &ocgr_upBd_regObst_stop, sizeof(struct timeval),
+          &ocgr_upBd_regObst_sec, sizeof(uint64_t),
+          &ocgr_upBd_regObst_usec, sizeof(uint64_t),
+          // End of global variables used for timing sections of cloudToOccgrid
 					// Args to sequentialized timer start and end calls along with the code being time
 					&timer_sequentialize, sizeof(int),
 					// Outputs
@@ -1733,41 +1953,41 @@ int main(int argc, char * argv[]) {
 					&min_obstracle_heght, sizeof(double), &max_obstracle_heght, sizeof(double), 
 					&raytrace_range, sizeof(double), &size_x, sizeof(unsigned int), 
 					&size_y, sizeof(unsigned int), &resolution, sizeof(unsigned int),
-                                        &ocgr_c2g_total_start, sizeof(struct timeval),
-                                        &ocgr_c2g_total_stop, sizeof(struct timeval),
-                                        &ocgr_c2g_total_sec, sizeof(uint64_t),
-                                        &ocgr_c2g_total_usec, sizeof(uint64_t),
+          &ocgr_c2g_total_start, sizeof(struct timeval),
+          &ocgr_c2g_total_stop, sizeof(struct timeval),
+          &ocgr_c2g_total_sec, sizeof(uint64_t),
+          &ocgr_c2g_total_usec, sizeof(uint64_t),
 
-                                        &ocgr_c2g_initCM_start, sizeof(struct timeval),
-                                        &ocgr_c2g_initCM_stop, sizeof(struct timeval),
-                                        &ocgr_c2g_initCM_sec, sizeof(uint64_t),
-                                        &ocgr_c2g_initCM_usec, sizeof(uint64_t),
+          &ocgr_c2g_initCM_start, sizeof(struct timeval),
+          &ocgr_c2g_initCM_stop, sizeof(struct timeval),
+          &ocgr_c2g_initCM_sec, sizeof(uint64_t),
+          &ocgr_c2g_initCM_usec, sizeof(uint64_t),
 
-                                        &ocgr_c2g_updOrig_start, sizeof(struct timeval),
-                                        &ocgr_c2g_updOrig_stop, sizeof(struct timeval),
-                                        &ocgr_c2g_updOrig_sec, sizeof(uint64_t),
-                                        &ocgr_c2g_updOrig_usec, sizeof(uint64_t),
+          &ocgr_c2g_updOrig_start, sizeof(struct timeval),
+          &ocgr_c2g_updOrig_stop, sizeof(struct timeval),
+          &ocgr_c2g_updOrig_sec, sizeof(uint64_t),
+          &ocgr_c2g_updOrig_usec, sizeof(uint64_t),
 
-                                        &ocgr_c2g_updBnds_start, sizeof(struct timeval),
-                                        &ocgr_c2g_updBnds_stop, sizeof(struct timeval),
-                                        &ocgr_c2g_updBnds_sec, sizeof(uint64_t),
-                                        &ocgr_c2g_updBnds_usec, sizeof(uint64_t),
+          &ocgr_c2g_updBnds_start, sizeof(struct timeval),
+          &ocgr_c2g_updBnds_stop, sizeof(struct timeval),
+          &ocgr_c2g_updBnds_sec, sizeof(uint64_t),
+          &ocgr_c2g_updBnds_usec, sizeof(uint64_t),
 
-                                        &ocgr_upBd_total_start, sizeof(struct timeval),
-                                        &ocgr_upBd_total_stop, sizeof(struct timeval),
-                                        &ocgr_upBd_total_sec, sizeof(uint64_t),
-                                        &ocgr_upBd_total_usec, sizeof(uint64_t),
+          &ocgr_upBd_total_start, sizeof(struct timeval),
+          &ocgr_upBd_total_stop, sizeof(struct timeval),
+          &ocgr_upBd_total_sec, sizeof(uint64_t),
+          &ocgr_upBd_total_usec, sizeof(uint64_t),
 
-                                        &ocgr_upBd_rayFSp_start, sizeof(struct timeval),
-                                        &ocgr_upBd_rayFSp_stop, sizeof(struct timeval),
-                                        &ocgr_upBd_rayFSp_sec, sizeof(uint64_t),
-                                        &ocgr_upBd_rayFSp_usec, sizeof(uint64_t),
+          &ocgr_upBd_rayFSp_start, sizeof(struct timeval),
+          &ocgr_upBd_rayFSp_stop, sizeof(struct timeval),
+          &ocgr_upBd_rayFSp_sec, sizeof(uint64_t),
+          &ocgr_upBd_rayFSp_usec, sizeof(uint64_t),
 
-                                        &ocgr_upBd_regObst_start, sizeof(struct timeval),
-                                        &ocgr_upBd_regObst_stop, sizeof(struct timeval),
-                                        &ocgr_upBd_regObst_sec, sizeof(uint64_t),
-                                        &ocgr_upBd_regObst_usec, sizeof(uint64_t),
-                                        // End of global variables used for timing sections of cloudToOccgrid
+          &ocgr_upBd_regObst_start, sizeof(struct timeval),
+          &ocgr_upBd_regObst_stop, sizeof(struct timeval),
+          &ocgr_upBd_regObst_sec, sizeof(uint64_t),
+          &ocgr_upBd_regObst_usec, sizeof(uint64_t),
+          // End of global variables used for timing sections of cloudToOccgrid
 					// Args to sequentialized timer start and end calls along with the code being time
 					&timer_sequentialize, sizeof(int));
 #endif
