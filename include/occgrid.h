@@ -122,47 +122,7 @@ void cloudToOccgrid(
                 double* raytrace_range, size_t raytrace_range_sz /*=sizeof(double)*/,
                 unsigned int* x_dim, size_t x_dim_sz /*=sizeof(unsigned int)*/,
                 unsigned int* y_dim, size_t y_dim_sz /*=sizeof(unsigned int)*/,
-                unsigned int* resolution, size_t resolution_sz /*=sizeof(unsigned int)*/,
-
-                // Start of global variables used for timing sections of cloudToOccgrid
-                struct timeval* ocgr_c2g_total_start_cp, size_t ocgr_c2g_total_start_cp_sz /*=sizeof(struct timeval)*/,
-                struct timeval* ocgr_c2g_total_stop_cp, size_t ocgr_c2g_total_stop_cp_sz /*=sizeof(struct timeval)*/,
-                uint64_t* ocgr_c2g_total_sec_cp, size_t ocgr_c2g_total_sec_cp_sz /*=sizeof(uint64_t)*/,
-                uint64_t* ocgr_c2g_total_usec_cp, size_t ocgr_c2g_total_usec_cp_sz /*=sizeof(uint64_t)*/,
-
-                struct timeval* ocgr_c2g_initCM_start_cp, size_t ocgr_c2g_initCM_start_cp_sz /*=sizeof(struct timeval)*/,
-                struct timeval* ocgr_c2g_initCM_stop_cp, size_t ocgr_c2g_initCM_stop_cp_sz /*=sizeof(struct timeval)*/,
-                uint64_t* ocgr_c2g_initCM_sec_cp, size_t ocgr_c2g_initCM_sec_cp_sz /*=sizeof(uint64_t)*/,
-                uint64_t* ocgr_c2g_initCM_usec_cp, size_t ocgr_c2g_initCM_usec_cp_sz /*=sizeof(uint64_t)*/,
-
-                struct timeval* ocgr_c2g_updOrig_start_cp, size_t ocgr_c2g_updOrig_start_cp_sz /*=sizeof(struct timeval)*/,
-                struct timeval* ocgr_c2g_updOrig_stop_cp, size_t ocgr_c2g_updOrig_stop_cp_sz /*=sizeof(struct timeval)*/,
-                uint64_t* ocgr_c2g_updOrig_sec_cp, size_t ocgr_c2g_updOrig_sec_cp_sz /*=sizeof(uint64_t)*/,
-                uint64_t* ocgr_c2g_updOrig_usec_cp, size_t ocgr_c2g_updOrig_usec_cp_sz /*=sizeof(uint64_t)*/,
-
-                struct timeval* ocgr_c2g_updBnds_start_cp, size_t ocgr_c2g_updBnds_start_cp_sz /*=sizeof(struct timeval)*/,
-                struct timeval* ocgr_c2g_updBnds_stop_cp, size_t ocgr_c2g_updBnds_stop_cp_sz /*=sizeof(struct timeval)*/,
-                uint64_t* ocgr_c2g_updBnds_sec_cp, size_t ocgr_c2g_updBnds_sec_cp_sz /*=sizeof(uint64_t)*/,
-                uint64_t* ocgr_c2g_updBnds_usec_cp, size_t ocgr_c2g_updBnds_usec_cp_sz /*=sizeof(uint64_t)*/,
-
-                struct timeval* ocgr_c2g_upBd_total_start_cp, size_t ocgr_c2g_upBd_total_start_cp_sz /*=sizeof(struct timeval)*/,
-                struct timeval* ocgr_c2g_upBd_total_stop_cp, size_t ocgr_c2g_upBd_total_stop_cp_sz /*=sizeof(struct timeval)*/,
-                uint64_t* ocgr_c2g_upBd_total_sec_cp, size_t ocgr_c2g_upBd_total_sec_cp_sz /*=sizeof(uint64_t)*/,
-                uint64_t* ocgr_c2g_upBd_total_usec_cp, size_t ocgr_c2g_upBd_total_usec_cp_sz /*=sizeof(uint64_t)*/,
-
-                struct timeval* ocgr_c2g_upBd_rayFSp_start_cp, size_t ocgr_c2g_upBd_rayFSp_start_cp_sz /*=sizeof(struct timeval)*/,
-                struct timeval* ocgr_c2g_upBd_rayFSp_stop_cp, size_t ocgr_c2g_upBd_rayFSp_stop_cp_sz /*=sizeof(struct timeval)*/,
-                uint64_t* ocgr_c2g_upBd_rayFSp_sec_cp, size_t ocgr_c2g_upBd_rayFSp_sec_cp_sz /*=sizeof(uint64_t)*/,
-                uint64_t* ocgr_c2g_upBd_rayFSp_usec_cp, size_t ocgr_c2g_upBd_rayFSp_usec_cp_sz /*=sizeof(uint64_t)*/,
-
-                struct timeval* ocgr_c2g_upBd_regObst_start_cp, size_t ocgr_c2g_upBd_regObst_start_cp_sz /*=sizeof(struct timeval)*/,
-                struct timeval* ocgr_c2g_upBd_regObst_stop_cp, size_t ocgr_c2g_upBd_regObst_stop_cp_sz /*=sizeof(struct timeval)*/,
-                uint64_t* ocgr_c2g_upBd_regObst_sec_cp, size_t ocgr_c2g_upBd_regObst_sec_cp_sz /*=sizeof(uint64_t)*/,
-                uint64_t* ocgr_c2g_upBd_regObst_usec_cp, size_t ocgr_c2g_upBd_regObst_usec_cp_sz /*=sizeof(uint64_t)*/,
-                // The following argument is used to ensure that task wrapping call to start timer occurs before the call to
-                // return ending time after time section of code completes.
-                int* timer_sequentialize, size_t timer_sequentialize_sz /*sizeof(int)*/
-                // End of global variables used for timing sections of cloudToOccgrid
+                unsigned int* resolution, size_t resolution_sz /*=sizeof(unsigned int)*/
 		);
 
 void printMap();
