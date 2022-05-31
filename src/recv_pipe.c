@@ -516,7 +516,7 @@ void do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, size_t recvd_in_
 #endif
 
 																								DEBUG(printf("In do_recv_pipeline: num_received_vals = %u\n", num_recvd_vals); fflush(stdout));
-																								for (int i = 0; i < num_recvd_vals; i++) {
+																								for (int i = 0; i < num_recvd_vals; i++) { // TODO: HPVM: Parallelize this loop
 																																input_data_arg[i] = recvd_in_real[i] + I * recvd_in_imag[i];
 																								}
 																								DEBUG(printf("Calling compute\n"));
@@ -562,7 +562,7 @@ void do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, size_t recvd_in_
 
 #endif
 
-#ifdef INT_TIME
+#if defined(INT_TIME) && !defined(HPVM)
 																								gettimeofday(&r_pipe_start, NULL);
 #endif
 
@@ -594,13 +594,15 @@ void do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, size_t recvd_in_
 																																								sync_short_out_frames_arg, sync_short_out_frames_arg_sz,
 																																								d_sync_long_out_frames_arg, d_sync_long_out_frames_arg_sz);
 
-#ifdef INT_TIME
+#if defined(INT_TIME) && !defined(HPVM)
 																								gettimeofday(&r_pipe_stop, NULL);
 																								r_pipe_sec  += r_pipe_stop.tv_sec  - r_pipe_start.tv_sec;
 																								r_pipe_usec += r_pipe_stop.tv_usec - r_pipe_start.tv_usec;
 #endif
 
+#if !defined(HPVM)
 																								DEBUG(printf("CMP_MSG:\n%s\n", recvd_msg));
+#endif
 
 #if defined(HPVM)
 																								__hetero_task_end(T1);

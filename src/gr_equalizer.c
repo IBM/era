@@ -306,9 +306,6 @@ void gr_equalize(float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_IN
 		  unsigned* msg_psdu,
 		  unsigned* num_out_bits, uint8_t outputs[FRAME_EQ_OUT_MAX_SIZE],
 		  unsigned* num_out_sym, fx_pt out_symbols[FRAME_EQ_OUT_MAX_SIZE]) {
-	printf("hi");
-}
-	/*************** TODO: Uncomment me ************************
   DEBUG(printf("\nIn gr_equalize with %u inputs\n", num_inputs));
  #ifdef INT_TIME
   gettimeofday(&reql_total_start, NULL);
@@ -340,9 +337,7 @@ void gr_equalize(float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_IN
 
   //UNUSED: DEBUG(printf(" GR_FREQ : d_freq_offset_from_synclong = %12.8f\n", d_freq_offset_from_synclong));
   DEBUG(printf(" GR_FREQ : d_epsilon0 = %12.8f\n", d_epsilon0));
-	*************** TODO: Uncomment me ************************/
-//  unsigned num_inp_sym = num_inputs /*FRAME_EQ_IN_MAX_SIZE*/ / 64;
-	/*************** TODO: Uncomment me ************************
+  unsigned num_inp_sym = num_inputs /*FRAME_EQ_IN_MAX_SIZE*/ / 64;
   DEBUG(printf(" gr_equalizer has %u input symbols\n", num_inp_sym));
   for (inp_sym = 0; inp_sym < num_inp_sym ; inp_sym++) {
     // Set up the values for the current symbols and compensate sampling offset
@@ -439,4 +434,3 @@ void gr_equalize(float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_IN
   reql_total_usec += reql_total_stop.tv_usec - reql_total_start.tv_usec;
  #endif
 }
-	*************** TODO: Uncomment me ************************/

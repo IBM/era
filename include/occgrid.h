@@ -122,7 +122,8 @@ void cloudToOccgrid(
                 double* raytrace_range, size_t raytrace_range_sz /*=sizeof(double)*/,
                 unsigned int* x_dim, size_t x_dim_sz /*=sizeof(unsigned int)*/,
                 unsigned int* y_dim, size_t y_dim_sz /*=sizeof(unsigned int)*/,
-                unsigned int* resolution, size_t resolution_sz /*=sizeof(unsigned int)*/
+                unsigned int* resolution, size_t resolution_sz /*=sizeof(unsigned int)*/,
+                int *timer_sequentialize, size_t timer_sequentialize_sz /*=sizeof(int) */
 		);
 
 void printMap();

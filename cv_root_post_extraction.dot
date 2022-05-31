@@ -1,0 +1,10 @@
+digraph cv_root{
+subgraph {
+rank = same;cv_root_extracted_reorder;
+}edge [color=red]
+cv_root -> cv_root_extracted_reorder [style=bold ]
+edge [color=red]
+cv_root -> cv_root_extracted_reorder [style=bold ]
+edge [color=red]
+cv_root -> cv_root_extracted_reorder [style=bold ]
+}
