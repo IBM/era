@@ -11,7 +11,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-//#define HPVM
+#define HPVM
 #define HPVM_CV_ROOT
 //#define HPVM_PROCESS_LIDAR
 
@@ -35,7 +35,7 @@
 
 #undef INT_TIME // TODO: REMOVE ME; this should be un-set during compilation
 
-#undef HPVM // TODO: remove me
+//#undef HPVM // TODO: remove me
 
 #define PARALLEL_PTHREADS false
 
@@ -364,6 +364,7 @@ void fuse_maps(int n_recvd_in,
 	void *SectionLoop = __hetero_section_begin();
 #endif
 
+
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
 	void *T1 = __hetero_task_begin(28, n_recvd_in, recvd_in_real, recvd_in_real_sz,
 			recvd_msg, recvd_msg_sz, recvd_msg_len, recvd_msg_len_sz,
@@ -437,6 +438,7 @@ void fuse_maps(int n_recvd_in,
 	__hetero_task_end(T1);
 #endif
 
+
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
 	void * T2 = __hetero_task_begin(4, uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
 			recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz,
@@ -449,7 +451,7 @@ void fuse_maps(int n_recvd_in,
 	gettimeofday( & start_pd_lz4_uncmp, NULL);
 #endif
 	DEBUG(printf("Calling LZ4_decompress_safe with %d input bytes...\n", recvd_msg_len));
-	*dec_bytes = LZ4_decompress_safe((char * ) recvd_msg, (char * ) uncmp_data, *recvd_msg_len, MAX_UNCOMPRESSED_DATA_SIZE); // TODO: Fix me
+	*dec_bytes = LZ4_decompress_safe((char * ) recvd_msg, (char * ) uncmp_data, *recvd_msg_len, MAX_UNCOMPRESSED_DATA_SIZE); 
 
 	if (*dec_bytes < 0) {
 		printf("LZ4_decompress_safe ERROR : %d\n", *dec_bytes);
@@ -467,6 +469,8 @@ void fuse_maps(int n_recvd_in,
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
 	__hetero_task_end(T2);
 #endif
+
+#if false // TODO: remove me
 
 	// This task just has some logging stuff. It doesn't to any compute relevant to the overall algorithm
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
@@ -532,7 +536,7 @@ void fuse_maps(int n_recvd_in,
 	// just copying it down should be safe
 	Costmap2D * local_map_cp = & (observations[curr_obs].master_costmap);
 	Costmap2D * remote_map_cp = (Costmap2D * ) & (uncmp_data); // Convert "type" to Costmap2D
-	fuseIntoLocal(local_map_cp, remote_map_cp); // TODO: HVPM: Fix me
+	//fuseIntoLocal(local_map_cp, remote_map_cp); // TODO: HVPM: Fix me
 	/*combineGrids(remote_map->costmap, local_map->costmap,
 	  remote_map->av_x, remote_map->av_y,
 	  local_map->av_x, local_map->av_y,
@@ -570,6 +574,8 @@ void fuse_maps(int n_recvd_in,
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
 	__hetero_task_end(T4);
 #endif
+
+#endif // if false
 
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
 	// End graph here as we are doing IO in the following section so it should probably not be run in
