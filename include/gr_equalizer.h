@@ -6,6 +6,8 @@
 #include "sdr_type.h"
 #include "sdr_base.h"
 
+#define DEC_SIG_FIELD_ON_HW false
+
 #ifdef INT_TIME
 /* This is RECV-Equalize internal Timing information (gathering resources) */
 extern uint64_t reql_total_sec;
@@ -29,4 +31,14 @@ void gr_equalize( float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_I
 		  unsigned* num_out_bits, uint8_t outputs[FRAME_EQ_OUT_MAX_SIZE],
 		  unsigned* num_out_sym, fx_pt out_symbols[FRAME_EQ_OUT_MAX_SIZE] );
 
+
+
+void gr_equalize_test1(// float wifi_start, unsigned num_inputs,
+                //fx_pt inputs[FRAME_EQ_IN_MAX_SIZE],
+                  //unsigned* msg_psdu,
+                  //unsigned* num_out_bits,
+		  uint8_t outputs[FRAME_EQ_OUT_MAX_SIZE]
+                  //unsigned* num_out_sym,
+		  //fx_pt out_symbols[FRAME_EQ_OUT_MAX_SIZE]
+		);
 #endif

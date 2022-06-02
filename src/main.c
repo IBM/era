@@ -11,11 +11,11 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#define HPVM
+//#define HPVM
 #define HPVM_CV_ROOT
-#define HPVM_PROCESS_LIDAR
+//#define HPVM_PROCESS_LIDAR
 
-#define HPVM_RECV_PIPELINE
+//#define HPVM_RECV_PIPELINE
 
 #include "globals.h"
 #include "debug.h"
@@ -33,17 +33,29 @@
 #include "hetero.h"
 #endif
 
-#undef HPVM // TODO: remove me
-
 #undef INT_TIME // TODO: REMOVE ME; this should be un-set during compilation
+
+#undef HPVM // TODO: remove me
 
 #define PARALLEL_PTHREADS false
 
-char *IMAGE_FN = "gridimage_era1_"; // TODO: Change value based on test being compiled; look at CMake like
+#define ERA1
+
+#ifdef ERA1
+char *IMAGE_FN = "gridimage_era1_"; 
 #define BAG_PORT 5556
 #define XMIT_PORT 5558
-#define RECV_PORT 5560
+#define RECV_PORT 5559
 #define CAR_PORT 5562
+#endif
+
+#ifdef ERA2
+char *IMAGE_FN = "gridimage_era2_"; 
+#define BAG_PORT 5557
+#define XMIT_PORT 5560
+#define RECV_PORT 5561
+#define CAR_PORT 5563
+#endif
 
 // The PORTS are defined in the compilation process, and comforms to the
 // definition in the read_bag_x.py files and wifi_comm_x.py files.
@@ -425,8 +437,7 @@ void fuse_maps(int n_recvd_in,
 	__hetero_task_end(T1);
 #endif
 
-	/******************** TODO: Uncoment me *******************
-#if defined(HPVM) && true
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
 	void * T2 = __hetero_task_begin(4, uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
 			recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz,
 			2, uncmp_data, uncmp_data_sz, dec_bytes, dec_bytes_sz, "decompress_task");
@@ -438,8 +449,8 @@ void fuse_maps(int n_recvd_in,
 	gettimeofday( & start_pd_lz4_uncmp, NULL);
 #endif
 	DEBUG(printf("Calling LZ4_decompress_safe with %d input bytes...\n", recvd_msg_len));
-	*dec_bytes = LZ4_decompress_safe((char * ) recvd_msg, (char * ) uncmp_data, *recvd_msg_len,
-			MAX_UNCOMPRESSED_DATA_SIZE);
+	*dec_bytes = LZ4_decompress_safe((char * ) recvd_msg, (char * ) uncmp_data, *recvd_msg_len, MAX_UNCOMPRESSED_DATA_SIZE); // TODO: Fix me
+
 	if (*dec_bytes < 0) {
 		printf("LZ4_decompress_safe ERROR : %d\n", *dec_bytes);
 	}
@@ -453,12 +464,12 @@ void fuse_maps(int n_recvd_in,
 	pd_lz4_uncmp_usec += stop_pd_lz4_uncmp.tv_usec - start_pd_lz4_uncmp.tv_usec;
 #endif
 
-#if defined(HPVM) && true
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
 	__hetero_task_end(T2);
 #endif
 
 	// This task just has some logging stuff. It doesn't to any compute relevant to the overall algorithm
-#if defined(HPVM) && true
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
 	void * T3 = __hetero_task_begin(3, uncmp_data, uncmp_data_sz, dec_bytes, dec_bytes_sz,
 			observations, observations_sz,
 			2, uncmp_data, uncmp_data_sz, dec_bytes, dec_bytes_sz, "logging_task");
@@ -498,11 +509,11 @@ void fuse_maps(int n_recvd_in,
 	fclose(ascii_fp);
 #endif
 
-#if defined(HPVM) && true
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
 	__hetero_task_end(T3);
 #endif
 
-#if defined(HPVM) && true
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
 	void * T4 = __hetero_task_begin(2, observations, observations_sz, uncmp_data, uncmp_data_sz,
 			1, observations, observations_sz, "gridFusion_task");
 #endif
@@ -521,14 +532,12 @@ void fuse_maps(int n_recvd_in,
 	// just copying it down should be safe
 	Costmap2D * local_map_cp = & (observations[curr_obs].master_costmap);
 	Costmap2D * remote_map_cp = (Costmap2D * ) & (uncmp_data); // Convert "type" to Costmap2D
-	fuseIntoLocal(local_map_cp, remote_map_cp);
-	******************** TODO: Uncoment me *******************/
+	fuseIntoLocal(local_map_cp, remote_map_cp); // TODO: HVPM: Fix me
 	/*combineGrids(remote_map->costmap, local_map->costmap,
 	  remote_map->av_x, remote_map->av_y,
 	  local_map->av_x, local_map->av_y,
 	  local_map->x_dim, local_map->y_dim, local_map->cell_size);
 	  */
-	/******************** TODO: Uncoment me *******************
 #ifdef INT_TIME
 	gettimeofday( & stop_pd_combGrids, NULL);
 	pd_combGrids_sec += stop_pd_combGrids.tv_sec - start_pd_combGrids.tv_sec;
@@ -558,10 +567,9 @@ void fuse_maps(int n_recvd_in,
 	write_array_to_file(local_map_cp -> costmap, COST_MAP_ENTRIES);
 #endif
 
-#if defined(HPVM) && true
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
 	__hetero_task_end(T4);
 #endif
-	******************** TODO: Uncoment me *******************/
 
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
 	// End graph here as we are doing IO in the following section so it should probably not be run in
@@ -669,7 +677,7 @@ void *receive_and_fuse_maps_impl(Observation *observations /*=observations -> gl
 					closeout_and_exit("RECV IMAG got too few bytes..", -1);
 				}
 			}
-			DBGOUT2(printf("XFER %4u : Dumping RECV-PIPE IMAG raw bytes\n", xmit_recv_count);
+			DBGOUT2(printf("XFER %4u : Dumping RECV-PIPE IMAG raw bytes\n", n_recvd_in);
 					for (int i = 0; i < n_recvd_in; i++) {
 					printf("XFER %4u IMAG-byte %6u : %f\n", odo_count, i, recvd_in_imag[i]);
 					} printf("\n"));
@@ -721,6 +729,7 @@ void *receive_and_fuse_maps_impl(Observation *observations /*=observations -> gl
 			size_t num_eq_out_bits_sz = sizeof(unsigned);
 			unsigned psdu = 0;
 			size_t psdu_sz = sizeof(unsigned);
+
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
 			// 31 inputs, 7 outputs
 			void *LaunchInner = __hetero_launch((void *)fuse_maps, 31,
@@ -794,6 +803,7 @@ void *receive_and_fuse_maps_impl(Observation *observations /*=observations -> gl
 					d_sync_long_out_frames, SYNC_L_OUT_MAX_SIZE);
 #endif
 
+
 			// This is now the fused map that should be sent to the AV(Car)
 			//  The n values of the (fused) local_map Costmap
 			// Connect to the Car-Socket and send the data...
@@ -811,7 +821,7 @@ void *receive_and_fuse_maps_impl(Observation *observations /*=observations -> gl
 			DBGOUT2(printf("CAR-OUT %4u : Dumping XMIT-PIPE REAL raw bytes\n", car_send_count);
 					for (int i = 0; i < car_bytes; i++) {
 					unsigned char c = car_out_chars[i];
-					printf("CAR-OUT %4u REAL-byte %6u : %u\n", car_sendcount, i, c);
+					printf("CAR-OUT %4u REAL-byte %6u : %u\n", car_send_count, i, c);
 					} printf("\n"));
 #ifdef INT_TIME
 			gettimeofday(&start_pd_wifi_car, NULL);
@@ -1079,7 +1089,7 @@ void transmit_occgrid(int *n_cmp_bytes /*from process_lidar_to_occgrid*/, size_t
 	// This section has no tasks as we are doing IO; introducing tasks can lead to race conditions
 	// Now we transmit the grid...
 
-	DBGOUT(printf("  Back from do_xmit_pipeline with %u xmit outputs...\n", *n_xmit_out));
+	DBGOUT(printf("  Back from do_xmit_pipeline with %u xmit outputs...\n", n_xmit_out));
 
 	// This is now the content that should be sent out via IEEE 802.11p WiFi
 	// The n_xmit_out values of xmit_out_real and xmit_out_imag
@@ -1387,7 +1397,7 @@ void cv_root(unsigned tr_val, label_t *out_label, size_t outlabel_sz)
 	void *T1 = __hetero_task_begin(2, tr_val, out_label, outlabel_sz, 1, out_label, outlabel_sz);
 #endif
 
-	*out_label = run_object_classification(tr_val);
+// TODO: Uncomment me	*out_label = run_object_classification(tr_val);
 
 #if (defined(HPVM) || defined(HPVM_CV_ROOT))
 	__hetero_task_end(T1);
@@ -1395,7 +1405,7 @@ void cv_root(unsigned tr_val, label_t *out_label, size_t outlabel_sz)
 #endif
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char *argv[]) 
 {
 	struct sockaddr_in bag_servaddr;
 	struct sockaddr_in xmit_servaddr;

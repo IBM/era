@@ -39,8 +39,6 @@
 
 #include "globalsRecv.h"
 
-#include "test.h"
-
 #include "recv_pipe.h"
 
 #if defined(HPVM)
@@ -49,6 +47,8 @@
 #endif
 
 #undef INT_TIME // TODO: REMOVE ME; this should be un-set during compilation
+
+#undef HPVM 	// TODO: remove me
 
 #ifdef INT_TIME
 /* This is RECV PIPE internal Timing information (gathering resources) */
@@ -613,6 +613,16 @@ void do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, size_t recvd_in_
 #endif
 																}
 
+void gr_equalize_test( float wifi_start, unsigned num_inputs,
+                fx_pt inputs[FRAME_EQ_IN_MAX_SIZE],
+                  unsigned* msg_psdu,
+                  unsigned* num_out_bits, uint8_t outputs[FRAME_EQ_OUT_MAX_SIZE],
+                  unsigned* num_out_sym, fx_pt out_symbols[FRAME_EQ_OUT_MAX_SIZE]
+                ) {
+								*num_out_sym = *num_out_bits;
+        printf("Call works");
+}
+
 void compute(unsigned num_inputs, fx_pt* input_data_arg, size_t input_data_arg_sz, 
 																int* out_msg_len, size_t out_msg_len_sz, uint8_t *out_msg, size_t out_msg_sz,
 																uint8_t* scrambled_msg /*local*/, size_t scrambled_msg_sz /*= MAX_ENCODED_BITS * 3 / 4 */,
@@ -1020,6 +1030,7 @@ void compute(unsigned num_inputs, fx_pt* input_data_arg, size_t input_data_arg_s
 																																								toBeEqualized[i] = (fx_pt)(fft_ar_r[i] + fft_ar_i[i] * I);
 																																}
 																																float wifi_start = (*ss_freq_offset) - (*sl_freq_offset);
+
 																																uint8_t equalized_bits[FRAME_EQ_OUT_MAX_SIZE];
 																																for (int ii = 0; ii < FRAME_EQ_OUT_MAX_SIZE; ii++) {
 																																								equalized_bits[ii] = 0;
@@ -1032,10 +1043,9 @@ void compute(unsigned num_inputs, fx_pt* input_data_arg, size_t input_data_arg_s
 #ifdef INT_TIME
 																																gettimeofday(&r_eqlz_start, NULL);
 #endif
-																																// unsigned psdu = 0;
+																																gr_equalize(wifi_start, *num_fft_outs, toBeEqualized, psdu, num_eq_out_bits, equalized_bits, 
+																																												&num_eq_out_sym, equalized); 
 
-																																// gr_equalize(wifi_start, *num_fft_outs, toBeEqualized, psdu, num_eq_out_bits, equalized_bits, 
-																																// 												&num_eq_out_sym, equalized); // TODO: THIS CALL DOESN'T WORK; GIVES NULL MAPPING ERROR; FIX ME; UNCOMMENT ME
 
 																																DEBUG(printf("GR_FR_EQ : fft_outs = %u items %u ffts : num_eq_out_bits = %u %u : num_eq_out_sym = %u\n", 
 																																																								*num_fft_outs, (*num_fft_outs)/64, *num_eq_out_bits, (*num_eq_out_bits)/48, num_eq_out_sym));
@@ -1043,9 +1053,9 @@ void compute(unsigned num_inputs, fx_pt* input_data_arg, size_t input_data_arg_s
 
 																																DEBUG(for (int ti = 0; ti < *num_eq_out_bits; ti++) {
 																																																printf(" FR_EQ_OUT %5u : toBeEQ %12.8f %12.8f : EQLZD %12.8f %12.8f : EQ_BIT %u\n", ti, 
-																																																																crealf(toBeEqualized[ti]), cimagf(toBeEqualized[ti]), crealf(equalized[ti]), 
-																																																																cimagf(equalized[ti]), equalized_bits[ti]);
-																																																});
+																																																								crealf(toBeEqualized[ti]), cimagf(toBeEqualized[ti]), crealf(equalized[ti]), 
+																																																								cimagf(equalized[ti]), equalized_bits[ti]);
+																																						});
 																								}
 #if defined(HPVM) 
 																								__hetero_task_end(T12);

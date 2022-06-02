@@ -306,6 +306,7 @@ void gr_equalize(float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_IN
 		  unsigned* msg_psdu,
 		  unsigned* num_out_bits, uint8_t outputs[FRAME_EQ_OUT_MAX_SIZE],
 		  unsigned* num_out_sym, fx_pt out_symbols[FRAME_EQ_OUT_MAX_SIZE]) {
+
   DEBUG(printf("\nIn gr_equalize with %u inputs\n", num_inputs));
  #ifdef INT_TIME
   gettimeofday(&reql_total_start, NULL);
@@ -433,4 +434,20 @@ void gr_equalize(float wifi_start, unsigned num_inputs, fx_pt inputs[FRAME_EQ_IN
   reql_total_sec  += reql_total_stop.tv_sec  - reql_total_start.tv_sec;
   reql_total_usec += reql_total_stop.tv_usec - reql_total_start.tv_usec;
  #endif
+
+
 }
+
+
+void gr_equalize_test1(//float wifi_start, unsigned num_inputs,
+                //fx_pt inputs[FRAME_EQ_IN_MAX_SIZE],
+                //unsigned* msg_psdu,
+                //unsigned* num_out_bits,
+		uint8_t outputs[FRAME_EQ_OUT_MAX_SIZE]
+                //unsigned* num_out_sym,
+		//fx_pt out_symbols[FRAME_EQ_OUT_MAX_SIZE]
+		 ) {
+        printf("Call works");
+}
+
+
