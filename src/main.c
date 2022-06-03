@@ -364,14 +364,14 @@ void fuse_maps(int n_recvd_in,
 	void *SectionLoop = __hetero_section_begin();
 #endif
 
-
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
 	void *T1 = __hetero_task_begin(28, n_recvd_in, recvd_in_real, recvd_in_real_sz,
 			recvd_msg, recvd_msg_sz, recvd_msg_len, recvd_msg_len_sz,
 			recvd_in_imag, recvd_in_imag_sz,
 			// Start variables used by do_recv_pipeline
 			//              Local variables used by do_recv_pipeline
-			scrambled_msg, scrambled_msg_sz, ss_freq_offset, ss_freq_offset_sz,
+			scrambled_msg, scrambled_msg_sz, 
+			ss_freq_offset, ss_freq_offset_sz,
 			num_sync_short_vals, num_sync_short_vals_sz,
 			sl_freq_offset, sl_freq_offset_sz,
 			num_sync_long_vals, num_sync_long_vals_sz, fft_ar_r, fft_ar_r_sz,
@@ -470,17 +470,21 @@ void fuse_maps(int n_recvd_in,
 	__hetero_task_end(T2);
 #endif
 
-#if false // TODO: remove me
-
 	// This task just has some logging stuff. It doesn't to any compute relevant to the overall algorithm
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
 	void * T3 = __hetero_task_begin(3, uncmp_data, uncmp_data_sz, dec_bytes, dec_bytes_sz,
 			observations, observations_sz,
-			2, uncmp_data, uncmp_data_sz, dec_bytes, dec_bytes_sz, "logging_task");
+			1, dec_bytes, dec_bytes_sz, "logging_task");
 #endif
 
 	DEBUG(printf("Recevied %d decoded bytes from the wifi...\n", *dec_bytes));
-	Costmap2D * remote_map = (Costmap2D * ) & (uncmp_data); // Convert "type" to Costmap2D
+	// NOTE: In the original code, we were taking the address of uncmp_data and then casting that to Costmap2D.
+	// However, that is dangerous; if worked in original case cause uncmp_data and the array it "pointed" to were all 
+	// located at the same address (i.e. uncmp_data = &uncmp_data = &uncmp_data[0]).
+	// That is NOT the case anymore since uncmp_data is passed in by value (so &uncmp_data != &uncmp_data[0]). 
+	// However, uncmp_data still equals uncmp_data[0]. Thus, in the following line, the & before uncmp_data was
+	// dropped
+	Costmap2D * remote_map = (Costmap2D * ) (uncmp_data); // Convert "type" to Costmap2D 
 
 	DBGOUT(printf("  Back from LZ4_decompress_safe with %u decompressed bytes\n", *dec_bytes);
 			printf("  Remote CostMAP: AV x %lf y %lf z %lf\n", remote_map -> av_x, remote_map -> av_y,
@@ -492,7 +496,7 @@ void fuse_maps(int n_recvd_in,
 	printf("Receive step %u : Processing fusion for curr_obs = %d\n", recv_count, curr_obs);
 	Costmap2D * local_map = & (observations[curr_obs].master_costmap);
 
-#ifdef WRITE_ASCII_MAP
+#if defined(WRITE_ASCII_MAP) 
 	char ascii_file_name[32];
 	snprintf(ascii_file_name, sizeof(char) * 32, "%s%04d.txt", ASCII_FN, ascii_counter);
 	FILE * ascii_fp = fopen(ascii_file_name, "w");
@@ -517,8 +521,9 @@ void fuse_maps(int n_recvd_in,
 	__hetero_task_end(T3);
 #endif
 
+
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
-	void * T4 = __hetero_task_begin(2, observations, observations_sz, uncmp_data, uncmp_data_sz,
+	void * T4 = __hetero_task_begin(2, observations, observations_sz, uncmp_data, uncmp_data_sz, 
 			1, observations, observations_sz, "gridFusion_task");
 #endif
 
@@ -535,8 +540,14 @@ void fuse_maps(int n_recvd_in,
 	// Copied the following two variable above task; this wasn't being modified in the above task so
 	// just copying it down should be safe
 	Costmap2D * local_map_cp = & (observations[curr_obs].master_costmap);
-	Costmap2D * remote_map_cp = (Costmap2D * ) & (uncmp_data); // Convert "type" to Costmap2D
-	//fuseIntoLocal(local_map_cp, remote_map_cp); // TODO: HVPM: Fix me
+	// NOTE: In the original code, we were taking the address of uncmp_data and then casting that to Costmap2D.
+	// However, that is dangerous; if worked in original case cause uncmp_data and the array it "pointed" to were all 
+	// located at the same address (i.e. uncmp_data = &uncmp_data = &uncmp_data[0]).
+	// That is NOT the case anymore since uncmp_data is passed in by value (so &uncmp_data != &uncmp_data[0]). 
+	// However, uncmp_data still equals uncmp_data[0]. Thus, in the following line, the & before uncmp_data was
+	// dropped
+	Costmap2D * remote_map_cp = (Costmap2D * ) (uncmp_data); // Convert "type" to Costmap2D 
+	fuseIntoLocal(local_map_cp, remote_map_cp); 
 	/*combineGrids(remote_map->costmap, local_map->costmap,
 	  remote_map->av_x, remote_map->av_y,
 	  local_map->av_x, local_map->av_y,
@@ -574,8 +585,6 @@ void fuse_maps(int n_recvd_in,
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
 	__hetero_task_end(T4);
 #endif
-
-#endif // if false
 
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
 	// End graph here as we are doing IO in the following section so it should probably not be run in

@@ -48,8 +48,6 @@
 
 #undef INT_TIME // TODO: REMOVE ME; this should be un-set during compilation
 
-//#undef HPVM 	// TODO: remove me
-
 #ifdef INT_TIME
 /* This is RECV PIPE internal Timing information (gathering resources) */
 struct timeval r_pipe_stop, r_pipe_start;
