@@ -28,6 +28,7 @@ use_c99()
 #endif()
 
 include_directories(include $ENV{CONDA_PREFIX}/include/python3.8)
+include_directories(include $ENV{CONDA_PREFIX}/lib/python3.8/site-packages/numpy/core/include)
 #include_directories(include $ENV{CONDA_PREFIX}/include/python3.8 ${OpenCV_INCLUDE_DIRS})
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
