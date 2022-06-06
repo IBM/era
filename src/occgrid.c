@@ -17,7 +17,7 @@
 #include "hetero.h"
 #endif
 
-#undef HPVM 	// TODO: remove me
+//#undef HPVM 	// TODO: remove me
 
 #ifdef INT_TIME
 /* This is OCC-GRID Internal Timing information (gathering resources) */
@@ -464,7 +464,7 @@ void cloudToOccgrid(Observation * obs_ptr, size_t obs_ptr_sz,
 		void * Section = __hetero_section_begin();
 #endif
 
-#if defined(INT_TIME) && !defined(HPVM) 
+#if defined(INT_TIME) && !defined(HPVM)  && false // TODO: remove me && false
 		gettimeofday(&ocgr_c2g_total_start, NULL);
 #endif
 

@@ -980,9 +980,6 @@ void process_lidar_to_occgrid(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*
 	// as indicated by lidar_inputs
 #endif
 
-
-	printf("%s %d In T1", __FILE__, __LINE__);
-
 	cloudToOccgrid(observationVal, observations_sz, lidar_inputs, lidarin_sz,
 			AVxyzw /*=1.5*/, AVxyzw_sz, rolling_window /*=false*/, rolling_window_sz,
 			min_obstracle_height /*=0.05*/, min_obstracle_height_sz,
@@ -1378,9 +1375,6 @@ void lidar_root(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*=sizeof( * lid
 			xmit_out_imag, xmit_out_imag_sz,
 			"TX_wrapper_task");
 #endif
-
-	printf("%s %d In T2 for lidar_root", __FILE__, __LINE__);
-
 
 	do_xmit_pipeline(n_cmp_bytes, n_cmp_bytes_sz, (char *)cmp_data, cmp_data_sz,
 			n_xmit_out, n_xmit_out_sz, xmit_out_real, xmit_out_real_sz,

@@ -72,7 +72,7 @@ X. OUTPUT : <some number of complex numbers?>
 
 #undef INT_TIME // TODO: REMOVE ME; this should be un-set during compilation
 
-#undef HPVM // TODO: Remove me
+//#undef HPVM // TODO: Remove me
 
 #ifdef INT_TIME
 /* This is XMIT PIPE internal Timing information (gathering resources) */
