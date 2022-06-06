@@ -11,9 +11,9 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#define HPVM
+//#define HPVM
 #define HPVM_CV_ROOT
-//#define HPVM_PROCESS_LIDAR
+#define HPVM_PROCESS_LIDAR
 
 //#define HPVM_RECV_PIPELINE
 
@@ -33,9 +33,9 @@
 #include "hetero.h"
 #endif
 
-#undef INT_TIME // TODO: REMOVE ME; this should be un-set during compilation
+#undef HPVM // TODO: remove me
 
-//#undef HPVM // TODO: remove me
+#undef INT_TIME // TODO: REMOVE ME; this should be un-set during compilation
 
 #define PARALLEL_PTHREADS false
 
@@ -370,8 +370,7 @@ void fuse_maps(int n_recvd_in,
 			recvd_in_imag, recvd_in_imag_sz,
 			// Start variables used by do_recv_pipeline
 			//              Local variables used by do_recv_pipeline
-			scrambled_msg, scrambled_msg_sz, 
-			ss_freq_offset, ss_freq_offset_sz,
+			scrambled_msg, scrambled_msg_sz, ss_freq_offset, ss_freq_offset_sz,
 			num_sync_short_vals, num_sync_short_vals_sz,
 			sl_freq_offset, sl_freq_offset_sz,
 			num_sync_long_vals, num_sync_long_vals_sz, fft_ar_r, fft_ar_r_sz,
@@ -438,8 +437,7 @@ void fuse_maps(int n_recvd_in,
 	__hetero_task_end(T1);
 #endif
 
-
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
+#if defined(HPVM) && true
 	void * T2 = __hetero_task_begin(4, uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
 			recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz,
 			2, uncmp_data, uncmp_data_sz, dec_bytes, dec_bytes_sz, "decompress_task");
@@ -451,8 +449,8 @@ void fuse_maps(int n_recvd_in,
 	gettimeofday( & start_pd_lz4_uncmp, NULL);
 #endif
 	DEBUG(printf("Calling LZ4_decompress_safe with %d input bytes...\n", recvd_msg_len));
-	*dec_bytes = LZ4_decompress_safe((char * ) recvd_msg, (char * ) uncmp_data, *recvd_msg_len, MAX_UNCOMPRESSED_DATA_SIZE); 
-
+	*dec_bytes = LZ4_decompress_safe((char * ) recvd_msg, (char * ) uncmp_data, *recvd_msg_len,
+			MAX_UNCOMPRESSED_DATA_SIZE);
 	if (*dec_bytes < 0) {
 		printf("LZ4_decompress_safe ERROR : %d\n", *dec_bytes);
 	}
@@ -466,25 +464,19 @@ void fuse_maps(int n_recvd_in,
 	pd_lz4_uncmp_usec += stop_pd_lz4_uncmp.tv_usec - start_pd_lz4_uncmp.tv_usec;
 #endif
 
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
+#if defined(HPVM) && true
 	__hetero_task_end(T2);
 #endif
 
 	// This task just has some logging stuff. It doesn't to any compute relevant to the overall algorithm
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
+#if defined(HPVM) && true
 	void * T3 = __hetero_task_begin(3, uncmp_data, uncmp_data_sz, dec_bytes, dec_bytes_sz,
 			observations, observations_sz,
-			1, dec_bytes, dec_bytes_sz, "logging_task");
+			2, uncmp_data, uncmp_data_sz, dec_bytes, dec_bytes_sz, "logging_task");
 #endif
 
 	DEBUG(printf("Recevied %d decoded bytes from the wifi...\n", *dec_bytes));
-	// NOTE: In the original code, we were taking the address of uncmp_data and then casting that to Costmap2D.
-	// However, that is dangerous; if worked in original case cause uncmp_data and the array it "pointed" to were all 
-	// located at the same address (i.e. uncmp_data = &uncmp_data = &uncmp_data[0]).
-	// That is NOT the case anymore since uncmp_data is passed in by value (so &uncmp_data != &uncmp_data[0]). 
-	// However, uncmp_data still equals uncmp_data[0]. Thus, in the following line, the & before uncmp_data was
-	// dropped
-	Costmap2D * remote_map = (Costmap2D * ) (uncmp_data); // Convert "type" to Costmap2D 
+	Costmap2D * remote_map = (Costmap2D * ) & (uncmp_data); // Convert "type" to Costmap2D
 
 	DBGOUT(printf("  Back from LZ4_decompress_safe with %u decompressed bytes\n", *dec_bytes);
 			printf("  Remote CostMAP: AV x %lf y %lf z %lf\n", remote_map -> av_x, remote_map -> av_y,
@@ -496,7 +488,7 @@ void fuse_maps(int n_recvd_in,
 	printf("Receive step %u : Processing fusion for curr_obs = %d\n", recv_count, curr_obs);
 	Costmap2D * local_map = & (observations[curr_obs].master_costmap);
 
-#if defined(WRITE_ASCII_MAP) 
+#ifdef WRITE_ASCII_MAP
 	char ascii_file_name[32];
 	snprintf(ascii_file_name, sizeof(char) * 32, "%s%04d.txt", ASCII_FN, ascii_counter);
 	FILE * ascii_fp = fopen(ascii_file_name, "w");
@@ -517,13 +509,12 @@ void fuse_maps(int n_recvd_in,
 	fclose(ascii_fp);
 #endif
 
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
+#if defined(HPVM) && true
 	__hetero_task_end(T3);
 #endif
 
-
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
-	void * T4 = __hetero_task_begin(2, observations, observations_sz, uncmp_data, uncmp_data_sz, 
+#if defined(HPVM) && true
+	void * T4 = __hetero_task_begin(2, observations, observations_sz, uncmp_data, uncmp_data_sz,
 			1, observations, observations_sz, "gridFusion_task");
 #endif
 
@@ -540,14 +531,8 @@ void fuse_maps(int n_recvd_in,
 	// Copied the following two variable above task; this wasn't being modified in the above task so
 	// just copying it down should be safe
 	Costmap2D * local_map_cp = & (observations[curr_obs].master_costmap);
-	// NOTE: In the original code, we were taking the address of uncmp_data and then casting that to Costmap2D.
-	// However, that is dangerous; if worked in original case cause uncmp_data and the array it "pointed" to were all 
-	// located at the same address (i.e. uncmp_data = &uncmp_data = &uncmp_data[0]).
-	// That is NOT the case anymore since uncmp_data is passed in by value (so &uncmp_data != &uncmp_data[0]). 
-	// However, uncmp_data still equals uncmp_data[0]. Thus, in the following line, the & before uncmp_data was
-	// dropped
-	Costmap2D * remote_map_cp = (Costmap2D * ) (uncmp_data); // Convert "type" to Costmap2D 
-	fuseIntoLocal(local_map_cp, remote_map_cp); 
+	Costmap2D * remote_map_cp = (Costmap2D * ) (uncmp_data); // Convert "type" to Costmap2D
+	fuseIntoLocal(local_map_cp, remote_map_cp);
 	/*combineGrids(remote_map->costmap, local_map->costmap,
 	  remote_map->av_x, remote_map->av_y,
 	  local_map->av_x, local_map->av_y,
@@ -582,7 +567,7 @@ void fuse_maps(int n_recvd_in,
 	write_array_to_file(local_map_cp -> costmap, COST_MAP_ENTRIES);
 #endif
 
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
+#if defined(HPVM) && true
 	__hetero_task_end(T4);
 #endif
 
@@ -692,7 +677,7 @@ void *receive_and_fuse_maps_impl(Observation *observations /*=observations -> gl
 					closeout_and_exit("RECV IMAG got too few bytes..", -1);
 				}
 			}
-			DBGOUT2(printf("XFER %4u : Dumping RECV-PIPE IMAG raw bytes\n", n_recvd_in);
+			DBGOUT2(printf("XFER %4u : Dumping RECV-PIPE IMAG raw bytes\n", xmit_recv_count);
 					for (int i = 0; i < n_recvd_in; i++) {
 					printf("XFER %4u IMAG-byte %6u : %f\n", odo_count, i, recvd_in_imag[i]);
 					} printf("\n"));
@@ -744,7 +729,6 @@ void *receive_and_fuse_maps_impl(Observation *observations /*=observations -> gl
 			size_t num_eq_out_bits_sz = sizeof(unsigned);
 			unsigned psdu = 0;
 			size_t psdu_sz = sizeof(unsigned);
-
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
 			// 31 inputs, 7 outputs
 			void *LaunchInner = __hetero_launch((void *)fuse_maps, 31,
@@ -818,7 +802,6 @@ void *receive_and_fuse_maps_impl(Observation *observations /*=observations -> gl
 					d_sync_long_out_frames, SYNC_L_OUT_MAX_SIZE);
 #endif
 
-
 			// This is now the fused map that should be sent to the AV(Car)
 			//  The n values of the (fused) local_map Costmap
 			// Connect to the Car-Socket and send the data...
@@ -836,7 +819,7 @@ void *receive_and_fuse_maps_impl(Observation *observations /*=observations -> gl
 			DBGOUT2(printf("CAR-OUT %4u : Dumping XMIT-PIPE REAL raw bytes\n", car_send_count);
 					for (int i = 0; i < car_bytes; i++) {
 					unsigned char c = car_out_chars[i];
-					printf("CAR-OUT %4u REAL-byte %6u : %u\n", car_send_count, i, c);
+					printf("CAR-OUT %4u REAL-byte %6u : %u\n", car_sendcount, i, c);
 					} printf("\n"));
 #ifdef INT_TIME
 			gettimeofday(&start_pd_wifi_car, NULL);
@@ -959,6 +942,9 @@ void process_lidar_to_occgrid(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*
 			1, timer_sequentialize, timer_sequentialize_sz,
 			"Logging_And_cloudToOccgrid_Timer_Start_Task");
 #endif
+
+	printf("%s %d In T1_timer_start", __FILE__, __LINE__);
+
 	// There is are two places where cloudToOccgrid is being timed; one is here and another is inside
 	// cloudToOccgrid itself. Not sure why two of them exist so keeping both for now.
 	DBGOUT(printf("Lidar step %u : Calling cloudToOccgrid next_obs = %d with odometry %.1f %.1f %.1f\n",
@@ -994,6 +980,9 @@ void process_lidar_to_occgrid(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*
 	// as indicated by lidar_inputs
 #endif
 
+
+	printf("%s %d In T1", __FILE__, __LINE__);
+
 	cloudToOccgrid(observationVal, observations_sz, lidar_inputs, lidarin_sz,
 			AVxyzw /*=1.5*/, AVxyzw_sz, rolling_window /*=false*/, rolling_window_sz,
 			min_obstracle_height /*=0.05*/, min_obstracle_height_sz,
@@ -1012,6 +1001,9 @@ void process_lidar_to_occgrid(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*
 	void *T1_timer_end = __hetero_task_begin(1, timer_sequentialize, timer_sequentialize_sz,
 			1, timer_sequentialize, timer_sequentialize_sz, "cloudToOccgrid_Timer_End");
 #endif
+
+
+	printf("%s %d In T1_timer_end", __FILE__, __LINE__);
 
 	*timer_sequentialize = 3;
 	gettimeofday(&stop_pd_cloud2grid, NULL);
@@ -1032,6 +1024,9 @@ void process_lidar_to_occgrid(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*
 			3, observationVal, observations_sz, n_cmp_bytes, n_cmp_bytes_sz, cmp_data, cmp_data_sz,
 			"compressMap_task");
 #endif
+
+	printf("%s %d In T2", __FILE__, __LINE__);
+
 	// Now we compress the grid for transmission...
 	Costmap2D *local_map = &(observationVal->master_costmap);
 	DBGOUT(printf("Calling LZ4_compress_default...\n"));
@@ -1104,7 +1099,7 @@ void transmit_occgrid(int *n_cmp_bytes /*from process_lidar_to_occgrid*/, size_t
 	// This section has no tasks as we are doing IO; introducing tasks can lead to race conditions
 	// Now we transmit the grid...
 
-	DBGOUT(printf("  Back from do_xmit_pipeline with %u xmit outputs...\n", n_xmit_out));
+	DBGOUT(printf("  Back from do_xmit_pipeline with %u xmit outputs...\n", *n_xmit_out));
 
 	// This is now the content that should be sent out via IEEE 802.11p WiFi
 	// The n_xmit_out values of xmit_out_real and xmit_out_imag
@@ -1383,6 +1378,10 @@ void lidar_root(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*=sizeof( * lid
 			xmit_out_imag, xmit_out_imag_sz,
 			"TX_wrapper_task");
 #endif
+
+	printf("%s %d In T2 for lidar_root", __FILE__, __LINE__);
+
+
 	do_xmit_pipeline(n_cmp_bytes, n_cmp_bytes_sz, (char *)cmp_data, cmp_data_sz,
 			n_xmit_out, n_xmit_out_sz, xmit_out_real, xmit_out_real_sz,
 			xmit_out_imag, xmit_out_imag_sz,
@@ -1396,6 +1395,7 @@ void lidar_root(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*=sizeof( * lid
 			fft_out_real, fft_out_real_sz, fft_out_imag, fft_out_imag_sz,
 			cycpref_out_real, cycpref_out_real_sz,
 			cycpref_out_imag, cycpref_out_imag_sz);
+
 #if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR)) && true
 	__hetero_task_end(T2);
 #endif
@@ -1412,7 +1412,7 @@ void cv_root(unsigned tr_val, label_t *out_label, size_t outlabel_sz)
 	void *T1 = __hetero_task_begin(2, tr_val, out_label, outlabel_sz, 1, out_label, outlabel_sz);
 #endif
 
-// TODO: Uncomment me	*out_label = run_object_classification(tr_val);
+	*out_label = run_object_classification(tr_val);
 
 #if (defined(HPVM) || defined(HPVM_CV_ROOT))
 	__hetero_task_end(T1);
@@ -1420,7 +1420,7 @@ void cv_root(unsigned tr_val, label_t *out_label, size_t outlabel_sz)
 #endif
 }
 
-int main(int argc, char *argv[]) 
+int main(int argc, char *argv[])
 {
 	struct sockaddr_in bag_servaddr;
 	struct sockaddr_in xmit_servaddr;
@@ -1780,6 +1780,9 @@ int main(int argc, char *argv[])
 			size_t cycpref_out_imag_sz = 41360 * sizeof(float);
 			// End of arguments to do_xmit_pipeline (called by lidar_root) and transmit_occgrid
 
+
+	printf("%s %d Calling lidar_root", __FILE__, __LINE__);
+
 #if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR)) && true
 			void *lidarDAG = __hetero_launch((void *)lidar_root, 32, &lidar_inputs, sizeof(lidar_inputs_t),
 					&observationsArr[next_obs], sizeof(Observation), 
@@ -1821,7 +1824,7 @@ int main(int argc, char *argv[])
 					// Outputs
 					3, &n_cmp_bytes, sizeof(int), 
 					cmp_data, MAX_COMPRESSED_DATA_SIZE,
-					observationsArr, sizeof(Observation) * 2
+					&observationsArr[next_obs], sizeof(Observation)
 						/*&n_xmit_out, n_xmit_out_sz,
 						  xmit_out_real, xmit_out_real_sz,
 						  xmit_out_imag, xmit_out_imag_sz*/
@@ -1867,6 +1870,9 @@ int main(int argc, char *argv[])
 					cycpref_out_imag, cycpref_out_imag_sz);
 #endif
 
+	printf("%s %d Calling transmit occgrid ", __FILE__, __LINE__);
+
+
 			// Send the occgrid through the socket
 			transmit_occgrid(&n_cmp_bytes, n_cmp_bytes_sz,
 					cmp_data, cmp_data_sz,
@@ -1888,6 +1894,9 @@ int main(int argc, char *argv[])
 #if PARALLEL_PTHREADS
 			; // nothing to do here...
 #else
+
+	printf("%s %d Calling recieve_and_fuse_maps ", __FILE__, __LINE__);
+
 			receive_and_fuse_maps(NULL, 0);
 			DBGOUT(printf("Returning from process_lidar_to_occgrid\n"); fflush(stdout));
 #endif

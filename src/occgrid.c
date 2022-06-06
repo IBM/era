@@ -17,7 +17,7 @@
 #include "hetero.h"
 #endif
 
-//#undef HPVM 	// TODO: remove me
+#undef HPVM 	// TODO: remove me
 
 #ifdef INT_TIME
 /* This is OCC-GRID Internal Timing information (gathering resources) */
@@ -146,7 +146,7 @@ static inline unsigned int getIndex(Observation* obs_ptr, unsigned int i, unsign
 }
 
 static inline void markCell(Observation* obs_ptr, unsigned char value, unsigned int offset) {
-	printf("OFFSET -> %d\n", offset);
+//	printf("OFFSET -> %d\n", offset);
 	CHECK(if (offset >= COST_MAP_ENTRIES) {
 		printf("ERROR : markCell : offset is too large at %d vs %d\n", offset, COST_MAP_ENTRIES);
 	});
