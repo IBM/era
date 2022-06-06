@@ -11,11 +11,11 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-//#define HPVM
+#define HPVM
 #define HPVM_CV_ROOT
 #define HPVM_PROCESS_LIDAR
 
-//#define HPVM_RECV_PIPELINE
+#define HPVM_RECV_PIPELINE
 
 #include "globals.h"
 #include "debug.h"
@@ -33,7 +33,7 @@
 #include "hetero.h"
 #endif
 
-#undef HPVM // TODO: remove me
+//#undef HPVM // TODO: remove me
 
 #undef INT_TIME // TODO: REMOVE ME; this should be un-set during compilation
 
@@ -365,6 +365,7 @@ void fuse_maps(int n_recvd_in,
 #endif
 
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
+	// 28 inputs, 3 outputs
 	void *T1 = __hetero_task_begin(28, n_recvd_in, recvd_in_real, recvd_in_real_sz,
 			recvd_msg, recvd_msg_sz, recvd_msg_len, recvd_msg_len_sz,
 			recvd_in_imag, recvd_in_imag_sz,
@@ -379,7 +380,7 @@ void fuse_maps(int n_recvd_in,
 			num_eq_out_bits, num_eq_out_bits_sz, psdu, psdu_sz,
 			//              Global variables used by do_recv_pipeline
 			delay16_out_arg, delay16_out_arg_sz,
-			input_data_arg, input_data_sz,
+			input_data_arg, input_data_sz, 
 			cmpx_conj_out_arg, cmpx_conj_out_arg_sz,
 			cmpx_mult_out_arg, cmpx_mult_out_arg_sz,
 			correlation_complex_arg, correlation_complex_arg_sz,
@@ -397,7 +398,7 @@ void fuse_maps(int n_recvd_in,
 #endif
 
 	// Now we have the tranmission input data to be decoded...
-#if !defined(HPVM)
+#if !(defined(HPVM) || defined(HPVM_RECV_PIPELINE))
 	DBGOUT(printf("Calling do_recv_pipeline...\n"));
 #endif
 	// Fake this with a "loopback" of the xmit message...
@@ -427,6 +428,7 @@ void fuse_maps(int n_recvd_in,
 			the_correlation_arg, the_correlation_arg_sz,
 			sync_short_out_frames_arg, sync_short_out_frames_arg_sz,
 			d_sync_long_out_frames_arg, d_sync_long_out_frames_arg_sz);
+
 #if defined(INT_TIME) && !(defined(HPVM) ||  defined(HPVM_RECV_PIPELINE))
 	gettimeofday(&stop_pd_recv_pipe, NULL);
 	pd_recv_pipe_sec += stop_pd_recv_pipe.tv_sec - start_pd_recv_pipe.tv_sec;
@@ -442,6 +444,9 @@ void fuse_maps(int n_recvd_in,
 			recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz,
 			2, uncmp_data, uncmp_data_sz, dec_bytes, dec_bytes_sz, "decompress_task");
 #endif
+
+
+	printf("%s %d In T2 for fuse_maps ", __FILE__, __LINE__); // TODO: Remove me
 
 	// Now we decompress the grid received via transmission...
 	DBGOUT(printf("Calling LZ4_decompress_default...\n"));
@@ -474,6 +479,9 @@ void fuse_maps(int n_recvd_in,
 			observations, observations_sz,
 			2, uncmp_data, uncmp_data_sz, dec_bytes, dec_bytes_sz, "logging_task");
 #endif
+
+	printf("%s %d In T2 for fuse_maps ", __FILE__, __LINE__); // TODO: Remove me
+
 
 	DEBUG(printf("Recevied %d decoded bytes from the wifi...\n", *dec_bytes));
 	Costmap2D * remote_map = (Costmap2D * ) & (uncmp_data); // Convert "type" to Costmap2D
@@ -517,6 +525,9 @@ void fuse_maps(int n_recvd_in,
 	void * T4 = __hetero_task_begin(2, observations, observations_sz, uncmp_data, uncmp_data_sz,
 			1, observations, observations_sz, "gridFusion_task");
 #endif
+
+	printf("%s %d In T4 for fuse_maps ", __FILE__, __LINE__); // TODO: Remove me
+
 
 	// Then we should "Fuse" the received GridMap with our local one
 	//  We need to "peel out" the remote odometry data from somewhere (in the message?)
@@ -729,6 +740,9 @@ void *receive_and_fuse_maps_impl(Observation *observations /*=observations -> gl
 			size_t num_eq_out_bits_sz = sizeof(unsigned);
 			unsigned psdu = 0;
 			size_t psdu_sz = sizeof(unsigned);
+
+			printf("%s %d Calling fuse_maps", __FILE__, __LINE__);
+
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true
 			// 31 inputs, 7 outputs
 			void *LaunchInner = __hetero_launch((void *)fuse_maps, 31,
@@ -754,17 +768,17 @@ void *receive_and_fuse_maps_impl(Observation *observations /*=observations -> gl
 					&num_eq_out_bits, num_eq_out_bits_sz,
 					&psdu, psdu_sz,
 					//      Global variables used by do_recv_pipeline
-					delay16_out, DELAY_16_MAX_OUT_SIZE,
-					input_data, DELAY_16_MAX_OUT_SIZE - 16,
-					cmpx_conj_out, CMP_CONJ_MAX_SIZE,
-					cmpx_mult_out, CMP_MULT_MAX_SIZE,
-					correlation_complex, FIRC_MAVG48_MAX_SIZE,
-					correlation, CMP2MAG_MAX_SIZE,
-					signal_power, CMP2MAGSQ_MAX_SIZE,
-					avg_signal_power, FIR_MAVG64_MAX_SIZE,
-					the_correlation, DIVIDE_MAX_SIZE,
-					sync_short_out_frames, 320,
-					d_sync_long_out_frames, SYNC_L_OUT_MAX_SIZE,
+					delay16_out, DELAY_16_MAX_OUT_SIZE * sizeof(fx_pt),
+					input_data, (DELAY_16_MAX_OUT_SIZE - 16) * sizeof(fx_pt),
+					cmpx_conj_out, CMP_CONJ_MAX_SIZE * sizeof(fx_pt),
+					cmpx_mult_out, CMP_MULT_MAX_SIZE * sizeof(fx_pt),
+					correlation_complex, FIRC_MAVG48_MAX_SIZE * sizeof(fx_pt),
+					correlation, CMP2MAG_MAX_SIZE * sizeof(fx_pt1),
+					signal_power, CMP2MAGSQ_MAX_SIZE * sizeof(fx_pt1),
+					avg_signal_power, FIR_MAVG64_MAX_SIZE * sizeof(fx_pt1),
+					the_correlation, DIVIDE_MAX_SIZE * sizeof(fx_pt1),
+					sync_short_out_frames, 320 * sizeof(fx_pt),
+					d_sync_long_out_frames, SYNC_L_OUT_MAX_SIZE * sizeof(fx_pt),
 					// End variables used by do_recv_pipeline
 					6,
 					recvd_in_real, recvd_in_real_sz,
@@ -789,18 +803,19 @@ void *receive_and_fuse_maps_impl(Observation *observations /*=observations -> gl
 					toBeEqualized, toBeEqualized_sz, equalized, equalized_sz,
 					&num_eq_out_bits, num_eq_out_bits_sz, &psdu, psdu_sz,
 					//      Global variables used by do_recv_pipeline
-					delay16_out, DELAY_16_MAX_OUT_SIZE,
-					input_data, DELAY_16_MAX_OUT_SIZE - 16,
-					cmpx_conj_out, CMP_CONJ_MAX_SIZE,
-					cmpx_mult_out, CMP_MULT_MAX_SIZE,
-					correlation_complex, FIRC_MAVG48_MAX_SIZE,
-					correlation, CMP2MAG_MAX_SIZE,
-					signal_power, CMP2MAGSQ_MAX_SIZE,
-					avg_signal_power, FIR_MAVG64_MAX_SIZE,
-					the_correlation, DIVIDE_MAX_SIZE,
-					sync_short_out_frames, 320,
-					d_sync_long_out_frames, SYNC_L_OUT_MAX_SIZE);
+					delay16_out, DELAY_16_MAX_OUT_SIZE * sizeof(fx_pt),
+					input_data, (DELAY_16_MAX_OUT_SIZE - 16) * sizeof(fx_pt),
+					cmpx_conj_out, CMP_CONJ_MAX_SIZE * sizeof(fx_pt),
+					cmpx_mult_out, CMP_MULT_MAX_SIZE * sizeof(fx_pt),
+					correlation_complex, FIRC_MAVG48_MAX_SIZE * sizeof(fx_pt),
+					correlation, CMP2MAG_MAX_SIZE * sizeof(fx_pt1),
+					signal_power, CMP2MAGSQ_MAX_SIZE * sizeof(fx_pt1),
+					avg_signal_power, FIR_MAVG64_MAX_SIZE * sizeof(fx_pt1),
+					the_correlation, DIVIDE_MAX_SIZE * sizeof(fx_pt1),
+					sync_short_out_frames, 320 * sizeof(fx_pt),
+					d_sync_long_out_frames, SYNC_L_OUT_MAX_SIZE * sizeof(fx_pt));
 #endif
+			printf("%s %d Out of fuse_maps", __FILE__, __LINE__);
 
 			// This is now the fused map that should be sent to the AV(Car)
 			//  The n values of the (fused) local_map Costmap
@@ -2003,8 +2018,10 @@ int main(int argc, char *argv[])
 
 void dump_final_run_statistics()
 {
-	printf("\nFinal Run Stats, %u, Odo, %u, Lidar, %u, LMAP, %u, XMIT, %u, RECV, %u, CAR-SEND, %u, CV\n",
-			odo_count, lidar_count, lmap_count, xmit_count, recv_count, car_send_count, cv_count);
+	//printf("\nFinal Run Stats, %u, Odo, %u, Lidar, %u, LMAP, %u, XMIT, %u, RECV, %u, CAR-SEND, %u, CV\n",
+	//		odo_count, lidar_count, lmap_count, xmit_count, recv_count, car_send_count, cv_count);
+	printf("\nFinal Run Stats, %u, Odo, %u, Lidar, %u, LMAP, %u, XMIT, %u, RECV, %u, CAR-SEND\n",
+			odo_count, lidar_count, lmap_count, xmit_count, recv_count, car_send_count);
 	printf("Occ-Map Dimensions, %u, by, %u, grid, res, %lf, ray_r, %u\n", GRID_MAP_X_DIM,
 			GRID_MAP_Y_DIM, GRID_MAP_RESLTN, RAYTR_RANGE);
 
