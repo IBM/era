@@ -508,11 +508,25 @@ void do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, size_t recvd_in_
 #endif
 
 #if defined(HPVM) && true
+																								void * T0_Wrapper1 = __hetero_task_begin(4, input_data_arg, input_data_arg_sz, 
+																																								recvd_in_real, recvd_in_real_sz, 
+																																								recvd_in_imag, recvd_in_imag_sz, 
+																																								num_recvd_vals, 
+																																								1, input_data_arg, input_data_arg_sz, "process_input_to_compute_Wrapper1_task");
+
+																								/* void * Section_Wrapper2 = __hetero_section_begin();
+																								void * T0_Wrapper2 = __hetero_task_begin(4, input_data_arg, input_data_arg_sz, 
+																																								recvd_in_real, recvd_in_real_sz, 
+																																								recvd_in_imag, recvd_in_imag_sz, 
+																																								num_recvd_vals, 
+																																								1, input_data_arg, input_data_arg_sz, "process_input_to_compute_Wrapper2_task");
+
+																								void * Section_Inner = __hetero_section_begin();
 																								void * T0 = __hetero_task_begin(4, input_data_arg, input_data_arg_sz, 
 																																								recvd_in_real, recvd_in_real_sz, 
 																																								recvd_in_imag, recvd_in_imag_sz, 
 																																								num_recvd_vals, 
-																																								1, input_data_arg, input_data_arg_sz, "process_input_to_compute_task");
+																																								1, input_data_arg, input_data_arg_sz, "process_input_to_compute_task"); */
 #endif
 
 																								DEBUG(printf("In do_recv_pipeline: num_received_vals = %u\n", num_recvd_vals); fflush(stdout));
@@ -522,7 +536,11 @@ void do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, size_t recvd_in_
 																								DEBUG(printf("Calling compute\n"));
 
 #if defined(HPVM) && true
-																								__hetero_task_end(T0);
+																								/*__hetero_task_end(T0);
+																								__hetero_section_end(Section_Inner);
+																								__hetero_task_end(T0_Wrapper2);
+																								__hetero_section_end(Section_Wrapper2);*/
+																								__hetero_task_end(T0_Wrapper1);
 #endif
 
 #if defined(HPVM)
