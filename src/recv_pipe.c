@@ -48,7 +48,7 @@
 
 #undef INT_TIME // TODO: REMOVE ME; this should be un-set during compilation
 
-//#undef HPVM // TODO: Remove me
+#undef HPVM // TODO: Remove me
 
 #ifdef INT_TIME
 /* This is RECV PIPE internal Timing information (gathering resources) */
@@ -474,6 +474,31 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
 /********************************************************************************
 	* This routine manages the transmit pipeline functions and components
 	********************************************************************************/
+
+void pre_process_input_for_compute_(float* recvd_in_imag, size_t recvd_in_imag_sz,
+                float* recvd_in_real, size_t recvd_in_real_sz,
+                int num_recvd_vals,
+                fx_pt* input_data_arg /*= input_data -> global*/, size_t input_data_arg_sz /*=DELAY_16_MAX_OUT_SIZE - 16*/) {
+#if defined(HPVM) && true
+                        void * Section_Inner = __hetero_section_begin();
+                        void * T0 = __hetero_task_begin(4, input_data_arg, input_data_arg_sz,
+                                        recvd_in_real, recvd_in_real_sz,
+                                        recvd_in_imag, recvd_in_imag_sz,
+                                        num_recvd_vals,
+                                        1, input_data_arg, input_data_arg_sz, "process_input_to_compute_task");
+#endif
+                        DEBUG(printf("In do_recv_pipeline: num_received_vals = %u\n", num_recvd_vals); fflush(stdout));
+                        for (int i = 0; i < num_recvd_vals; i++) { // TODO: HPVM: Parallelize this loop
+                                input_data_arg[i] = recvd_in_real[i] + I * recvd_in_imag[i];
+                        }
+                        DEBUG(printf("Calling compute\n"));
+
+#if defined(HPVM) && true
+                        __hetero_task_end(T0);
+                        __hetero_section_end(Section_Inner);
+#endif
+}
+
 void do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, size_t recvd_in_real_sz, 
 																float* recvd_in_imag, size_t recvd_in_imag_sz,
 																int* recvd_msg_len, size_t recvd_msg_len_sz, char * recvd_msg, size_t recvd_msg_sz,
@@ -513,33 +538,12 @@ void do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, size_t recvd_in_
 																																								recvd_in_imag, recvd_in_imag_sz, 
 																																								num_recvd_vals, 
 																																								1, input_data_arg, input_data_arg_sz, "process_input_to_compute_Wrapper1_task");
-
-																								/* void * Section_Wrapper2 = __hetero_section_begin();
-																								void * T0_Wrapper2 = __hetero_task_begin(4, input_data_arg, input_data_arg_sz, 
-																																								recvd_in_real, recvd_in_real_sz, 
-																																								recvd_in_imag, recvd_in_imag_sz, 
-																																								num_recvd_vals, 
-																																								1, input_data_arg, input_data_arg_sz, "process_input_to_compute_Wrapper2_task");
-
-																								void * Section_Inner = __hetero_section_begin();
-																								void * T0 = __hetero_task_begin(4, input_data_arg, input_data_arg_sz, 
-																																								recvd_in_real, recvd_in_real_sz, 
-																																								recvd_in_imag, recvd_in_imag_sz, 
-																																								num_recvd_vals, 
-																																								1, input_data_arg, input_data_arg_sz, "process_input_to_compute_task"); */
 #endif
 
-																								DEBUG(printf("In do_recv_pipeline: num_received_vals = %u\n", num_recvd_vals); fflush(stdout));
-																								for (int i = 0; i < num_recvd_vals; i++) { // TODO: HPVM: Parallelize this loop
-																																input_data_arg[i] = recvd_in_real[i] + I * recvd_in_imag[i];
-																								}
-																								DEBUG(printf("Calling compute\n"));
+																								 pre_process_input_for_compute_(recvd_in_imag, recvd_in_imag_sz, recvd_in_real, recvd_in_real_sz,
+                          num_recvd_vals, input_data_arg, input_data_arg_sz); 
 
 #if defined(HPVM) && true
-																								/*__hetero_task_end(T0);
-																								__hetero_section_end(Section_Inner);
-																								__hetero_task_end(T0_Wrapper2);
-																								__hetero_section_end(Section_Wrapper2);*/
 																								__hetero_task_end(T0_Wrapper1);
 #endif
 
@@ -1103,6 +1107,7 @@ void compute(unsigned num_inputs, fx_pt* input_data_arg, size_t input_data_arg_s
 #if defined(HPVM) 
 																								__hetero_task_end(T13);
 #endif
+
 
 #if defined(HPVM) 
 																								void * T14 = __hetero_task_begin(4, scrambled_msg, scrambled_msg_sz, psdu, psdu_sz, 
