@@ -14,9 +14,9 @@
 #define HPVM
 #define HPVM_CV_ROOT
 #define HPVM_PROCESS_LIDAR
-#define HPVM_PROCESS_LIDAR_INTERNAL
+//#define HPVM_PROCESS_LIDAR_INTERNAL
 
-#define HPVM_RECV_PIPELINE
+//#define HPVM_RECV_PIPELINE
 
 #include "globals.h"
 #include "debug.h"
