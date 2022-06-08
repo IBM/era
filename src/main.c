@@ -13,9 +13,10 @@
 
 #define HPVM
 #define HPVM_CV_ROOT
-//#define HPVM_PROCESS_LIDAR
+#define HPVM_PROCESS_LIDAR
+#define HPVM_PROCESS_LIDAR_INTERNAL
 
-//#define HPVM_RECV_PIPELINE
+#define HPVM_RECV_PIPELINE
 
 #include "globals.h"
 #include "debug.h"
@@ -39,7 +40,7 @@
 
 #define PARALLEL_PTHREADS false
 
-#define ERA1
+#define ERA2
 
 #ifdef ERA1
 char *IMAGE_FN = "gridimage_era1_"; 
@@ -370,7 +371,7 @@ void decompress_caller(unsigned char *uncmp_data, size_t uncmp_data_sz,
 		unsigned char *recvd_msg, size_t recvd_msg_sz, 
 		int *dec_bytes, size_t dec_bytes_sz
 	) {
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && false // TODO: Remove false
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true // TODO: Remove false
 	void * Section_Caller = __hetero_section_begin();
 	void * T2_Wrapper = __hetero_task_begin(4, uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
 			recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz,
@@ -380,7 +381,7 @@ void decompress_caller(unsigned char *uncmp_data, size_t uncmp_data_sz,
 	decompress(uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz, recvd_msg, 
 			recvd_msg_sz, dec_bytes, dec_bytes_sz);
 
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && false // TODO: Remove false
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true // TODO: Remove false
 	__hetero_task_end(T2_Wrapper);
 	__hetero_section_end(Section_Caller); 
 #endif
@@ -390,7 +391,7 @@ void decompress_caller(unsigned char *uncmp_data, size_t uncmp_data_sz,
 void grid_fusion(Observation *observations, size_t observations_sz, 
 		unsigned char *uncmp_data, size_t uncmp_data_sz) {
 
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && false // TODO: Remove me
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true // TODO: Remove me
 	void * Section_Inner = __hetero_section_begin();
 	void * T4 = __hetero_task_begin(2, observations, observations_sz, uncmp_data, uncmp_data_sz,
 			1, observations, observations_sz, "gridFusion_task");
@@ -448,12 +449,28 @@ void grid_fusion(Observation *observations, size_t observations_sz,
 	write_array_to_file(local_map_cp -> costmap, COST_MAP_ENTRIES);
 #endif
 
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && false // TODO: Remove me
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true // TODO: Remove me
 	__hetero_task_end(T4);
 	__hetero_section_end(Section_Inner);
 #endif
 }
 
+void grid_fusion_caller(Observation *observations, size_t observations_sz, 
+		unsigned char *uncmp_data, size_t uncmp_data_sz) {
+
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true // TODO: Remove me
+	void * Section_Caller = __hetero_section_begin();
+	void * T4_Caller = __hetero_task_begin(2, observations, observations_sz, uncmp_data, uncmp_data_sz,
+			1, observations, observations_sz, "gridFusion_task_wrapper2");
+#endif
+
+	 grid_fusion(observations, observations_sz, uncmp_data, uncmp_data_sz);
+
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true // TODO: Remove me
+	__hetero_task_end(T4_Caller);
+	__hetero_section_end(Section_Caller);
+#endif
+}
 void fuse_maps(int n_recvd_in,
 		float *recvd_in_real, size_t recvd_in_real_sz,
 		float *recvd_in_imag, size_t recvd_in_imag_sz,
@@ -576,11 +593,11 @@ void fuse_maps(int n_recvd_in,
 			2, uncmp_data, uncmp_data_sz, dec_bytes, dec_bytes_sz, "decompress_task_Wrapper1");
 #endif
 
-	//decompress_caller(uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
-        //                recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz); // TODO: Uncomment me
+	decompress_caller(uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
+                        recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz); // TODO: Uncomment me
 
-	decompress(uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
-                        recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz); // TODO: Remove me
+	//decompress(uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
+        //                recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz); // TODO: Remove me
 
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true
 	__hetero_task_end(T2_Wrapper1);
@@ -642,7 +659,7 @@ void fuse_maps(int n_recvd_in,
 			1, observations, observations_sz, "gridFusion_task_Wrapper1");
 #endif
 
-	grid_fusion(observations, observations_sz, uncmp_data, uncmp_data_sz); // TODO: Uncomment me
+	grid_fusion_caller(observations, observations_sz, uncmp_data, uncmp_data_sz); // TODO: Uncomment me
 
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true
 	__hetero_task_end(T4_Wrapper1);
@@ -988,7 +1005,7 @@ void logging_Plus_cloudToOccgridTimerStart(int *next_obs_cp /*=next_obs -> globa
 		lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*=sizeof( * lidar_inputs)*/, 
 		int *timer_sequentialize, size_t timer_sequentialize_sz /*=sizeof(int) */) {
  
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR)) && true
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true // TODO: Remove me
 	void * Section_Inner = __hetero_section_begin();
 	void *T1_timer_start = __hetero_task_begin(4, lidar_count_cp, lidar_count_cp_sz,
 			next_obs_cp, next_obs_cp_sz, lidar_inputs, lidarin_sz,
@@ -1008,7 +1025,7 @@ void logging_Plus_cloudToOccgridTimerStart(int *next_obs_cp /*=next_obs -> globa
 	gettimeofday(&start_pd_cloud2grid, NULL);
 #endif
 
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR)) && true
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true // TODO: Remove me
 	__hetero_task_end(T1_timer_start);
 	__hetero_section_end(Section_Inner); 
 #endif
@@ -1021,7 +1038,7 @@ void compress_map(Observation *observationVal /* observations[*next_obs_cp] -> f
 		int *curr_obs_cp /*=curr_obs -> global*/, size_t curr_obs_cp_sz /*=sizeof(int)*/, 
 		int *lmap_count_cp /*=lmap_count -> global*/, size_t lmap_count_cp_sz /*=sizeof(unsigned)*/) {
 
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR)) && true
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true // TODO: Remove me
 	void * T2_Section_Inner = __hetero_section_begin();
 	void *T2 = __hetero_task_begin(6, observationVal, observations_sz, n_cmp_bytes, n_cmp_bytes_sz,
 			cmp_data, cmp_data_sz, next_obs_cp, next_obs_cp_sz, curr_obs_cp, curr_obs_cp_sz,
@@ -1073,7 +1090,7 @@ void compress_map(Observation *observationVal /* observations[*next_obs_cp] -> f
 	DBGOUT(double c_ratio = 100 * (1 - ((double)(*n_cmp_bytes) / (double)(MAX_UNCOMPRESSED_DATA_SIZE))); printf("  Back from LZ4_compress_default: %lu bytes -> %u bytes for %5.2f%%\n",
 				MAX_UNCOMPRESSED_DATA_SIZE, *n_cmp_bytes, c_ratio););
 
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR)) && true
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true // TODO: Remove me
 	__hetero_task_end(T2);
 	__hetero_section_end(T2_Section_Inner);
 #endif
@@ -1081,7 +1098,7 @@ void compress_map(Observation *observationVal /* observations[*next_obs_cp] -> f
 }
 
 void cloudToOccgrid_timer_end(int *timer_sequentialize, size_t timer_sequentialize_sz /*=sizeof(int)*/) {
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR)) && true
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true // TODO: Remove me
 	void * T1_timer_end_Section_Inner = __hetero_section_begin();
 	void *T1_timer_end = __hetero_task_begin(1, timer_sequentialize, timer_sequentialize_sz,
 			1, timer_sequentialize, timer_sequentialize_sz, "cloudToOccgrid_Timer_End");
@@ -1092,7 +1109,7 @@ void cloudToOccgrid_timer_end(int *timer_sequentialize, size_t timer_sequentiali
 	pd_cloud2grid_sec += stop_pd_cloud2grid.tv_sec - start_pd_cloud2grid.tv_sec;
 	pd_cloud2grid_usec += stop_pd_cloud2grid.tv_usec - start_pd_cloud2grid.tv_usec;
 
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR)) && true
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true // TODO: Remove me
 	__hetero_task_end(T1_timer_end);
 	__hetero_section_end(T1_timer_end_Section_Inner);
 #endif
@@ -1128,11 +1145,11 @@ void process_lidar_to_occgrid(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*
 {
 
 
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR)) && true
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
 	void *Section = __hetero_section_begin();
 #endif
 
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR)) && true
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
 	void *T1_timer_start_Wrapper1 = __hetero_task_begin(4, lidar_count_cp, lidar_count_cp_sz,
 			next_obs_cp, next_obs_cp_sz, lidar_inputs, lidarin_sz,
 			timer_sequentialize, timer_sequentialize_sz,
@@ -1144,11 +1161,11 @@ void process_lidar_to_occgrid(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*
                         next_obs_cp, next_obs_cp_sz, lidar_inputs, lidarin_sz,
                         timer_sequentialize, timer_sequentialize_sz);
 
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR)) && true
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
 	__hetero_task_end(T1_timer_start_Wrapper1);
 #endif
 
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR)) && true
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
 	void *T1 = __hetero_task_begin(14, lidar_inputs, lidarin_sz, observationVal, observations_sz,
 			// Args to CloudToOccgrid
 			AVxyzw, AVxyzw_sz, rolling_window, rolling_window_sz,
@@ -1177,26 +1194,26 @@ void process_lidar_to_occgrid(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*
 			resolution /*=GRID_MAP_RESLTN*/, resolution_sz,
 			timer_sequentialize, timer_sequentialize_sz);
 
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR)) && true
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
 	__hetero_task_end(T1);
 #endif
 
 #if defined(INT_TIME)
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR)) && true
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
 	void *T1_timer_end_Wrapper1 = __hetero_task_begin(1, timer_sequentialize, timer_sequentialize_sz,
 			1, timer_sequentialize, timer_sequentialize_sz, "cloudToOccgrid_Timer_End_Wrapper1");
 #endif
 
 	cloudToOccgrid_timer_end(timer_sequentialize, timer_sequentialize_sz);
 
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR)) && true
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
 	__hetero_task_end(T1_timer_end_Wrapper1);
 #endif
 #endif // defined(INT_TIME)
 
 	// Write the read-in image to a file
 	// write_array_to_file(grid, COST_MAP_ENTRIES);
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR)) && true
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
 	void *T2_Wrapper1 = __hetero_task_begin(6, observationVal, observations_sz, n_cmp_bytes, n_cmp_bytes_sz,
 			cmp_data, cmp_data_sz, next_obs_cp, next_obs_cp_sz, curr_obs_cp, curr_obs_cp_sz,
 			lmap_count_cp, lmap_count_cp_sz,
@@ -1208,7 +1225,7 @@ void process_lidar_to_occgrid(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*
                         cmp_data, cmp_data_sz, next_obs_cp, next_obs_cp_sz, curr_obs_cp, curr_obs_cp_sz,
                         lmap_count_cp, lmap_count_cp_sz);
 
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR)) && true
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
 	__hetero_task_end(T2_Wrapper1);
 
 	__hetero_section_end(Section);
@@ -1419,6 +1436,74 @@ msg_stream_imag, msg_stream_imag_sz,
 }
 ***********************************************************************************/
 
+void TX(int *n_cmp_bytes, size_t n_cmp_bytes_sz, 
+		unsigned char *cmp_data, size_t cmp_data_sz,
+		int *n_xmit_out, size_t n_xmit_out_sz,
+		float *xmit_out_real, size_t xmit_out_real_sz,
+		float *xmit_out_imag, size_t xmit_out_imag_sz,
+		int *psdu_len, size_t psdu_len_sz,
+		uint8_t *pckt_hdr_out, size_t pckt_hdr_out_sz,
+		int *pckt_hdr_len, size_t pckt_hdr_len_sz,
+		float *msg_stream_real, size_t msg_stream_real_sz,
+		float *msg_stream_imag, size_t msg_stream_imag_sz,
+		float *ofdm_car_str_real, size_t ofdm_car_str_real_sz,
+		float *ofdm_car_str_imag, size_t ofdm_car_str_imag_sz,
+		int *ofc_res, size_t ofc_res_sz,
+		float *fft_out_real, size_t fft_out_real_sz,
+		float *fft_out_imag, size_t fft_out_imag_sz,
+		float *cycpref_out_real, size_t cycpref_out_real_sz,
+		float *cycpref_out_imag, size_t cycpref_out_imag_sz
+	) {
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
+	void * Section_TX_Inner = __hetero_section_begin();
+
+	void *T2_Inner = __hetero_task_begin(17,
+			// Args for encode_occgrid
+			n_cmp_bytes, n_cmp_bytes_sz,
+			cmp_data, cmp_data_sz,
+			n_xmit_out, n_xmit_out_sz,
+			xmit_out_real, xmit_out_real_sz,
+			xmit_out_imag, xmit_out_imag_sz,
+			// Start of local variables for do_xmit_pipeline
+			psdu_len, psdu_len_sz,
+			pckt_hdr_out, pckt_hdr_out_sz,
+			pckt_hdr_len, pckt_hdr_len_sz,
+			msg_stream_real, msg_stream_real_sz,
+			msg_stream_imag, msg_stream_imag_sz,
+			ofdm_car_str_real, ofdm_car_str_real_sz,
+			ofdm_car_str_imag, ofdm_car_str_imag_sz,
+			ofc_res, ofc_res_sz,
+			fft_out_real, fft_out_real_sz,
+			fft_out_imag, fft_out_imag_sz,
+			cycpref_out_real, cycpref_out_real_sz,
+			cycpref_out_imag, cycpref_out_imag_sz,
+			// End of local variables for do_xmit_pipeline
+			3, n_xmit_out, n_xmit_out_sz,
+			xmit_out_real, xmit_out_real_sz,
+			xmit_out_imag, xmit_out_imag_sz,
+			"TX_task");
+#endif
+
+	do_xmit_pipeline(n_cmp_bytes, n_cmp_bytes_sz, (char *)cmp_data, cmp_data_sz,
+			n_xmit_out, n_xmit_out_sz, xmit_out_real, xmit_out_real_sz,
+			xmit_out_imag, xmit_out_imag_sz,
+			// Start of local variables for do_xmit_pipeline
+			psdu_len, psdu_len_sz, pckt_hdr_out, pckt_hdr_out_sz,
+			pckt_hdr_len, pckt_hdr_len_sz,
+			msg_stream_real, msg_stream_real_sz,
+			msg_stream_imag, msg_stream_imag_sz,
+			ofdm_car_str_real, ofdm_car_str_real_sz,
+			ofdm_car_str_imag, ofdm_car_str_imag_sz, ofc_res, ofc_res_sz,
+			fft_out_real, fft_out_real_sz, fft_out_imag, fft_out_imag_sz,
+			cycpref_out_real, cycpref_out_real_sz,
+			cycpref_out_imag, cycpref_out_imag_sz);
+
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
+	__hetero_task_end(T2_Inner);
+	__hetero_section_end(Section_TX_Inner);
+#endif
+}
+
 void lidar_root(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*=sizeof( * lidar_inputs)*/,
 		Observation *observationVal /* observations[*next_obs_cp] -> from global array*/, size_t observations_sz /*=sizeof(Observation)*2*/,
 		int *n_cmp_bytes /*return by arg*/, size_t n_cmp_bytes_sz /*=sizeof(int)*1*/,
@@ -1517,66 +1602,9 @@ void lidar_root(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*=sizeof( * lid
 			xmit_out_real, xmit_out_real_sz,
 			xmit_out_imag, xmit_out_imag_sz,
 			"TX_wrapper1_task");
-	// The following two section & task is needed to help ensure that all nodes/tasks along a given level in the hpvm graph
-	// are either all leaves or all internal nodes.
-	void * Section_TX_Wrapper2 = __hetero_section_begin();
-
-	void *T2_Wrapper2 = __hetero_task_begin(17,
-			// Args for encode_occgrid
-			n_cmp_bytes, n_cmp_bytes_sz,
-			cmp_data, cmp_data_sz,
-			n_xmit_out, n_xmit_out_sz,
-			xmit_out_real, xmit_out_real_sz,
-			xmit_out_imag, xmit_out_imag_sz,
-			// Start of local variables for do_xmit_pipeline
-			psdu_len, psdu_len_sz,
-			pckt_hdr_out, pckt_hdr_out_sz,
-			pckt_hdr_len, pckt_hdr_len_sz,
-			msg_stream_real, msg_stream_real_sz,
-			msg_stream_imag, msg_stream_imag_sz,
-			ofdm_car_str_real, ofdm_car_str_real_sz,
-			ofdm_car_str_imag, ofdm_car_str_imag_sz,
-			ofc_res, ofc_res_sz,
-			fft_out_real, fft_out_real_sz,
-			fft_out_imag, fft_out_imag_sz,
-			cycpref_out_real, cycpref_out_real_sz,
-			cycpref_out_imag, cycpref_out_imag_sz,
-			// End of local variables for do_xmit_pipeline
-			3, n_xmit_out, n_xmit_out_sz,
-			xmit_out_real, xmit_out_real_sz,
-			xmit_out_imag, xmit_out_imag_sz,
-			"TX_wrapper2_task");
-
-	void * Section_TX_Inner = __hetero_section_begin();
-
-	void *T2_Inner = __hetero_task_begin(17,
-			// Args for encode_occgrid
-			n_cmp_bytes, n_cmp_bytes_sz,
-			cmp_data, cmp_data_sz,
-			n_xmit_out, n_xmit_out_sz,
-			xmit_out_real, xmit_out_real_sz,
-			xmit_out_imag, xmit_out_imag_sz,
-			// Start of local variables for do_xmit_pipeline
-			psdu_len, psdu_len_sz,
-			pckt_hdr_out, pckt_hdr_out_sz,
-			pckt_hdr_len, pckt_hdr_len_sz,
-			msg_stream_real, msg_stream_real_sz,
-			msg_stream_imag, msg_stream_imag_sz,
-			ofdm_car_str_real, ofdm_car_str_real_sz,
-			ofdm_car_str_imag, ofdm_car_str_imag_sz,
-			ofc_res, ofc_res_sz,
-			fft_out_real, fft_out_real_sz,
-			fft_out_imag, fft_out_imag_sz,
-			cycpref_out_real, cycpref_out_real_sz,
-			cycpref_out_imag, cycpref_out_imag_sz,
-			// End of local variables for do_xmit_pipeline
-			3, n_xmit_out, n_xmit_out_sz,
-			xmit_out_real, xmit_out_real_sz,
-			xmit_out_imag, xmit_out_imag_sz,
-			"TX_task");
 #endif
 
-	do_xmit_pipeline(n_cmp_bytes, n_cmp_bytes_sz, (char *)cmp_data, cmp_data_sz,
+	TX(n_cmp_bytes, n_cmp_bytes_sz, cmp_data, cmp_data_sz,
 			n_xmit_out, n_xmit_out_sz, xmit_out_real, xmit_out_real_sz,
 			xmit_out_imag, xmit_out_imag_sz,
 			// Start of local variables for do_xmit_pipeline
@@ -1591,10 +1619,6 @@ void lidar_root(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*=sizeof( * lid
 			cycpref_out_imag, cycpref_out_imag_sz);
 
 #if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR)) && true
-	__hetero_task_end(T2_Inner);
-	__hetero_section_end(Section_TX_Inner);
-	__hetero_task_end(T2_Wrapper2);
-	__hetero_section_end(Section_TX_Wrapper2);
 	__hetero_task_end(T2_Wrapper1);
 #endif
 
@@ -1607,7 +1631,7 @@ void cv_root(unsigned tr_val, label_t *out_label, size_t outlabel_sz)
 {
 #if (defined(HPVM) || defined(HPVM_CV_ROOT))
 	void *Section = __hetero_section_begin();
-	void *T1 = __hetero_task_begin(2, tr_val, out_label, outlabel_sz, 1, out_label, outlabel_sz);
+	void *T1 = __hetero_task_begin(2, tr_val, out_label, outlabel_sz, 1, out_label, outlabel_sz, "cv_root_task");
 #endif
 
 	*out_label = run_object_classification(tr_val);
@@ -1620,14 +1644,14 @@ void cv_root(unsigned tr_val, label_t *out_label, size_t outlabel_sz)
 
 void cv_root_wrapper(unsigned tr_val, label_t *out_label, size_t outlabel_sz)
 {
-#if (defined(HPVM) || defined(HPVM_CV_ROOT))
+#if (defined(HPVM) || defined(HPVM_CV_ROOT)) && true
 	void *Section = __hetero_section_begin();
-	void *T1 = __hetero_task_begin(2, tr_val, out_label, outlabel_sz, 1, out_label, outlabel_sz);
+	void *T1 = __hetero_task_begin(2, tr_val, out_label, outlabel_sz, 1, out_label, outlabel_sz, "cv_root_wrapper_task");
 #endif
 
 	cv_root(tr_val, out_label, outlabel_sz);
 
-#if (defined(HPVM) || defined(HPVM_CV_ROOT))
+#if (defined(HPVM) || defined(HPVM_CV_ROOT)) && true
 	__hetero_task_end(T1);
 	__hetero_section_end(Section);
 #endif

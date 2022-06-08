@@ -91,7 +91,7 @@ CB_STR =
 ifdef CONFIG_FFT_EN
  SW_STR =
  FA_STR = F$(CONFIG_FFT_ACCEL_VER)
- CFLAGS += -DHW_FFT
+# CFLAGS += -DHW_FFT # MY CHANGE
  CFLAGS += -DUSE_FFT_FX=$(CONFIG_FFT_FX)
  CFLAGS += -DUSE_FFT_ACCEL_VERSION=$(CONFIG_FFT_ACCEL_VER)
  CFLAGS += -DFFT_DEV_BASE='"$(FFT_DEVICE_BASE)"'
@@ -103,7 +103,7 @@ endif
 ifdef CONFIG_VITERBI_EN
  SW_STR =
  VA_STR = V
- CFLAGS += -DHW_VIT
+# CFLAGS += -DHW_VIT # MY CHANGE
  CFLAGS += -DVIT_DEV_BASE='"$(VIT_DEVICE_BASE)"'
 endif
 
@@ -116,7 +116,8 @@ endif
 ifdef CONFIG_CV_EN
  SW_STR =
  CA_STR = CH
- CFLAGS += -DHW_CV -DENABLE_NVDLA -I/usr/include/python3.6m
+# CFLAGS += -DHW_CV # MY CHANGE
+ CFLAGS += -DENABLE_NVDLA -I/usr/include/python3.6m
 #  CFLAGS += -DCNN_DEV_BASE='"$(CNN_DEVICE_BASE)"' -I/usr/include/python3.6m
 else # Not using the HWR accelerator
  ifdef CONFIG_FAKE_CV_EN
@@ -207,7 +208,7 @@ endif
 LDLIBS += -L$(TASK_LIB_DIR) -L$(SCHED_LIB_DIR)
 
 LDFLAGS ?=
-# MY CHANGE LDFLAGS += -ltasks -lscheduler
+LDFLAGS += -ltasks -lscheduler
 LDFLAGS += -lm
 LDFLAGS += -lpthread
 LDFLAGS += -lboost_graph -lboost_regex
@@ -356,7 +357,7 @@ $(STARGET): $(TASK_LIB) $(SCHED_LIB) obj_s $(OBJ_S)
 $(HPVMTARGET): $(OBJ_LINKED) $(TASK_LIB) $(SCHED_LIB) $(ALLMODULE_OBJS)
 	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o me_test.o
 	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) me_test.o -o wnvdla_test.o
-	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(LDFLAGS) $(NVDLA_FLAGS)
+	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(LDFLAGS) $(NVDLA_FLAGS) -L/usr/lib/python3.6/config-3.6m-x86_64-linux-gnu -L/usr/lib -lpython3.6m -lpthread -ldl  -lutil -lm  -Xlinker -export-dynamic -Wl,-O1 -Wl,-Bsymbolic-functions
 	rm me_test.o wnvdla_test.o
 
 $(HPVMTARGET_CPU): $(OBJ_LINKED) $(TASK_LIB) $(SCHED_LIB) 
@@ -401,24 +402,23 @@ $(OBJ_LINKED) : $(OBJ_H) $(HPVM_RT_LIB)
 	$(LLVM_LINK) $^ -S -o $@
 
 
-# TODO: Disableled Scheduler API for now
-#$(SCHED_LIB) $(SCHED_MODULE):
-#	@echo "***********************************"
-#	@echo "*** Compiling Scheduler Library ***"
-#	@echo "***********************************"
-#	(cd $(SCHED_LIB_DIR); $(MAKE) $(HPVM))
-#	@echo "***********************************"
-#	@echo "************** DONE! **************"
-#	@echo "***********************************"
-#
-#$(TASK_LIB) $(TASK_MODULE):
-#	@echo "***********************************"
-#	@echo "****** Compiling Task Library *****"
-#	@echo "***********************************"
-#	(cd $(TASK_LIB_DIR); $(MAKE) $(HPVM))
-#	@echo "***********************************"
-#	@echo "************** DONE! **************"
-#	@echo "***********************************"
+$(SCHED_LIB) $(SCHED_MODULE):
+	@echo "***********************************"
+	@echo "*** Compiling Scheduler Library ***"
+	@echo "***********************************"
+	(cd $(SCHED_LIB_DIR); $(MAKE) $(HPVM))
+	@echo "***********************************"
+	@echo "************** DONE! **************"
+	@echo "***********************************"
+
+$(TASK_LIB) $(TASK_MODULE):
+	@echo "***********************************"
+	@echo "****** Compiling Task Library *****"
+	@echo "***********************************"
+	(cd $(TASK_LIB_DIR); $(MAKE) $(HPVM))
+	@echo "***********************************"
+	@echo "************** DONE! **************"
+	@echo "***********************************"
 
 clean:
 	$(RM) $(OBJ_T) $(OBJ_S) $(OBJ_LL) $(OBJ_H) $(OBJ_LINKED)

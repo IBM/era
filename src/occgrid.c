@@ -17,7 +17,7 @@
 #include "hetero.h"
 #endif
 
-#undef HPVM 	// TODO: remove me
+//#undef HPVM 	// TODO: remove me
 
 #ifdef INT_TIME
 /* This is OCC-GRID Internal Timing information (gathering resources) */
