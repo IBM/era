@@ -14,9 +14,10 @@
 #define HPVM
 #define HPVM_CV_ROOT
 #define HPVM_PROCESS_LIDAR
-//#define HPVM_PROCESS_LIDAR_INTERNAL
+#define HPVM_PROCESS_LIDAR_INTERNAL
+#define HPVM_RECV_PIPELINE
 
-//#define HPVM_RECV_PIPELINE
+//#define RECV_CALLER
 
 #include "globals.h"
 #include "debug.h"
@@ -28,6 +29,7 @@
 #include "recv_pipe.h" // IEEE 802.11p WiFi SDR Receive Pipeline
 
 #include "globalsRecv.h"
+#include "globalsOccgrid.h"
 
 #if defined(HPVM)
 #include "hpvm.h"
@@ -35,6 +37,7 @@
 #endif
 
 #undef INT_TIME // TODO: REMOVE ME; this should be un-set during compilation
+
 
 #undef HPVM // TODO: Remove me
 
@@ -107,6 +110,10 @@ uint64_t proc_cv_sec = 0LL;
 uint64_t proc_cv_usec = 0LL;
 
 #define INT_TIME
+
+
+#undef INT_TIME // TODO: REMOVE ME; this should be un-set during compilation
+
 
 #ifdef INT_TIME
 struct timeval stop_pd_cloud2grid, start_pd_cloud2grid;
@@ -371,7 +378,7 @@ void decompress_caller(unsigned char *uncmp_data, size_t uncmp_data_sz,
 		unsigned char *recvd_msg, size_t recvd_msg_sz, 
 		int *dec_bytes, size_t dec_bytes_sz
 	) {
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true // TODO: Remove false
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && defined(RECV_CALLER)  && true // TODO: Remove false
 	void * Section_Caller = __hetero_section_begin();
 	void * T2_Wrapper = __hetero_task_begin(4, uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
 			recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz,
@@ -381,7 +388,7 @@ void decompress_caller(unsigned char *uncmp_data, size_t uncmp_data_sz,
 	decompress(uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz, recvd_msg, 
 			recvd_msg_sz, dec_bytes, dec_bytes_sz);
 
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true // TODO: Remove false
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && defined(RECV_CALLER) && true // TODO: Remove false
 	__hetero_task_end(T2_Wrapper);
 	__hetero_section_end(Section_Caller); 
 #endif
@@ -458,7 +465,7 @@ void grid_fusion(Observation *observations, size_t observations_sz,
 void grid_fusion_caller(Observation *observations, size_t observations_sz, 
 		unsigned char *uncmp_data, size_t uncmp_data_sz) {
 
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true // TODO: Remove me
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && defined(RECV_CALLER)  && true // TODO: Remove me
 	void * Section_Caller = __hetero_section_begin();
 	void * T4_Caller = __hetero_task_begin(2, observations, observations_sz, uncmp_data, uncmp_data_sz,
 			1, observations, observations_sz, "gridFusion_task_wrapper2");
@@ -466,7 +473,7 @@ void grid_fusion_caller(Observation *observations, size_t observations_sz,
 
 	 grid_fusion(observations, observations_sz, uncmp_data, uncmp_data_sz);
 
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true // TODO: Remove me
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && defined(RECV_CALLER)   && true // TODO: Remove me
 	__hetero_task_end(T4_Caller);
 	__hetero_section_end(Section_Caller);
 #endif
@@ -593,11 +600,13 @@ void fuse_maps(int n_recvd_in,
 			2, uncmp_data, uncmp_data_sz, dec_bytes, dec_bytes_sz, "decompress_task_Wrapper1");
 #endif
 
+#if defined(RECV_CALLER)
 	decompress_caller(uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
                         recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz); // TODO: Uncomment me
-
-	//decompress(uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
-        //                recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz); // TODO: Remove me
+#else
+	decompress(uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
+                        recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz); // TODO: Remove me
+#endif
 
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true
 	__hetero_task_end(T2_Wrapper1);
@@ -659,7 +668,11 @@ void fuse_maps(int n_recvd_in,
 			1, observations, observations_sz, "gridFusion_task_Wrapper1");
 #endif
 
+#if defined(RECV_CALLER)
 	grid_fusion_caller(observations, observations_sz, uncmp_data, uncmp_data_sz); // TODO: Uncomment me
+#else
+	grid_fusion(observations, observations_sz, uncmp_data, uncmp_data_sz); // TODO: Uncomment me
+#endif
 
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true
 	__hetero_task_end(T4_Wrapper1);
@@ -1098,18 +1111,20 @@ void compress_map(Observation *observationVal /* observations[*next_obs_cp] -> f
 }
 
 void cloudToOccgrid_timer_end(int *timer_sequentialize, size_t timer_sequentialize_sz /*=sizeof(int)*/) {
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true // TODO: Remove me
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && defined(INT_TIME) && true // TODO: Remove me
 	void * T1_timer_end_Section_Inner = __hetero_section_begin();
 	void *T1_timer_end = __hetero_task_begin(1, timer_sequentialize, timer_sequentialize_sz,
 			1, timer_sequentialize, timer_sequentialize_sz, "cloudToOccgrid_Timer_End");
 #endif
 
 	*timer_sequentialize = 3;
+#ifdef INT_TIME
 	gettimeofday(&stop_pd_cloud2grid, NULL);
 	pd_cloud2grid_sec += stop_pd_cloud2grid.tv_sec - start_pd_cloud2grid.tv_sec;
 	pd_cloud2grid_usec += stop_pd_cloud2grid.tv_usec - start_pd_cloud2grid.tv_usec;
+#endif
 
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true // TODO: Remove me
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && defined(INT_TIME) && true // TODO: Remove me
 	__hetero_task_end(T1_timer_end);
 	__hetero_section_end(T1_timer_end_Section_Inner);
 #endif
@@ -1133,8 +1148,8 @@ void process_lidar_to_occgrid(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*
 		// Start of arguments to cloudToOccgrid (called by process_lidar_to_occgrid)
 		double *AVxyzw, size_t AVxyzw_sz /*=sizeof(double)*/,
 		bool *rolling_window, size_t rolling_window_sz /*=sizeof(bool)*/,
-		double *min_obstracle_height, size_t min_obstracle_height_sz /*=sizeof(double)*/,
-		double *max_obstracle_height, size_t max_obstracle_height_sz /*=sizeof(double)*/,
+		double *min_obstacle_height, size_t min_obstacle_height_sz /*=sizeof(double)*/,
+		double *max_obstacle_height, size_t max_obstacle_height_sz /*=sizeof(double)*/,
 		double *raytrace_range, size_t raytrace_range_sz /*=sizeof(double)*/,
 		unsigned int *size_x, size_t size_x_sz /*=sizeof(unsigned int)*/,
 		unsigned int *size_y, size_t size_y_sz /*=sizeof(unsigned int)*/,
@@ -1169,8 +1184,8 @@ void process_lidar_to_occgrid(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*
 	void *T1 = __hetero_task_begin(14, lidar_inputs, lidarin_sz, observationVal, observations_sz,
 			// Args to CloudToOccgrid
 			AVxyzw, AVxyzw_sz, rolling_window, rolling_window_sz,
-			min_obstracle_height, min_obstracle_height_sz,
-			max_obstracle_height, max_obstracle_height_sz, raytrace_range, raytrace_range_sz,
+			min_obstacle_height, min_obstacle_height_sz,
+			max_obstacle_height, max_obstacle_height_sz, raytrace_range, raytrace_range_sz,
 			size_x, size_x_sz, size_y, size_y_sz, resolution, resolution_sz,
 			curr_obs_cp, curr_obs_cp_sz, next_obs_cp, next_obs_cp_sz, lidar_count_cp, lidar_count_cp_sz,
 			timer_sequentialize, timer_sequentialize_sz,
@@ -1187,8 +1202,8 @@ void process_lidar_to_occgrid(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*
 
 	cloudToOccgrid(observationVal, observations_sz, lidar_inputs, lidarin_sz,
 			AVxyzw /*=1.5*/, AVxyzw_sz, rolling_window /*=false*/, rolling_window_sz,
-			min_obstracle_height /*=0.05*/, min_obstracle_height_sz,
-			max_obstracle_height /*=2.05*/, max_obstracle_height_sz,
+			min_obstacle_height /*=0.05*/, min_obstacle_height_sz,
+			max_obstacle_height /*=2.05*/, max_obstacle_height_sz,
 			raytrace_range /*=RAYTR_RANGE*/, raytrace_range_sz,
 			size_x /*=GRID_MAP_X_DIM*/, size_x_sz, size_y /*=GRID_MAP_Y_DIM*/, size_y_sz,
 			resolution /*=GRID_MAP_RESLTN*/, resolution_sz,
@@ -1197,6 +1212,81 @@ void process_lidar_to_occgrid(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*
 #if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
 	__hetero_task_end(T1);
 #endif
+
+	// CloudToOccgrid
+	{
+
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
+	void* T1_cloudToOccgrid_Task = __hetero_task_begin(10, observationVal, observations_sz, lidar_inputs, lidarin_sz,
+                                rolling_window, rolling_window_sz, min_obstacle_height, min_obstacle_height_sz,
+                                max_obstacle_height, max_obstacle_height_sz, raytrace_range, raytrace_range_sz,
+                                size_x, size_x_sz, size_y, size_y_sz, resolution, resolution_sz,
+                                timer_sequentialize, timer_sequentialize_sz,
+                                2,  observationVal, observations_sz, timer_sequentialize, timer_sequentialize_sz,
+                                "initCostmap_task");
+#endif
+	{
+		*timer_sequentialize = 1;
+#ifdef INT_TIME
+                        // gettimeofday(&ocgr_c2g_total_start, NULL); // See note above this function for why this call was commented out
+                        gettimeofday(&ocgr_c2g_initCM_start, NULL);
+#endif
+                        double robot_x = lidar_inputs->odometry[0];
+                        double robot_y = lidar_inputs->odometry[1];
+                        double robot_z = lidar_inputs->odometry[2];
+
+                        DBGOUT(printf("In cloudToOccgrid with Odometry %.1f %.1f %.f1\n", robot_x, robot_y, robot_z));
+                        initCostmap(observationVal, *rolling_window, *min_obstacle_height, *max_obstacle_height, *raytrace_range,
+                                        *size_x, *size_y, *resolution, robot_x, robot_y, robot_z);
+#ifdef INT_TIME
+                        gettimeofday(&ocgr_c2g_initCM_stop, NULL);
+                        ocgr_c2g_initCM_sec  += ocgr_c2g_initCM_stop.tv_sec  - ocgr_c2g_initCM_start.tv_sec;
+                        ocgr_c2g_initCM_usec += ocgr_c2g_initCM_stop.tv_usec - ocgr_c2g_initCM_start.tv_usec;
+#endif
+
+	}
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
+	__hetero_task_end(T1_cloudToOccgrid_Task);
+#endif
+
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
+	 void * T2 = __hetero_task_begin(2, observationVal, observations_sz, lidar_inputs, lidarin_sz,
+                                1, observationVal, observations_sz, "updateOrigin_task");
+#endif
+
+                {
+#ifdef INT_TIME
+                        gettimeofday(&ocgr_c2g_updOrig_start, NULL);
+#endif
+
+                        double robot_x = lidar_inputs->odometry[0];
+                        double robot_y = lidar_inputs->odometry[1];
+                        double robot_z = lidar_inputs->odometry[2];
+                        //printf("(1) Number of elements : %d ... ", data_size);
+                        //printf("First Coordinate = <%f, %f>\n", *data, *(data+1));
+                        //MOVED to physically inlined here... updateMap(obs_ptr, data, data_size, robot_x, robot_y, robot_z, robot_yaw);
+                        if (observationVal->rolling_window) {
+                                //printf("\nUpdating Map .... \n");
+                                //printf("   robot_x = %f, robot_y = %f, robot_yaw = %f \n", robot_x, robot_y, robot_yaw);
+                                //printf("   Master Origin = (%f, %f)\n", obs_ptr->master_origin.x, obs_ptr->master_origin.y);
+                                double new_origin_x = robot_x - observationVal->master_costmap.x_dim / 2;
+                                double new_origin_y = robot_y - observationVal->master_costmap.y_dim / 2;
+                                updateOrigin(observationVal, new_origin_x, new_origin_y);
+                        }
+#ifdef INT_TIME
+                        gettimeofday(&ocgr_c2g_updOrig_stop, NULL);
+                        ocgr_c2g_updOrig_sec  += ocgr_c2g_updOrig_stop.tv_sec  - ocgr_c2g_updOrig_start.tv_sec;
+                        ocgr_c2g_updOrig_usec += ocgr_c2g_updOrig_stop.tv_usec - ocgr_c2g_updOrig_start.tv_usec;
+#endif
+                }
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
+                __hetero_task_end(T2);
+#endif
+
+
+	}
+
+
 
 #if defined(INT_TIME)
 #if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
@@ -1517,8 +1607,8 @@ void lidar_root(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*=sizeof( * lid
 		// Start of arguments to cloudToOccgrid (called indirectly by lidar_root)
 		double *AVxyzw, size_t AVxyzw_sz /*=sizeof(double)*/,
 		bool *rolling_window, size_t rolling_window_sz /*=sizeof(bool)*/,
-		double *min_obstracle_height, size_t min_obstracle_height_sz /*=sizeof(double)*/,
-		double *max_obstracle_height, size_t max_obstracle_height_sz /*=sizeof(double)*/,
+		double *min_obstacle_height, size_t min_obstacle_height_sz /*=sizeof(double)*/,
+		double *max_obstacle_height, size_t max_obstacle_height_sz /*=sizeof(double)*/,
 		double *raytrace_range, size_t raytrace_range_sz /*=sizeof(double)*/,
 		unsigned int *size_x, size_t size_x_sz /*=sizeof(unsigned int)*/,
 		unsigned int *size_y, size_t size_y_sz /*=sizeof(unsigned int)*/,
@@ -1550,8 +1640,8 @@ void lidar_root(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*=sizeof( * lid
 			cmp_data, cmp_data_sz, observationVal, observations_sz, timer_sequentialize, timer_sequentialize_sz,
 			// Args for cloudToOccgrid
 			AVxyzw, AVxyzw_sz,
-			rolling_window, rolling_window_sz, min_obstracle_height, min_obstracle_height_sz,
-			max_obstracle_height, max_obstracle_height_sz, raytrace_range, raytrace_range_sz,
+			rolling_window, rolling_window_sz, min_obstacle_height, min_obstacle_height_sz,
+			max_obstacle_height, max_obstacle_height_sz, raytrace_range, raytrace_range_sz,
 			size_x, size_x_sz, size_y, size_y_sz, resolution, resolution_sz,
 			// Global vars used by process_lidar_to_occgrid
 			curr_obs_cp, curr_obs_cp_sz, next_obs_cp, next_obs_cp_sz, lidar_count_cp, lidar_count_cp_sz,
@@ -1567,8 +1657,8 @@ void lidar_root(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*=sizeof( * lid
 			curr_obs_cp, curr_obs_cp_sz, next_obs_cp, next_obs_cp_sz, lidar_count_cp, lidar_count_cp_sz,
 			lmap_count_cp, lmap_count_cp_sz,
 			// Args for cloudToOccgrid
-			AVxyzw, AVxyzw_sz, rolling_window, rolling_window_sz, min_obstracle_height, min_obstracle_height_sz,
-			max_obstracle_height, max_obstracle_height_sz, raytrace_range, raytrace_range_sz,
+			AVxyzw, AVxyzw_sz, rolling_window, rolling_window_sz, min_obstacle_height, min_obstacle_height_sz,
+			max_obstacle_height, max_obstacle_height_sz, raytrace_range, raytrace_range_sz,
 			size_x, size_x_sz, size_y, size_y_sz, resolution, resolution_sz,
 			timer_sequentialize, timer_sequentialize_sz); // buffer, total_bytes_read);
 
@@ -1971,8 +2061,8 @@ int main(int argc, char *argv[])
 			// Start of arguments to cloudToOccgrid (indirectly called by lidar_root)
 			double AVxyzw = 1.5;
 			bool rolling_window = false;
-			double min_obstracle_heght = 0.05;
-			double max_obstracle_heght = 2.05;
+			double min_obstacle_heght = 0.05;
+			double max_obstacle_heght = 2.05;
 			double raytrace_range = RAYTR_RANGE;
 			unsigned int size_x = GRID_MAP_X_DIM;
 			unsigned int size_y = GRID_MAP_Y_DIM;
@@ -2033,8 +2123,8 @@ int main(int argc, char *argv[])
 					// Args to cloudToOccgrid
 					&AVxyzw, sizeof(double), 
 					&rolling_window, sizeof(bool),
-					&min_obstracle_heght, sizeof(double), 
-					&max_obstracle_heght, sizeof(double),
+					&min_obstacle_heght, sizeof(double), 
+					&max_obstacle_heght, sizeof(double),
 					&raytrace_range, sizeof(double), 
 					&size_x, sizeof(unsigned int),
 					&size_y, sizeof(unsigned int), 
@@ -2080,8 +2170,8 @@ int main(int argc, char *argv[])
 					// Args to cloudToOccgrid
 					&AVxyzw, sizeof(double), 
 					&rolling_window, sizeof(bool),
-					&min_obstracle_heght, sizeof(double), 
-					&max_obstracle_heght, sizeof(double),
+					&min_obstacle_heght, sizeof(double), 
+					&max_obstacle_heght, sizeof(double),
 					&raytrace_range, sizeof(double), 
 					&size_x, sizeof(unsigned int),
 					&size_y, sizeof(unsigned int), 

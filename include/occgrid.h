@@ -112,6 +112,17 @@ void fuseIntoLocal(Costmap2D* localMap, Costmap2D* updateMap);
 void combineGrids(unsigned char* grid1, unsigned char* grid2, double robot_x1, double robot_y1,
 		  double robot_x2, double robot_y2, unsigned int cell_size_x, unsigned int cell_size_y, double resolution/*, char def_val*/);
 
+void initCostmap(Observation* obs_ptr, bool rolling_window,
+                double min_obstacle_height, double max_obstacle_height, double raytrace_range,
+                unsigned int size_x, unsigned int size_y, double resolution,
+                /*unsigned char default_value,*/
+                double robot_x, double robot_y, double robot_z);
+
+void updateBounds(Observation* obs_ptr, float* data, unsigned int data_size, double robot_x, double robot_y,
+                double robot_z, double robot_yaw, double* min_x, double* min_y, double* max_x, double* max_y);
+
+void updateOrigin(Observation* obs_ptr, double new_origin_x, double new_origin_y);
+
 void cloudToOccgrid(
 		Observation * obs_ptr, size_t obs_ptr_sz,
                 lidar_inputs_t* lidar_inputs, size_t lidar_inputs_sz /*=sizeof(*lidar_inputs)*/,
