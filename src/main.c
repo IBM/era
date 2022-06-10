@@ -17,7 +17,7 @@
 #define HPVM_PROCESS_LIDAR_INTERNAL
 #define HPVM_RECV_PIPELINE
 
-//#define RECV_CALLER
+#define RECV_CALLER
 
 #include "globals.h"
 #include "debug.h"
