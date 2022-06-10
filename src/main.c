@@ -43,7 +43,7 @@
 
 #define PARALLEL_PTHREADS false
 
-#define ERA2
+#define ERA1
 
 #ifdef ERA1
 char *IMAGE_FN = "gridimage_era1_"; 
@@ -1013,13 +1013,41 @@ void *receive_and_fuse_maps(void *parm_ptr, size_t parm_ptr_sz)
    lidar_inputs_t;
    */
 
-void logging_Plus_cloudToOccgridTimerStart(int *next_obs_cp /*=next_obs -> global*/, size_t next_obs_cp_sz /*=sizeof(int)*/, 
-		int *lidar_count_cp /*lidar_count -> global*/, size_t lidar_count_cp_sz /*=sizeof(unsigned)*/, 
-		lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*=sizeof( * lidar_inputs)*/, 
-		int *timer_sequentialize, size_t timer_sequentialize_sz /*=sizeof(int) */) {
- 
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true // TODO: Remove me
-	void * Section_Inner = __hetero_section_begin();
+// Note: Kindof a major change; previously the entire observation's array was being passed into the function
+// but only of the value from the array was being used (the index for that value was given by the global
+// next_obs).
+// Now, that particular index (and only that index) was being used in the function. So a change was
+// made to directly pass in the observation value that the index pointed to by next_obs.
+void process_lidar_to_occgrid(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*=sizeof( * lidar_inputs)*/,
+		Observation *observationVal /* observations[*next_obs_cp] -> from global array*/, size_t observations_sz /*=sizeof(Observation)*/,
+		int *n_cmp_bytes /*return by arg*/, size_t n_cmp_bytes_sz /*=1*/,
+		unsigned char *cmp_data /*return by arg*/, size_t cmp_data_sz /*=MAX_COMPRESSED_DATA_SIZE*/,
+		// Start of global variables used internally by function
+		int *curr_obs_cp /*=curr_obs -> global*/, size_t curr_obs_cp_sz /*=sizeof(int)*/,
+		int *next_obs_cp /*=next_obs -> global*/, size_t next_obs_cp_sz /*=sizeof(int)*/,
+		int *lidar_count_cp /*lidar_count -> global*/, size_t lidar_count_cp_sz /*=sizeof(unsigned)*/,
+		int *lmap_count_cp /*=lmap_count -> global*/, size_t lmap_count_cp_sz /*=sizeof(unsigned)*/,
+		// End of global variables used internally by function
+		// Start of arguments to cloudToOccgrid (called by process_lidar_to_occgrid)
+		double *AVxyzw, size_t AVxyzw_sz /*=sizeof(double)*/,
+		bool *rolling_window, size_t rolling_window_sz /*=sizeof(bool)*/,
+		double *min_obstacle_height, size_t min_obstacle_height_sz /*=sizeof(double)*/,
+		double *max_obstacle_height, size_t max_obstacle_height_sz /*=sizeof(double)*/,
+		double *raytrace_range, size_t raytrace_range_sz /*=sizeof(double)*/,
+		unsigned int *size_x, size_t size_x_sz /*=sizeof(unsigned int)*/,
+		unsigned int *size_y, size_t size_y_sz /*=sizeof(unsigned int)*/,
+		unsigned int *resolution, size_t resolution_sz /*=sizeof(unsigned int)*/,
+		int *timer_sequentialize, size_t timer_sequentialize_sz /*=sizeof(int) */
+		// End of arguments to cloudToOccgrid (called by process_lidar_to_occgrid)
+)
+{
+
+
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
+	void *Section = __hetero_section_begin();
+#endif
+
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
 	void *T1_timer_start = __hetero_task_begin(4, lidar_count_cp, lidar_count_cp_sz,
 			next_obs_cp, next_obs_cp_sz, lidar_inputs, lidarin_sz,
 			timer_sequentialize, timer_sequentialize_sz,
@@ -1038,26 +1066,195 @@ void logging_Plus_cloudToOccgridTimerStart(int *next_obs_cp /*=next_obs -> globa
 	gettimeofday(&start_pd_cloud2grid, NULL);
 #endif
 
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true // TODO: Remove me
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
 	__hetero_task_end(T1_timer_start);
-	__hetero_section_end(Section_Inner); 
 #endif
 
-}
+#if false
 
-void compress_map(Observation *observationVal /* observations[*next_obs_cp] -> from global array*/, size_t observations_sz /*=sizeof(Observation)*/, int *n_cmp_bytes /*return by arg*/, size_t n_cmp_bytes_sz /*=1*/, 
-		unsigned char *cmp_data /*return by arg*/, size_t cmp_data_sz /*=MAX_COMPRESSED_DATA_SIZE*/, 
-		int *next_obs_cp /*=next_obs -> global*/, size_t next_obs_cp_sz /*=sizeof(int)*/, 
-		int *curr_obs_cp /*=curr_obs -> global*/, size_t curr_obs_cp_sz /*=sizeof(int)*/, 
-		int *lmap_count_cp /*=lmap_count -> global*/, size_t lmap_count_cp_sz /*=sizeof(unsigned)*/) {
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
+	void *T1 = __hetero_task_begin(14, lidar_inputs, lidarin_sz, observationVal, observations_sz,
+			// Args to CloudToOccgrid
+			AVxyzw, AVxyzw_sz, rolling_window, rolling_window_sz,
+			min_obstacle_height, min_obstacle_height_sz,
+			max_obstacle_height, max_obstacle_height_sz, raytrace_range, raytrace_range_sz,
+			size_x, size_x_sz, size_y, size_y_sz, resolution, resolution_sz,
+			curr_obs_cp, curr_obs_cp_sz, next_obs_cp, next_obs_cp_sz, lidar_count_cp, lidar_count_cp_sz,
+			timer_sequentialize, timer_sequentialize_sz,
+			3, lidar_inputs, lidarin_sz, observationVal, observations_sz,
+			timer_sequentialize, timer_sequentialize_sz,
+			"cloudToOccgrid_Task");
+	// observationVal is an input because cloudtoOccgrid modifies it. It's an output because
+	// the next task (T2) takes it as an input and it needs to get the updated value of observations (i.e.
+	// after call to cloudtoOccgrid)
 
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true // TODO: Remove me
-	void * T2_Section_Inner = __hetero_section_begin();
+	// It seems all that T1 does is update the value of observationVal to the newly recieved inputs
+	// as indicated by lidar_inputs
+#endif
+
+	cloudToOccgrid(observationVal, observations_sz, lidar_inputs, lidarin_sz,
+			AVxyzw /*=1.5*/, AVxyzw_sz, rolling_window /*=false*/, rolling_window_sz,
+			min_obstacle_height /*=0.05*/, min_obstacle_height_sz,
+			max_obstacle_height /*=2.05*/, max_obstacle_height_sz,
+			raytrace_range /*=RAYTR_RANGE*/, raytrace_range_sz,
+			size_x /*=GRID_MAP_X_DIM*/, size_x_sz, size_y /*=GRID_MAP_Y_DIM*/, size_y_sz,
+			resolution /*=GRID_MAP_RESLTN*/, resolution_sz,
+			timer_sequentialize, timer_sequentialize_sz);
+
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
+	__hetero_task_end(T1);
+#endif
+
+#endif
+
+	// CloudToOccgrid
+	{
+
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
+	void* T1_cloudToOccgrid_Task = __hetero_task_begin(10, observationVal, observations_sz, lidar_inputs, lidarin_sz,
+                                rolling_window, rolling_window_sz, min_obstacle_height, min_obstacle_height_sz,
+                                max_obstacle_height, max_obstacle_height_sz, raytrace_range, raytrace_range_sz,
+                                size_x, size_x_sz, size_y, size_y_sz, resolution, resolution_sz,
+                                timer_sequentialize, timer_sequentialize_sz,
+                                2,  observationVal, observations_sz, timer_sequentialize, timer_sequentialize_sz,
+                                "initCostmap_task");
+#endif
+	{
+		*timer_sequentialize = 1;
+#ifdef INT_TIME
+                        // gettimeofday(&ocgr_c2g_total_start, NULL); // See note above this function for why this call was commented out
+                        gettimeofday(&ocgr_c2g_initCM_start, NULL);
+#endif
+                        double robot_x = lidar_inputs->odometry[0];
+                        double robot_y = lidar_inputs->odometry[1];
+                        double robot_z = lidar_inputs->odometry[2];
+
+                        DBGOUT(printf("In cloudToOccgrid with Odometry %.1f %.1f %.f1\n", robot_x, robot_y, robot_z));
+                        initCostmap(observationVal, *rolling_window, *min_obstacle_height, *max_obstacle_height, *raytrace_range,
+                                        *size_x, *size_y, *resolution, robot_x, robot_y, robot_z);
+#ifdef INT_TIME
+                        gettimeofday(&ocgr_c2g_initCM_stop, NULL);
+                        ocgr_c2g_initCM_sec  += ocgr_c2g_initCM_stop.tv_sec  - ocgr_c2g_initCM_start.tv_sec;
+                        ocgr_c2g_initCM_usec += ocgr_c2g_initCM_stop.tv_usec - ocgr_c2g_initCM_start.tv_usec;
+#endif
+
+	}
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
+	__hetero_task_end(T1_cloudToOccgrid_Task);
+#endif
+
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
+	 void * T2_cloudToOccgrid_Task = __hetero_task_begin(2, observationVal, observations_sz, lidar_inputs, lidarin_sz,
+                                1, observationVal, observations_sz, "updateOrigin_task");
+#endif
+
+                {
+#ifdef INT_TIME
+                        gettimeofday(&ocgr_c2g_updOrig_start, NULL);
+#endif
+
+                        double robot_x = lidar_inputs->odometry[0];
+                        double robot_y = lidar_inputs->odometry[1];
+                        double robot_z = lidar_inputs->odometry[2];
+                        //printf("(1) Number of elements : %d ... ", data_size);
+                        //printf("First Coordinate = <%f, %f>\n", *data, *(data+1));
+                        //MOVED to physically inlined here... updateMap(obs_ptr, data, data_size, robot_x, robot_y, robot_z, robot_yaw);
+                        if (observationVal->rolling_window) {
+                                //printf("\nUpdating Map .... \n");
+                                //printf("   robot_x = %f, robot_y = %f, robot_yaw = %f \n", robot_x, robot_y, AVxyzw);
+                                //printf("   Master Origin = (%f, %f)\n", obs_ptr->master_origin.x, obs_ptr->master_origin.y);
+                                double new_origin_x = robot_x - observationVal->master_costmap.x_dim / 2;
+                                double new_origin_y = robot_y - observationVal->master_costmap.y_dim / 2;
+                                updateOrigin(observationVal, new_origin_x, new_origin_y);
+                        }
+#ifdef INT_TIME
+                        gettimeofday(&ocgr_c2g_updOrig_stop, NULL);
+                        ocgr_c2g_updOrig_sec  += ocgr_c2g_updOrig_stop.tv_sec  - ocgr_c2g_updOrig_start.tv_sec;
+                        ocgr_c2g_updOrig_usec += ocgr_c2g_updOrig_stop.tv_usec - ocgr_c2g_updOrig_start.tv_usec;
+#endif
+                }
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
+                __hetero_task_end(T2_cloudToOccgrid_Task);
+#endif
+
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
+		void * T3_cloudToOccgrid_Task = __hetero_task_begin(3, observationVal, observations_sz, lidar_inputs, lidarin_sz, 
+				AVxyzw, AVxyzw_sz, 1, observationVal, observations_sz, "updateBounds_task");
+#endif
+                {
+#ifdef INT_TIME
+                        gettimeofday(&ocgr_c2g_updBnds_start, NULL);
+#endif
+                        double robot_x = lidar_inputs->odometry[0];
+                        double robot_y = lidar_inputs->odometry[1];
+                        double robot_z = lidar_inputs->odometry[2];
+
+                        float * data = (float*)(lidar_inputs->data);
+                        unsigned int data_size = lidar_inputs->data_size / sizeof(float);
+
+                        double min_x = 1e30;
+                        double min_y = 1e30;
+                        double max_x = -1e30;
+                        double max_y = -1e30;
+
+                        //printf("(1) Number of elements : %d ... ", data_size);
+                        //printf("First Coordinate = <%f, %f>\n", *data, *(data+1));
+                        //rotating_window = true; //Comment out if not rolling window
+
+                        updateBounds(observationVal, data, data_size, robot_x, robot_y, robot_z,
+                                        *AVxyzw, &min_x, &min_y, &max_x, &max_y);
+
+                        //printMap();
+#ifdef INT_TIME
+                        gettimeofday(&ocgr_c2g_updBnds_stop, NULL);
+                        ocgr_c2g_updBnds_sec  += ocgr_c2g_updBnds_stop.tv_sec  - ocgr_c2g_updBnds_start.tv_sec;
+                        ocgr_c2g_updBnds_usec += ocgr_c2g_updBnds_stop.tv_usec - ocgr_c2g_updBnds_start.tv_usec;
+
+                        // Note (located above this function) explains why the following lines were commented out
+                        // ocgr_c2g_total_sec  += ocgr_c2g_updBnds_stop.tv_sec  - ocgr_c2g_total_start.tv_sec;
+                        // ocgr_c2g_total_usec += ocgr_c2g_updBnds_stop.tv_usec - ocgr_c2g_total_start.tv_usec;
+#endif
+		}
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
+	__hetero_task_end(T3_cloudToOccgrid_Task);
+#endif
+#if defined(INT_TIME) && !(defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL))
+                gettimeofday(&ocgr_c2g_total_stop, NULL);
+                ocgr_c2g_total_sec  += ocgr_c2g_total_stop.tv_sec  - ocgr_c2g_total_start.tv_sec;
+                ocgr_c2g_total_usec += ocgr_c2g_total_stop.tv_usec - ocgr_c2g_total_start.tv_usec;
+#endif
+
+
+	}
+
+
+
+#if defined(INT_TIME)
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
+	void *T1_timer_end = __hetero_task_begin(1, timer_sequentialize, timer_sequentialize_sz,
+			1, timer_sequentialize, timer_sequentialize_sz, "cloudToOccgrid_Timer_End_Task");
+#endif
+
+	*timer_sequentialize = 3;
+#ifdef INT_TIME
+	gettimeofday(&stop_pd_cloud2grid, NULL);
+	pd_cloud2grid_sec += stop_pd_cloud2grid.tv_sec - start_pd_cloud2grid.tv_sec;
+	pd_cloud2grid_usec += stop_pd_cloud2grid.tv_usec - start_pd_cloud2grid.tv_usec;
+#endif
+
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
+	__hetero_task_end(T1_timer_end);
+#endif
+#endif // defined(INT_TIME)
+
+	// Write the read-in image to a file
+	// write_array_to_file(grid, COST_MAP_ENTRIES);
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
 	void *T2 = __hetero_task_begin(6, observationVal, observations_sz, n_cmp_bytes, n_cmp_bytes_sz,
 			cmp_data, cmp_data_sz, next_obs_cp, next_obs_cp_sz, curr_obs_cp, curr_obs_cp_sz,
 			lmap_count_cp, lmap_count_cp_sz,
 			3, observationVal, observations_sz, n_cmp_bytes, n_cmp_bytes_sz, cmp_data, cmp_data_sz,
-			"compressMap_task");
+			"compressMap_Task");
 #endif
 
 	printf("%s %d In T2", __FILE__, __LINE__);
@@ -1103,220 +1300,9 @@ void compress_map(Observation *observationVal /* observations[*next_obs_cp] -> f
 	DBGOUT(double c_ratio = 100 * (1 - ((double)(*n_cmp_bytes) / (double)(MAX_UNCOMPRESSED_DATA_SIZE))); printf("  Back from LZ4_compress_default: %lu bytes -> %u bytes for %5.2f%%\n",
 				MAX_UNCOMPRESSED_DATA_SIZE, *n_cmp_bytes, c_ratio););
 
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true // TODO: Remove me
+
+#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
 	__hetero_task_end(T2);
-	__hetero_section_end(T2_Section_Inner);
-#endif
-
-}
-
-void cloudToOccgrid_timer_end(int *timer_sequentialize, size_t timer_sequentialize_sz /*=sizeof(int)*/) {
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && defined(INT_TIME) && true // TODO: Remove me
-	void * T1_timer_end_Section_Inner = __hetero_section_begin();
-	void *T1_timer_end = __hetero_task_begin(1, timer_sequentialize, timer_sequentialize_sz,
-			1, timer_sequentialize, timer_sequentialize_sz, "cloudToOccgrid_Timer_End");
-#endif
-
-	*timer_sequentialize = 3;
-#ifdef INT_TIME
-	gettimeofday(&stop_pd_cloud2grid, NULL);
-	pd_cloud2grid_sec += stop_pd_cloud2grid.tv_sec - start_pd_cloud2grid.tv_sec;
-	pd_cloud2grid_usec += stop_pd_cloud2grid.tv_usec - start_pd_cloud2grid.tv_usec;
-#endif
-
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && defined(INT_TIME) && true // TODO: Remove me
-	__hetero_task_end(T1_timer_end);
-	__hetero_section_end(T1_timer_end_Section_Inner);
-#endif
-}
-
-// Note: Kindof a major change; previously the entire observation's array was being passed into the function
-// but only of the value from the array was being used (the index for that value was given by the global
-// next_obs).
-// Now, that particular index (and only that index) was being used in the function. So a change was
-// made to directly pass in the observation value that the index pointed to by next_obs.
-void process_lidar_to_occgrid(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*=sizeof( * lidar_inputs)*/,
-		Observation *observationVal /* observations[*next_obs_cp] -> from global array*/, size_t observations_sz /*=sizeof(Observation)*/,
-		int *n_cmp_bytes /*return by arg*/, size_t n_cmp_bytes_sz /*=1*/,
-		unsigned char *cmp_data /*return by arg*/, size_t cmp_data_sz /*=MAX_COMPRESSED_DATA_SIZE*/,
-		// Start of global variables used internally by function
-		int *curr_obs_cp /*=curr_obs -> global*/, size_t curr_obs_cp_sz /*=sizeof(int)*/,
-		int *next_obs_cp /*=next_obs -> global*/, size_t next_obs_cp_sz /*=sizeof(int)*/,
-		int *lidar_count_cp /*lidar_count -> global*/, size_t lidar_count_cp_sz /*=sizeof(unsigned)*/,
-		int *lmap_count_cp /*=lmap_count -> global*/, size_t lmap_count_cp_sz /*=sizeof(unsigned)*/,
-		// End of global variables used internally by function
-		// Start of arguments to cloudToOccgrid (called by process_lidar_to_occgrid)
-		double *AVxyzw, size_t AVxyzw_sz /*=sizeof(double)*/,
-		bool *rolling_window, size_t rolling_window_sz /*=sizeof(bool)*/,
-		double *min_obstacle_height, size_t min_obstacle_height_sz /*=sizeof(double)*/,
-		double *max_obstacle_height, size_t max_obstacle_height_sz /*=sizeof(double)*/,
-		double *raytrace_range, size_t raytrace_range_sz /*=sizeof(double)*/,
-		unsigned int *size_x, size_t size_x_sz /*=sizeof(unsigned int)*/,
-		unsigned int *size_y, size_t size_y_sz /*=sizeof(unsigned int)*/,
-		unsigned int *resolution, size_t resolution_sz /*=sizeof(unsigned int)*/,
-		int *timer_sequentialize, size_t timer_sequentialize_sz /*=sizeof(int) */
-		// End of arguments to cloudToOccgrid (called by process_lidar_to_occgrid)
-)
-{
-
-
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
-	void *Section = __hetero_section_begin();
-#endif
-
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
-	void *T1_timer_start_Wrapper1 = __hetero_task_begin(4, lidar_count_cp, lidar_count_cp_sz,
-			next_obs_cp, next_obs_cp_sz, lidar_inputs, lidarin_sz,
-			timer_sequentialize, timer_sequentialize_sz,
-			1, timer_sequentialize, timer_sequentialize_sz,
-			"Logging_And_cloudToOccgrid_Timer_Start_Wrapper1_Task");
-#endif
-
-	logging_Plus_cloudToOccgridTimerStart(lidar_count_cp, lidar_count_cp_sz,
-                        next_obs_cp, next_obs_cp_sz, lidar_inputs, lidarin_sz,
-                        timer_sequentialize, timer_sequentialize_sz);
-
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
-	__hetero_task_end(T1_timer_start_Wrapper1);
-#endif
-
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
-	void *T1 = __hetero_task_begin(14, lidar_inputs, lidarin_sz, observationVal, observations_sz,
-			// Args to CloudToOccgrid
-			AVxyzw, AVxyzw_sz, rolling_window, rolling_window_sz,
-			min_obstacle_height, min_obstacle_height_sz,
-			max_obstacle_height, max_obstacle_height_sz, raytrace_range, raytrace_range_sz,
-			size_x, size_x_sz, size_y, size_y_sz, resolution, resolution_sz,
-			curr_obs_cp, curr_obs_cp_sz, next_obs_cp, next_obs_cp_sz, lidar_count_cp, lidar_count_cp_sz,
-			timer_sequentialize, timer_sequentialize_sz,
-			3, lidar_inputs, lidarin_sz, observationVal, observations_sz,
-			timer_sequentialize, timer_sequentialize_sz,
-			"cloudToOccgrid_Task");
-	// observationVal is an input because cloudtoOccgrid modifies it. It's an output because
-	// the next task (T2) takes it as an input and it needs to get the updated value of observations (i.e.
-	// after call to cloudtoOccgrid)
-
-	// It seems all that T1 does is update the value of observationVal to the newly recieved inputs
-	// as indicated by lidar_inputs
-#endif
-
-	cloudToOccgrid(observationVal, observations_sz, lidar_inputs, lidarin_sz,
-			AVxyzw /*=1.5*/, AVxyzw_sz, rolling_window /*=false*/, rolling_window_sz,
-			min_obstacle_height /*=0.05*/, min_obstacle_height_sz,
-			max_obstacle_height /*=2.05*/, max_obstacle_height_sz,
-			raytrace_range /*=RAYTR_RANGE*/, raytrace_range_sz,
-			size_x /*=GRID_MAP_X_DIM*/, size_x_sz, size_y /*=GRID_MAP_Y_DIM*/, size_y_sz,
-			resolution /*=GRID_MAP_RESLTN*/, resolution_sz,
-			timer_sequentialize, timer_sequentialize_sz);
-
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
-	__hetero_task_end(T1);
-#endif
-
-	// CloudToOccgrid
-	{
-
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
-	void* T1_cloudToOccgrid_Task = __hetero_task_begin(10, observationVal, observations_sz, lidar_inputs, lidarin_sz,
-                                rolling_window, rolling_window_sz, min_obstacle_height, min_obstacle_height_sz,
-                                max_obstacle_height, max_obstacle_height_sz, raytrace_range, raytrace_range_sz,
-                                size_x, size_x_sz, size_y, size_y_sz, resolution, resolution_sz,
-                                timer_sequentialize, timer_sequentialize_sz,
-                                2,  observationVal, observations_sz, timer_sequentialize, timer_sequentialize_sz,
-                                "initCostmap_task");
-#endif
-	{
-		*timer_sequentialize = 1;
-#ifdef INT_TIME
-                        // gettimeofday(&ocgr_c2g_total_start, NULL); // See note above this function for why this call was commented out
-                        gettimeofday(&ocgr_c2g_initCM_start, NULL);
-#endif
-                        double robot_x = lidar_inputs->odometry[0];
-                        double robot_y = lidar_inputs->odometry[1];
-                        double robot_z = lidar_inputs->odometry[2];
-
-                        DBGOUT(printf("In cloudToOccgrid with Odometry %.1f %.1f %.f1\n", robot_x, robot_y, robot_z));
-                        initCostmap(observationVal, *rolling_window, *min_obstacle_height, *max_obstacle_height, *raytrace_range,
-                                        *size_x, *size_y, *resolution, robot_x, robot_y, robot_z);
-#ifdef INT_TIME
-                        gettimeofday(&ocgr_c2g_initCM_stop, NULL);
-                        ocgr_c2g_initCM_sec  += ocgr_c2g_initCM_stop.tv_sec  - ocgr_c2g_initCM_start.tv_sec;
-                        ocgr_c2g_initCM_usec += ocgr_c2g_initCM_stop.tv_usec - ocgr_c2g_initCM_start.tv_usec;
-#endif
-
-	}
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
-	__hetero_task_end(T1_cloudToOccgrid_Task);
-#endif
-
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
-	 void * T2 = __hetero_task_begin(2, observationVal, observations_sz, lidar_inputs, lidarin_sz,
-                                1, observationVal, observations_sz, "updateOrigin_task");
-#endif
-
-                {
-#ifdef INT_TIME
-                        gettimeofday(&ocgr_c2g_updOrig_start, NULL);
-#endif
-
-                        double robot_x = lidar_inputs->odometry[0];
-                        double robot_y = lidar_inputs->odometry[1];
-                        double robot_z = lidar_inputs->odometry[2];
-                        //printf("(1) Number of elements : %d ... ", data_size);
-                        //printf("First Coordinate = <%f, %f>\n", *data, *(data+1));
-                        //MOVED to physically inlined here... updateMap(obs_ptr, data, data_size, robot_x, robot_y, robot_z, robot_yaw);
-                        if (observationVal->rolling_window) {
-                                //printf("\nUpdating Map .... \n");
-                                //printf("   robot_x = %f, robot_y = %f, robot_yaw = %f \n", robot_x, robot_y, robot_yaw);
-                                //printf("   Master Origin = (%f, %f)\n", obs_ptr->master_origin.x, obs_ptr->master_origin.y);
-                                double new_origin_x = robot_x - observationVal->master_costmap.x_dim / 2;
-                                double new_origin_y = robot_y - observationVal->master_costmap.y_dim / 2;
-                                updateOrigin(observationVal, new_origin_x, new_origin_y);
-                        }
-#ifdef INT_TIME
-                        gettimeofday(&ocgr_c2g_updOrig_stop, NULL);
-                        ocgr_c2g_updOrig_sec  += ocgr_c2g_updOrig_stop.tv_sec  - ocgr_c2g_updOrig_start.tv_sec;
-                        ocgr_c2g_updOrig_usec += ocgr_c2g_updOrig_stop.tv_usec - ocgr_c2g_updOrig_start.tv_usec;
-#endif
-                }
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
-                __hetero_task_end(T2);
-#endif
-
-
-	}
-
-
-
-#if defined(INT_TIME)
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
-	void *T1_timer_end_Wrapper1 = __hetero_task_begin(1, timer_sequentialize, timer_sequentialize_sz,
-			1, timer_sequentialize, timer_sequentialize_sz, "cloudToOccgrid_Timer_End_Wrapper1");
-#endif
-
-	cloudToOccgrid_timer_end(timer_sequentialize, timer_sequentialize_sz);
-
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
-	__hetero_task_end(T1_timer_end_Wrapper1);
-#endif
-#endif // defined(INT_TIME)
-
-	// Write the read-in image to a file
-	// write_array_to_file(grid, COST_MAP_ENTRIES);
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
-	void *T2_Wrapper1 = __hetero_task_begin(6, observationVal, observations_sz, n_cmp_bytes, n_cmp_bytes_sz,
-			cmp_data, cmp_data_sz, next_obs_cp, next_obs_cp_sz, curr_obs_cp, curr_obs_cp_sz,
-			lmap_count_cp, lmap_count_cp_sz,
-			3, observationVal, observations_sz, n_cmp_bytes, n_cmp_bytes_sz, cmp_data, cmp_data_sz,
-			"compressMap_Wrapper1_task");
-#endif
-
-	compress_map(observationVal, observations_sz, n_cmp_bytes, n_cmp_bytes_sz,
-                        cmp_data, cmp_data_sz, next_obs_cp, next_obs_cp_sz, curr_obs_cp, curr_obs_cp_sz,
-                        lmap_count_cp, lmap_count_cp_sz);
-
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
-	__hetero_task_end(T2_Wrapper1);
 
 	__hetero_section_end(Section);
 #endif
@@ -1526,74 +1512,6 @@ msg_stream_imag, msg_stream_imag_sz,
 }
 ***********************************************************************************/
 
-void TX(int *n_cmp_bytes, size_t n_cmp_bytes_sz, 
-		unsigned char *cmp_data, size_t cmp_data_sz,
-		int *n_xmit_out, size_t n_xmit_out_sz,
-		float *xmit_out_real, size_t xmit_out_real_sz,
-		float *xmit_out_imag, size_t xmit_out_imag_sz,
-		int *psdu_len, size_t psdu_len_sz,
-		uint8_t *pckt_hdr_out, size_t pckt_hdr_out_sz,
-		int *pckt_hdr_len, size_t pckt_hdr_len_sz,
-		float *msg_stream_real, size_t msg_stream_real_sz,
-		float *msg_stream_imag, size_t msg_stream_imag_sz,
-		float *ofdm_car_str_real, size_t ofdm_car_str_real_sz,
-		float *ofdm_car_str_imag, size_t ofdm_car_str_imag_sz,
-		int *ofc_res, size_t ofc_res_sz,
-		float *fft_out_real, size_t fft_out_real_sz,
-		float *fft_out_imag, size_t fft_out_imag_sz,
-		float *cycpref_out_real, size_t cycpref_out_real_sz,
-		float *cycpref_out_imag, size_t cycpref_out_imag_sz
-	) {
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
-	void * Section_TX_Inner = __hetero_section_begin();
-
-	void *T2_Inner = __hetero_task_begin(17,
-			// Args for encode_occgrid
-			n_cmp_bytes, n_cmp_bytes_sz,
-			cmp_data, cmp_data_sz,
-			n_xmit_out, n_xmit_out_sz,
-			xmit_out_real, xmit_out_real_sz,
-			xmit_out_imag, xmit_out_imag_sz,
-			// Start of local variables for do_xmit_pipeline
-			psdu_len, psdu_len_sz,
-			pckt_hdr_out, pckt_hdr_out_sz,
-			pckt_hdr_len, pckt_hdr_len_sz,
-			msg_stream_real, msg_stream_real_sz,
-			msg_stream_imag, msg_stream_imag_sz,
-			ofdm_car_str_real, ofdm_car_str_real_sz,
-			ofdm_car_str_imag, ofdm_car_str_imag_sz,
-			ofc_res, ofc_res_sz,
-			fft_out_real, fft_out_real_sz,
-			fft_out_imag, fft_out_imag_sz,
-			cycpref_out_real, cycpref_out_real_sz,
-			cycpref_out_imag, cycpref_out_imag_sz,
-			// End of local variables for do_xmit_pipeline
-			3, n_xmit_out, n_xmit_out_sz,
-			xmit_out_real, xmit_out_real_sz,
-			xmit_out_imag, xmit_out_imag_sz,
-			"TX_task");
-#endif
-
-	do_xmit_pipeline(n_cmp_bytes, n_cmp_bytes_sz, (char *)cmp_data, cmp_data_sz,
-			n_xmit_out, n_xmit_out_sz, xmit_out_real, xmit_out_real_sz,
-			xmit_out_imag, xmit_out_imag_sz,
-			// Start of local variables for do_xmit_pipeline
-			psdu_len, psdu_len_sz, pckt_hdr_out, pckt_hdr_out_sz,
-			pckt_hdr_len, pckt_hdr_len_sz,
-			msg_stream_real, msg_stream_real_sz,
-			msg_stream_imag, msg_stream_imag_sz,
-			ofdm_car_str_real, ofdm_car_str_real_sz,
-			ofdm_car_str_imag, ofdm_car_str_imag_sz, ofc_res, ofc_res_sz,
-			fft_out_real, fft_out_real_sz, fft_out_imag, fft_out_imag_sz,
-			cycpref_out_real, cycpref_out_real_sz,
-			cycpref_out_imag, cycpref_out_imag_sz);
-
-#if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
-	__hetero_task_end(T2_Inner);
-	__hetero_section_end(Section_TX_Inner);
-#endif
-}
-
 void lidar_root(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*=sizeof( * lidar_inputs)*/,
 		Observation *observationVal /* observations[*next_obs_cp] -> from global array*/, size_t observations_sz /*=sizeof(Observation)*2*/,
 		int *n_cmp_bytes /*return by arg*/, size_t n_cmp_bytes_sz /*=sizeof(int)*1*/,
@@ -1667,7 +1585,7 @@ void lidar_root(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*=sizeof( * lid
 #endif
 
 #if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR)) && true
-	void *T2_Wrapper1 = __hetero_task_begin(17,
+	void *T2 = __hetero_task_begin(17,
 			// Args for encode_occgrid
 			n_cmp_bytes, n_cmp_bytes_sz,
 			cmp_data, cmp_data_sz,
@@ -1691,10 +1609,10 @@ void lidar_root(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*=sizeof( * lid
 			3, n_xmit_out, n_xmit_out_sz,
 			xmit_out_real, xmit_out_real_sz,
 			xmit_out_imag, xmit_out_imag_sz,
-			"TX_wrapper1_task");
+			"TX_task");
 #endif
 
-	TX(n_cmp_bytes, n_cmp_bytes_sz, cmp_data, cmp_data_sz,
+	do_xmit_pipeline(n_cmp_bytes, n_cmp_bytes_sz, cmp_data, cmp_data_sz,
 			n_xmit_out, n_xmit_out_sz, xmit_out_real, xmit_out_real_sz,
 			xmit_out_imag, xmit_out_imag_sz,
 			// Start of local variables for do_xmit_pipeline
@@ -1709,7 +1627,7 @@ void lidar_root(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*=sizeof( * lid
 			cycpref_out_imag, cycpref_out_imag_sz);
 
 #if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR)) && true
-	__hetero_task_end(T2_Wrapper1);
+	__hetero_task_end(T2);
 #endif
 
 #if (defined(HPVM) || defined(HPVM_PROCESS_LIDAR)) && true
