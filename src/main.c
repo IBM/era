@@ -16,7 +16,6 @@
 #define HPVM_PROCESS_LIDAR
 #define HPVM_PROCESS_LIDAR_INTERNAL
 #define HPVM_RECV_PIPELINE
-
 #define RECV_CALLER
 
 #include "globals.h"
@@ -31,19 +30,22 @@
 #include "globalsRecv.h"
 #include "globalsOccgrid.h"
 
+#include <stdint.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image/stb_image.h"
+
 #if defined(HPVM)
 #include "hpvm.h"
 #include "hetero.h"
 #endif
 
-#undef INT_TIME // TODO: REMOVE ME; this should be un-set during compilation
-
-
 #undef HPVM // TODO: Remove me
+
+//#define USE_OLD_MODEL
 
 #define PARALLEL_PTHREADS false
 
-#define ERA1
+#define ERA2
 
 #ifdef ERA1
 char *IMAGE_FN = "gridimage_era1_"; 
@@ -366,7 +368,7 @@ void decompress(unsigned char *uncmp_data, size_t uncmp_data_sz,
 	pd_lz4_uncmp_usec += stop_pd_lz4_uncmp.tv_usec - start_pd_lz4_uncmp.tv_usec;
 #endif
 
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true // TODO: Remove "false"rue
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true 
 	__hetero_task_end(T2);
 	__hetero_section_end(Section_Inner); 
 #endif
@@ -378,7 +380,7 @@ void decompress_caller(unsigned char *uncmp_data, size_t uncmp_data_sz,
 		unsigned char *recvd_msg, size_t recvd_msg_sz, 
 		int *dec_bytes, size_t dec_bytes_sz
 	) {
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && defined(RECV_CALLER)  && true // TODO: Remove false
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && defined(RECV_CALLER)  && true 
 	void * Section_Caller = __hetero_section_begin();
 	void * T2_Wrapper = __hetero_task_begin(4, uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
 			recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz,
@@ -388,7 +390,7 @@ void decompress_caller(unsigned char *uncmp_data, size_t uncmp_data_sz,
 	decompress(uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz, recvd_msg, 
 			recvd_msg_sz, dec_bytes, dec_bytes_sz);
 
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && defined(RECV_CALLER) && true // TODO: Remove false
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && defined(RECV_CALLER) && true 
 	__hetero_task_end(T2_Wrapper);
 	__hetero_section_end(Section_Caller); 
 #endif
@@ -398,14 +400,11 @@ void decompress_caller(unsigned char *uncmp_data, size_t uncmp_data_sz,
 void grid_fusion(Observation *observations, size_t observations_sz, 
 		unsigned char *uncmp_data, size_t uncmp_data_sz) {
 
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true // TODO: Remove me
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true 
 	void * Section_Inner = __hetero_section_begin();
 	void * T4 = __hetero_task_begin(2, observations, observations_sz, uncmp_data, uncmp_data_sz,
 			1, observations, observations_sz, "gridFusion_task");
 #endif
-
-	printf("%s %d In T4 for fuse_maps ", __FILE__, __LINE__); // TODO: Remove me
-
 
 	// Then we should "Fuse" the received GridMap with our local one
 	//  We need to "peel out" the remote odometry data from somewhere (in the message?)
@@ -456,7 +455,7 @@ void grid_fusion(Observation *observations, size_t observations_sz,
 	write_array_to_file(local_map_cp -> costmap, COST_MAP_ENTRIES);
 #endif
 
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true // TODO: Remove me
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true 
 	__hetero_task_end(T4);
 	__hetero_section_end(Section_Inner);
 #endif
@@ -465,7 +464,7 @@ void grid_fusion(Observation *observations, size_t observations_sz,
 void grid_fusion_caller(Observation *observations, size_t observations_sz, 
 		unsigned char *uncmp_data, size_t uncmp_data_sz) {
 
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && defined(RECV_CALLER)  && true // TODO: Remove me
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && defined(RECV_CALLER)  && true 
 	void * Section_Caller = __hetero_section_begin();
 	void * T4_Caller = __hetero_task_begin(2, observations, observations_sz, uncmp_data, uncmp_data_sz,
 			1, observations, observations_sz, "gridFusion_task_wrapper2");
@@ -473,7 +472,7 @@ void grid_fusion_caller(Observation *observations, size_t observations_sz,
 
 	 grid_fusion(observations, observations_sz, uncmp_data, uncmp_data_sz);
 
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && defined(RECV_CALLER)   && true // TODO: Remove me
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && defined(RECV_CALLER)   && true 
 	__hetero_task_end(T4_Caller);
 	__hetero_section_end(Section_Caller);
 #endif
@@ -602,10 +601,10 @@ void fuse_maps(int n_recvd_in,
 
 #if defined(RECV_CALLER)
 	decompress_caller(uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
-                        recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz); // TODO: Uncomment me
+                        recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz); 
 #else
 	decompress(uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
-                        recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz); // TODO: Remove me
+                        recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz); 
 #endif
 
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true
@@ -669,9 +668,9 @@ void fuse_maps(int n_recvd_in,
 #endif
 
 #if defined(RECV_CALLER)
-	grid_fusion_caller(observations, observations_sz, uncmp_data, uncmp_data_sz); // TODO: Uncomment me
+	grid_fusion_caller(observations, observations_sz, uncmp_data, uncmp_data_sz); 
 #else
-	grid_fusion(observations, observations_sz, uncmp_data, uncmp_data_sz); // TODO: Uncomment me
+	grid_fusion(observations, observations_sz, uncmp_data, uncmp_data_sz); 
 #endif
 
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true
@@ -1635,13 +1634,17 @@ void lidar_root(lidar_inputs_t *lidar_inputs, size_t lidarin_sz /*=sizeof( * lid
 #endif
 }
 
+#ifdef USE_OLD_MODEL
+
 void cv_root(unsigned tr_val, label_t *out_label, size_t outlabel_sz)
 {
 #if (defined(HPVM) || defined(HPVM_CV_ROOT))
 	void *Section = __hetero_section_begin();
 	void *T1 = __hetero_task_begin(2, tr_val, out_label, outlabel_sz, 1, out_label, outlabel_sz, "cv_root_task");
+#ifdef GPU
+	__hpvm__hint(GPU_TARGET);
 #endif
-
+#endif
 	*out_label = run_object_classification(tr_val);
 
 #if (defined(HPVM) || defined(HPVM_CV_ROOT))
@@ -1655,6 +1658,9 @@ void cv_root_wrapper(unsigned tr_val, label_t *out_label, size_t outlabel_sz)
 #if (defined(HPVM) || defined(HPVM_CV_ROOT)) && true
 	void *Section = __hetero_section_begin();
 	void *T1 = __hetero_task_begin(2, tr_val, out_label, outlabel_sz, 1, out_label, outlabel_sz, "cv_root_wrapper_task");
+#ifdef GPU
+	__hpvm__hint(GPU_TARGET);
+#endif
 #endif
 
 	cv_root(tr_val, out_label, outlabel_sz);
@@ -1664,6 +1670,44 @@ void cv_root_wrapper(unsigned tr_val, label_t *out_label, size_t outlabel_sz)
 	__hetero_section_end(Section);
 #endif
 }
+
+#else
+
+void cv_root(uint8_t* rgb_image, size_t rgb_image_sz, dim_t* dimensions, size_t dimensions_sz, 
+		char* filename, size_t filename_sz, int* nboxes, size_t nboxes_sz, 
+		detection_t* dets, size_t dets_sz) {
+#if (defined(HPVM) || defined(HPVM_CV_ROOT)) && false
+	void *Section = __hetero_section_begin();
+	void *T1 = __hetero_task_begin(5, rgb_image, rgb_image_sz, dimensions, dimensions_sz, filename, filename_sz, 
+			nboxes, nboxes_sz, dets, dets_sz, 1, dets, dets_sz, "cv_root_task");
+#endif
+//	dets = run_object_classification(rgb_image, *dimensions, filename, nboxes); // TODO: Uncomment me; this is commented cause my machine doesn't have opencv.
+
+#if  (defined(HPVM) || defined(HPVM_CV_ROOT)) && false
+	__hetero_task_end(T1);
+        __hetero_section_end(Section);
+#endif
+}
+
+void cv_root_wrapper(uint8_t* rgb_image, size_t rgb_image_sz, dim_t* dimensions, size_t dimensions_sz, 
+		char* filename, size_t filename_sz, int* nboxes, size_t nboxes_sz, 
+		detection_t* dets, size_t dets_sz) {
+#if (defined(HPVM) || defined(HPVM_CV_ROOT)) && true
+	void *Section = __hetero_section_begin();
+	void *T1 = __hetero_task_begin(5, rgb_image, rgb_image_sz, dimensions, dimensions_sz, filename, filename_sz, 
+			nboxes, nboxes_sz, dets, dets_sz, 1, dets, dets_sz, "cv_root_wrapper_task");
+#endif
+
+	cv_root(rgb_image, rgb_image_sz, dimensions, dimensions_sz, filename, filename_sz, nboxes, nboxes_sz, dets, dets_sz); 
+
+#if  (defined(HPVM) || defined(HPVM_CV_ROOT)) && true
+	__hetero_task_end(T1);
+        __hetero_section_end(Section);
+#endif
+}
+
+#endif // ifdef USE_OLD_MODEL
+
 
 int main(int argc, char *argv[])
 {
@@ -1694,11 +1738,24 @@ int main(int argc, char *argv[])
 	printf("Initializing the Receive pipeline...\n");
 	recv_pipe_init();
 	printf("Initializing the Computer Vision toolset...\n");
-	if (cv_toolset_init() != success)
-	{
+
+#ifdef USE_OLD_MODEL
+	if (cv_toolset_init() != success) {
 		printf("Computer Vision toolset initialization failed...\n");
 		exit(0);
 	}
+#else
+	/*****************************************************************************/
+	/* NEW: PyTorch TinyYOLOv2 support (May 2022)                                */
+	// TODO: Uncomment the if-statement below! This is commented as my machine doesn't have opencv installed so everything related to cv is currently being ignored on my side.
+	/******* TODO: Uncomment me *******
+	if (cv_toolset_init("tiny_yolov2_coco", "yolov2-tiny.weights") != 0) {
+		printf("Computer Vision toolset initialization failed...\n");
+		 exit(1); 
+	}
+	******* TODO: Uncomment me *******/
+	/*****************************************************************************/
+#endif
 
 	signal(SIGINT, INThandler);
 	signal(SIGPIPE, SIGPIPE_handler);
@@ -2219,14 +2276,15 @@ int main(int argc, char *argv[])
 		/*     simulator (e.g. CARLA).                                         */
 		/***********************************************************************/
 
-		// TODO: What is the parameter 'tr_val' passed to  run_object_classification()?
-		unsigned tr_val = 1;
-		//#ifdef INT_TIME
+#ifdef USE_OLD_MODEL
+
+#ifdef INT_TIME
 		gettimeofday(&start_proc_cv, NULL);
-		//#endif
+#endif
 
 		// HPVM task
 		label_t out_label;
+    		unsigned tr_val = 1;  // TODO: What is the parameter 'tr_val' passed to  run_object_classification()?
 #if (defined(HPVM) || defined(HPVM_CV_ROOT))
 		void *dfg = __hetero_launch((void *)cv_root_wrapper, 2, tr_val, &out_label, sizeof(out_label),
 				1, &out_label, sizeof(out_label));
@@ -2235,15 +2293,59 @@ int main(int argc, char *argv[])
 		cv_root(tr_val, &out_label, sizeof(label_t));
 #endif
 		cv_count++;
-		//#ifdef INT_TIME
+#ifdef INT_TIME
 		gettimeofday(&stop_proc_cv, NULL);
 		proc_cv_sec += stop_proc_cv.tv_sec - start_proc_cv.tv_sec;
 		proc_cv_usec += stop_proc_cv.tv_usec - start_proc_cv.tv_usec;
 		printf("run_object_classification time in usec %ld\n",
 				(stop_proc_cv.tv_sec - start_proc_cv.tv_sec) * 1000000 + (stop_proc_cv.tv_usec -
 					start_proc_cv.tv_usec));
-		//#endif
+#endif
 		printf("run_object_classification returned %u\n", out_label);
+#else
+
+		/*****************************************************************************/
+		/* NEW: PyTorch TinyYOLOv2 support (May 2022)                                */
+		int width, height, channels;
+		uint8_t* rgb_image = stbi_load("test.jpg", &width, &height, &channels, 3);
+
+		if (rgb_image != NULL) {
+
+			char filename[300];
+			int nboxes = 0;
+			snprintf(filename, 270, "test_output.jpg");
+
+			dim_t dimensions;
+			dimensions.width  = width;
+			dimensions.height = height;
+			dimensions.c      = channels;
+
+			detection_t* dets;
+			//dets = run_object_classification(rgb_image, dimensions, filename, &nboxes);
+#if (defined(HPVM) || defined(HPVM_CV_ROOT))
+			size_t rgb_image_sz =  width*height*channels;
+			void *dfg = __hetero_launch((void *)cv_root_wrapper, 5, rgb_image, rgb_image_sz, 
+					&dimensions, sizeof(dim_t), filename, (size_t)500, 
+					&nboxes, sizeof(int), dets, sizeof(detection_t), 
+					0);
+			__hetero_wait(dfg);
+#else
+			cv_root_wrapper(rgb_image, width*height*channels, &dimensions, sizeof(dim_t), filename, 500, 
+					&nboxes, sizeof(int), dets, sizeof(detection_t));
+#endif
+
+			if (dets == NULL)
+				printf("run_object_classification failed (skipping this frame)\n");
+
+			stbi_image_free(rgb_image);
+
+
+		} else {
+			printf("test.jpg image not found\n");
+		}
+		/*****************************************************************************/
+#endif
+
 	}
 
 	dump_final_run_statistics();
@@ -2288,9 +2390,6 @@ void dump_final_run_statistics()
 	uint64_t proc_cv = (uint64_t)(proc_cv_sec)*1000000 + (uint64_t)(proc_cv_usec);
 
 #ifdef INT_TIME
-	// TODO: I had undef INT_TIME at the start of main.c yet this code was being executed. Idk why so I just
-	// commented it out for now
-	/****************************************** TODO: See above ************************************************
 	  uint64_t pd_cloud2grid = (uint64_t)(pd_cloud2grid_sec) * 1000000 + (uint64_t)(pd_cloud2grid_usec);
 	  uint64_t pd_lz4_cmp = (uint64_t)(pd_lz4_cmp_sec) * 1000000 + (uint64_t)(pd_lz4_cmp_usec);
 	  uint64_t pd_wifi_pipe = (uint64_t)(pd_wifi_pipe_sec) * 1000000 + (uint64_t)(pd_wifi_pipe_usec);
@@ -2318,12 +2417,10 @@ void dump_final_run_statistics()
 	uint64_t ocgr_upBd_rayFSp = (uint64_t)(ocgr_upBd_rayFSp_sec) * 1000000 + (uint64_t)(ocgr_upBd_rayFSp_usec);
 	uint64_t ocgr_upBd_regObst = (uint64_t)(ocgr_upBd_regObst_sec) * 1000000 + (uint64_t)(ocgr_upBd_regObst_usec);
 
-	 ****************************************** TODO: See above ***********************************************/
 	/** No need to do this here -- provides no more info than exterior measure, really
 	  uint64_t ocgr_ryFS_total  = (uint64_t)(ocgr_ryFS_total_sec)  * 1000000 + (uint64_t)(ocgr_ryFS_total_usec);
 	  uint64_t ocgr_ryFS_rtLine = (uint64_t)(ocgr_ryFS_rtLine_sec) * 1000000 + (uint64_t)(ocgr_ryFS_rtLine_usec); **/
 
-	/****************************************** TODO: See above ***********************************************
 	// This is the xmit_pipe.c breakdown
 	uint64_t x_pipe = (uint64_t)(x_pipe_sec) * 1000000 + (uint64_t)(x_pipe_usec);
 	uint64_t x_genmacfr = (uint64_t)(x_genmacfr_sec) * 1000000 + (uint64_t)(x_genmacfr_usec);
@@ -2396,7 +2493,6 @@ uint64_t r_fHcvtout = (uint64_t)(r_fHcvtout_sec) * 1000000 + (uint64_t)(r_fHcvto
 	uint64_t rdec_map_bitr = (uint64_t)(rdec_map_bitr_sec) * 1000000 + (uint64_t)(rdec_map_bitr_usec);
 	uint64_t rdec_get_bits = (uint64_t)(rdec_get_bits_sec) * 1000000 + (uint64_t)(rdec_get_bits_usec);
 	uint64_t rdec_dec_call = (uint64_t)(rdec_dec_call_sec) * 1000000 + (uint64_t)(rdec_dec_call_usec);
-	****************************************** TODO: See above ************************************************/
 #endif
 		printf(" Total workload main-loop : %10lu usec\n", total_exec);
 	printf("   Total proc Read-Bag      : %10lu usec\n", proc_rdbag);
@@ -2405,7 +2501,6 @@ uint64_t r_fHcvtout = (uint64_t)(r_fHcvtout_sec) * 1000000 + (uint64_t)(r_fHcvto
 	printf("     Total proc Data          : %10lu usec\n", proc_data);
 	printf("     Total proc CV          : %10lu usec\n", proc_cv);
 #ifdef INT_TIME
-	/****************************************** TODO: See above ************************************************
 	  printf("       Total pd cloud2grid      : %10lu usec\n", pd_cloud2grid);
 	  printf("         Ocgr_Cl2gr Total Time         : %10lu usec\n", ocgr_cl2g_total);
 	  printf("         Ocgr_Cl2gr InitCM Time        : %10lu usec\n", ocgr_cl2g_initCM);
@@ -2413,11 +2508,9 @@ uint64_t r_fHcvtout = (uint64_t)(r_fHcvtout_sec) * 1000000 + (uint64_t)(r_fHcvto
 	  printf("         Ocgr_Cl2gr Upd-Bounds Time    : %10lu usec\n", ocgr_cl2g_updBnds);
 	  printf("           Ocgr_UpBnds Total Time        : %10lu usec\n", ocgr_upBd_total);
 	  printf("           Ocgr_UpBnds Ray_FreeSp Time   : %10lu usec\n", ocgr_upBd_rayFSp);
-	 ****************************************** TODO: See above ************************************************/
 	/** No need to do this here -- provides no more info than exterior measure, really
 	  printf("             Ocgr_RyFSp Total Time         : %10lu usec\n", ocgr_ryFS_total);
 	  printf("             Ocgr_RyFSp RayTrace-Line      : %10lu usec\n", ocgr_ryFS_rtLine); **/
-	/****************************************** TODO: See above ************************************************
 	  printf("       Total pd lz4_cmp         : %10lu usec\n", pd_lz4_cmp);
 	  printf("       Total pd xmit_pipe       : %10lu usec\n", pd_wifi_pipe);
 	  printf("         X-Pipe Total Time        : %10lu usec\n", x_pipe);
@@ -2490,7 +2583,6 @@ printf("       Total pd lz4_uncmp       : %10lu usec\n", pd_lz4_uncmp);
 printf("       Total pd combGrids       : %10lu usec\n", pd_combGrids);
 	printf("       Total pd carSend         : %10lu usec\n", pd_carSend);
 	printf("\n");
-	****************************************** TODO: See above ************************************************/
 #else
 		printf(" NO more detailed timing information on this run...\n");
 #endif

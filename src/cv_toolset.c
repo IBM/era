@@ -18,13 +18,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "/usr/include/python3.6m/Python.h"
-//#include <opencv2/opencv.hpp>
+#include <errno.h>
+#include <string.h>
+#include <stdbool.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 #include "cv_toolset.h"
 #include "globals.h"
 #include "debug.h"
 
-//using namespace cv;
+
+#ifdef USE_OLD_MODEL
 
 PyObject *pName, *pModule, *pFunc, *pFunc_load;
 PyObject *pArgs, *pValue, *pretValue;
@@ -83,24 +88,6 @@ status_t cv_toolset_init() {
 }
 
 
-//void execute_cv_kernel(/* 0 */ label_t *in_tr_val, size_t in_tr_val_size, /* 1 */
-//                               /* 2 */ label_t *out_label, size_t out_label_size /* 3 */) {
-//
-//#ifdef ENABLE_NVDLA
-//  int obj_id = (int) * in_tr_val;
-//  int num = (rand() % (INPUTS_PER_LABEL)); // Return a value from [0,INPUTS_PER_LABEL)
-//  //printf("   NVDLA: runImageonNVDLA for \"%s\"\n", cv_inputs[obj_id][num]);
-//  runImageonNVDLAWrapper(cv_inputs[obj_id][num]);
-//  //runImageonNVDLAWrapper("0003_0.jpg");//"class_busimage_5489.jpg");
-//  //system("echo -n \"  > NVDLA: \"; ./nvdla_runtime --loadable hpvm-mod.nvdla --image 2004_2.jpg --rawdump | grep execution");
-//  //printf("\n");
-//  *out_label = parse_output_dimg();
-//  printf("    NVDLA Prediction: %d vs %d\n", *out_label, obj_id);
-//#endif
-//  *out_label = run_object_classification((unsigned)in_tr_val);
-//}
-
-
 label_t run_object_classification(unsigned tr_val) {
 
   DBGOUT(printf("Entered run_object_classification...\n"));
@@ -148,7 +135,239 @@ label_t run_object_classification(unsigned tr_val) {
   return object;
 }
 
-//label_t run_object_classification_2(const cv::Mat& image) {
-//
-//  return 0;
-//}
+#else
+
+/*****************************************************************************/
+/* NEW: PyTorch TinyYOLOv2 support (May 2022)                                */
+
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#include <numpy/ndarrayobject.h>
+
+PyObject *python_yolo_model;
+
+
+int recv_all(int sock, char *buf, int len)
+{
+  ssize_t n;
+
+  while (len > 0) {
+      n = recv(sock, buf, len, 0);
+
+      if (n <= 0)
+	return n;
+      buf += n;
+      len -= n;
+  }
+
+  return 1;
+}
+
+
+int cv_toolset_init(char *python_module, char *model_weights) {
+
+  PyObject *module_name, *module, *dict, *python_class;
+
+  printf("In the cv_toolset_init routine\n");
+
+  // Initialize the Python interpreter. In an application embedding Python,
+  // this should be called before using any other Python/C API functions
+  Py_Initialize();
+  import_array();
+
+  // Returns new reference
+  module_name = PyUnicode_FromString(python_module);
+
+  // Returns new reference
+  module = PyImport_Import(module_name);
+  Py_DECREF(module_name);
+  if (module == NULL) {
+      printf("Couldn't locate module: %s ", python_module);
+      printf("Module name: ");
+      printf(module_name); 
+      printf(".\n Python path is set as: %s\n", getenv("PYTHONPATH"));
+      PyErr_Print();
+      PyObject *ptype, *pvalue, *ptraceback;
+      printf("Fetching the error");
+      PyErr_Fetch(&ptype, &pvalue, &ptraceback);
+      //pvalue contains error message
+      //ptraceback contains stack snapshot and many other information
+      //(see python traceback structure)
+
+      printf("Fetched the error");
+      //Get error message
+      char *pStrErrorMessage = PyBytes_AsString(pvalue);
+      printf("Error: %s\n", pStrErrorMessage); 
+      printf("Fails to import the module. Perhaps PYTHONPATH needs to be set: export PYTHONPATH=<your_tds_dir>/yolo\n");
+      return 1;
+  }
+
+  // Returns borrowed reference
+  dict = PyModule_GetDict(module);
+  Py_DECREF(module);
+  if (dict == NULL) {
+      PyErr_Print();
+      printf("Fails to get the dictionary.\n");
+      return 1;
+  }
+
+  // Returns borrowed reference
+  python_class = PyDict_GetItemString(dict, "TinyYOLOv2NonLeaky");
+  //Py_DECREF(dict);
+  if (python_class == NULL) {
+      PyErr_Print();
+      printf("Fails to get the Python class.\n");
+      return 1;
+  }
+
+  // Creates an instance of the class
+  if (PyCallable_Check(python_class)) {
+      // Returns new reference
+      python_yolo_model = PyObject_CallObject(python_class, NULL);
+      if (python_yolo_model == NULL) {
+          PyErr_Print();
+          printf("Fails to create Python object.\n");
+          return 1;
+      }
+      //Py_DECREF(python_class);
+  } else {
+      printf("Cannot instantiate the Python class.\n");
+      //Py_DECREF(python_class);
+      return 1;
+  }
+
+  // Call a method of the class instance; in this case, the load() method to load the model weights
+  // Returns new reference
+  //PyObject *value = PyObject_CallMethod(python_yolo_model, "load", "(s)", "yolo/yolov2-tiny.weights");
+  PyObject *value = PyObject_CallMethod(python_yolo_model, "load", "(s)", model_weights);
+  if (value == NULL) {
+      PyErr_Print();
+      printf("Fails to call load() method.\n");
+      return 1;
+  }
+  Py_DECREF(value);
+
+#ifdef ENABLE_NVDLA
+  // Initialize NVDLA
+  initNVDLA();
+#endif
+
+  return 0;
+
+}
+
+
+detection_t *run_object_classification(unsigned char *data, dim_t dimensions, char *filename, int *nboxes) {
+
+  detection_t *detections = NULL;
+
+  if (python_yolo_model != NULL) {
+
+      npy_intp dims[] = {dimensions.height, dimensions.width, dimensions.c};
+      // Returns new or borrowed reference?
+      PyObject *pValue = PyArray_SimpleNewFromData(3, dims, NPY_UINT8, data);
+
+      if (pValue) {
+
+	  // Returns new reference
+	  PyObject *list = PyObject_CallMethod(python_yolo_model, "predict", "Os", pValue, filename);
+	  Py_XDECREF(pValue);
+
+	  if (list) {
+
+	      // Here we process the list of dictionaries returned by the Python predict() function,
+	      // and convert it into an array of detection_t structs. Each detection_t struct in the
+	      // array corresponds to a detected object (and its bounding box) in the image.
+
+	      *nboxes    = (int)PyList_Size(list);
+	      detections = (detection_t *)malloc(*nboxes * sizeof(detection_t));
+
+	      for (Py_ssize_t i = 0; i < *nboxes; i++) {
+
+		  // Returns borrowed reference
+		  PyObject* dict = PyList_GetItem(list, i);
+
+		  if (!PyDict_Check(dict)) {
+		      PyErr_SetString(PyExc_TypeError, "List must contain dictionaries");
+		      PyErr_Print();
+		      Py_XDECREF(list);
+		      return NULL;
+		  }
+
+		  PyObject *key, *item;
+
+		  // Returns new reference
+		  key = PyUnicode_FromString("class_label");
+		  // Returns borrowed reference
+		  item = PyDict_GetItem(dict, key);
+		  const char* class_label = PyUnicode_AsUTF8(item);
+		  Py_XDECREF(key);
+
+		  // Returns new reference
+		  key = PyUnicode_FromString("id");
+		  // Returns borrowed reference
+		  item = PyDict_GetItem(dict, key);
+		  long id = PyLong_AsLong(item);
+		  Py_XDECREF(key);
+
+		  // Returns new reference
+		  key = PyUnicode_FromString("x_top_left");
+		  // Returns borrowed reference
+		  item = PyDict_GetItem(dict, key);
+		  double x_top_left = PyFloat_AsDouble(item);
+		  Py_XDECREF(key);
+
+		  // Returns new reference
+		  key = PyUnicode_FromString("y_top_left");
+		  // Returns borrowed reference
+		  item = PyDict_GetItem(dict, key);
+		  double y_top_left = PyFloat_AsDouble(item);
+		  Py_XDECREF(key);
+
+		  // Returns new reference
+		  key = PyUnicode_FromString("width");
+		  // Returns borrowed reference
+		  item = PyDict_GetItem(dict, key);
+		  double width = PyFloat_AsDouble(item);
+		  Py_XDECREF(key);
+
+		  // Returns new reference
+		  key = PyUnicode_FromString("height");
+		  // Returns borrowed reference
+		  item = PyDict_GetItem(dict, key);
+		  double height = PyFloat_AsDouble(item);
+		  Py_XDECREF(key);
+
+		  // Returns new reference
+		  key = PyUnicode_FromString("confidence");
+		  // Returns borrowed reference
+		  item = PyDict_GetItem(dict, key);
+		  double confidence = PyFloat_AsDouble(item);
+		  Py_XDECREF(key);
+
+		  snprintf(detections[i].class_label, 255, "%s", class_label);
+		  detections[i].id          = id;
+		  detections[i].x_top_left  = x_top_left;
+		  detections[i].y_top_left  = y_top_left;
+		  detections[i].width       = width;
+		  detections[i].height      = height;
+		  detections[i].confidence  = confidence;
+
+	      }
+	      Py_XDECREF(list);
+
+	  } else {
+	      PyErr_Print();
+	      return NULL;
+	  }
+
+      } else {
+	  PyErr_Print();
+	  return NULL;
+      }
+  }
+
+  return detections;
+}
+/*****************************************************************************/
+
+#endif

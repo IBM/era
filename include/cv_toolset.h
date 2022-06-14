@@ -18,8 +18,9 @@
 #ifndef _CV_TOOLSET_H
 #define _CV_TOOLSET_H
 
-//#include <opencv2/opencv.hpp>
 #include "globals.h"
+
+#ifdef USE_OLD_MODEL
 
 /* Pre-defined labels used by the computer vision kernel */
 typedef enum {
@@ -34,6 +35,33 @@ typedef enum {
 
 status_t cv_toolset_init();
 label_t run_object_classification(unsigned tr_val);
-//label_t run_object_classification_2(const cv::Mat& image);
+
+#else
+
+/*****************************************************************************/
+/* NEW: PyTorch TinyYOLOv2 support (May 2022)                                */
+typedef struct {
+  int width;
+  int height;
+  int c;
+} dim_t;
+
+typedef struct {
+  char class_label[256];
+  long id;
+  double confidence;
+  /* Bounding box coordinates */
+  double x_top_left;
+  double y_top_left;
+  double width;
+  double height;
+} detection_t;
+
+int cv_toolset_init(char *python_module, char *model_weights);
+detection_t *run_object_classification(unsigned char *data, dim_t dimensions,
+					   char *filename, int *nboxes);
+/*****************************************************************************/
+
+#endif
 
 #endif
