@@ -39,8 +39,6 @@
 #include "hetero.h"
 #endif
 
-#undef HPVM // TODO: Remove me
-
 //#define USE_OLD_MODEL
 
 #define PARALLEL_PTHREADS false
@@ -110,12 +108,6 @@ uint64_t proc_data_usec = 0LL;
 struct timeval stop_proc_cv, start_proc_cv;
 uint64_t proc_cv_sec = 0LL;
 uint64_t proc_cv_usec = 0LL;
-
-#define INT_TIME
-
-
-#undef INT_TIME // TODO: REMOVE ME; this should be un-set during compilation
-
 
 #ifdef INT_TIME
 struct timeval stop_pd_cloud2grid, start_pd_cloud2grid;
@@ -336,17 +328,17 @@ int read_all(int sock, char *buffer, int xfer_in_bytes)
 void decompress(unsigned char *uncmp_data, size_t uncmp_data_sz, 
 		int *recvd_msg_len, size_t recvd_msg_len_sz, 
 		unsigned char *recvd_msg, size_t recvd_msg_sz, 
-		int *dec_bytes, size_t dec_bytes_sz
+		int *dec_bytes, size_t dec_bytes_sz,
+		Observation* observations, size_t observation_sz
 	) {
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true // TODO: Remove "false"
+#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && true 
 	void * Section_Inner = __hetero_section_begin();
-	void * T2 = __hetero_task_begin(4, uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
+	void * T2 = __hetero_task_begin(5, uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
 			recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz,
+			observations, observation_sz,
 			2, uncmp_data, uncmp_data_sz, dec_bytes, dec_bytes_sz, "decompress_task"); 
 
 #endif
-	printf("%s %d In T2 for fuse_maps ", __FILE__, __LINE__); // TODO: Remove me
-
 	// Now we decompress the grid received via transmission...
 	DBGOUT(printf("Calling LZ4_decompress_default...\n"));
 #if defined(INT_TIME) && !(defined(HPVM) || defined(HPVM_RECV_PIPELINE)) 
@@ -368,6 +360,41 @@ void decompress(unsigned char *uncmp_data, size_t uncmp_data_sz,
 	pd_lz4_uncmp_usec += stop_pd_lz4_uncmp.tv_usec - start_pd_lz4_uncmp.tv_usec;
 #endif
 
+
+	DEBUG(printf("Recevied %d decoded bytes from the wifi...\n", *dec_bytes));
+	Costmap2D * remote_map = (Costmap2D * ) & (uncmp_data); // Convert "type" to Costmap2D
+
+	DBGOUT(printf("  Back from LZ4_decompress_safe with %u decompressed bytes\n", *dec_bytes);
+			printf("  Remote CostMAP: AV x %lf y %lf z %lf\n", remote_map -> av_x, remote_map -> av_y,
+				remote_map -> av_z);
+			printf("                : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map -> cell_size,
+				remote_map -> x_dim, remote_map -> y_dim); print_ascii_costmap(stdout, remote_map));
+
+	// Get the current local-map
+	printf("Receive step %u : Processing fusion for curr_obs = %d\n", recv_count, curr_obs);
+	Costmap2D * local_map = & (observations[curr_obs].master_costmap);
+
+#ifdef WRITE_ASCII_MAP
+	char ascii_file_name[32];
+	snprintf(ascii_file_name, sizeof(char) * 32, "%s%04d.txt", ASCII_FN, ascii_counter);
+	FILE * ascii_fp = fopen(ascii_file_name, "w");
+
+	// printf("Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
+	fprintf(ascii_fp, "Input CostMAP: AV x %lf y %lf z %lf\n", local_map -> av_x, local_map -> av_y,
+			local_map -> av_z);
+	fprintf(ascii_fp, "             : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map -> cell_size,
+			local_map -> x_dim, local_map -> y_dim);
+	print_ascii_costmap(ascii_fp, local_map);
+
+	fprintf(ascii_fp, "\n\nRemote CostMAP: AV x %lf y %lf z %lf\n", remote_map -> av_x, remote_map -> av_y,
+			remote_map -> av_z);
+	// printf("\n\nRemote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
+	fprintf(ascii_fp, "              : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map -> cell_size,
+			remote_map -> x_dim, remote_map -> y_dim);
+	print_ascii_costmap(ascii_fp, remote_map);
+	fclose(ascii_fp);
+#endif
+
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true 
 	__hetero_task_end(T2);
 	__hetero_section_end(Section_Inner); 
@@ -378,17 +405,20 @@ void decompress(unsigned char *uncmp_data, size_t uncmp_data_sz,
 void decompress_caller(unsigned char *uncmp_data, size_t uncmp_data_sz, 
 		int *recvd_msg_len, size_t recvd_msg_len_sz, 
 		unsigned char *recvd_msg, size_t recvd_msg_sz, 
-		int *dec_bytes, size_t dec_bytes_sz
+		int *dec_bytes, size_t dec_bytes_sz,
+		Observation* observation, size_t observation_sz
 	) {
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && defined(RECV_CALLER)  && true 
 	void * Section_Caller = __hetero_section_begin();
-	void * T2_Wrapper = __hetero_task_begin(4, uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
+	void * T2_Wrapper = __hetero_task_begin(5, uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
 			recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz,
+			observation, observation_sz,
 			2, uncmp_data, uncmp_data_sz, dec_bytes, dec_bytes_sz, "decompress_task_Wrapper2"); 
 #endif
 
 	decompress(uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz, recvd_msg, 
-			recvd_msg_sz, dec_bytes, dec_bytes_sz);
+			recvd_msg_sz, dec_bytes, dec_bytes_sz,
+			observation, observation_sz);
 
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE)) && defined(RECV_CALLER) && true 
 	__hetero_task_end(T2_Wrapper);
@@ -594,73 +624,25 @@ void fuse_maps(int n_recvd_in,
 #endif
 
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true
-	void * T2_Wrapper1 = __hetero_task_begin(4, uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
+	void * T2_Wrapper1 = __hetero_task_begin(5, uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
 			recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz,
+			observations, observations_sz,
 			2, uncmp_data, uncmp_data_sz, dec_bytes, dec_bytes_sz, "decompress_task_Wrapper1");
 #endif
 
 #if defined(RECV_CALLER)
 	decompress_caller(uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
-                        recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz); 
+                        recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz, 
+			observations, observations_sz);
 #else
 	decompress(uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
-                        recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz); 
+                        recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz,
+			observations, observations_sz);
 #endif
 
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true
 	__hetero_task_end(T2_Wrapper1);
 #endif
-
-	/********************* TODO: Uncomment me *****************************
-
-	// This task just has some logging stuff. It doesn't to any compute relevant to the overall algorithm
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true
-	void * T3 = __hetero_task_begin(3, uncmp_data, uncmp_data_sz, dec_bytes, dec_bytes_sz,
-			observations, observations_sz,
-			2, uncmp_data, uncmp_data_sz, dec_bytes, dec_bytes_sz, "logging_task");
-#endif
-
-	printf("%s %d In T2 for fuse_maps ", __FILE__, __LINE__); // TODO: Remove me
-
-
-	DEBUG(printf("Recevied %d decoded bytes from the wifi...\n", *dec_bytes));
-	Costmap2D * remote_map = (Costmap2D * ) & (uncmp_data); // Convert "type" to Costmap2D
-
-	DBGOUT(printf("  Back from LZ4_decompress_safe with %u decompressed bytes\n", *dec_bytes);
-			printf("  Remote CostMAP: AV x %lf y %lf z %lf\n", remote_map -> av_x, remote_map -> av_y,
-				remote_map -> av_z);
-			printf("                : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map -> cell_size,
-				remote_map -> x_dim, remote_map -> y_dim); print_ascii_costmap(stdout, remote_map));
-
-	// Get the current local-map
-	printf("Receive step %u : Processing fusion for curr_obs = %d\n", recv_count, curr_obs);
-	Costmap2D * local_map = & (observations[curr_obs].master_costmap);
-
-#ifdef WRITE_ASCII_MAP
-	char ascii_file_name[32];
-	snprintf(ascii_file_name, sizeof(char) * 32, "%s%04d.txt", ASCII_FN, ascii_counter);
-	FILE * ascii_fp = fopen(ascii_file_name, "w");
-
-	// printf("Input CostMAP: AV x %lf y %lf z %lf\n", local_map->av_x, local_map->av_y, local_map->av_z);
-	fprintf(ascii_fp, "Input CostMAP: AV x %lf y %lf z %lf\n", local_map -> av_x, local_map -> av_y,
-			local_map -> av_z);
-	fprintf(ascii_fp, "             : Cell_Size %lf X-Dim %u Y-Dim %u\n", local_map -> cell_size,
-			local_map -> x_dim, local_map -> y_dim);
-	print_ascii_costmap(ascii_fp, local_map);
-
-	fprintf(ascii_fp, "\n\nRemote CostMAP: AV x %lf y %lf z %lf\n", remote_map -> av_x, remote_map -> av_y,
-			remote_map -> av_z);
-	// printf("\n\nRemote CostMAP: AV x %lf y %lf z %lf\n", remote_map->av_x, remote_map->av_y, remote_map->av_z);
-	fprintf(ascii_fp, "              : Cell_Size %lf X-Dim %u Y-Dim %u\n", remote_map -> cell_size,
-			remote_map -> x_dim, remote_map -> y_dim);
-	print_ascii_costmap(ascii_fp, remote_map);
-	fclose(ascii_fp);
-#endif
-
-#if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true
-	__hetero_task_end(T3);
-#endif
-	********************* TODO: Uncomment me *****************************/
 
 #if (defined(HPVM) || defined(HPVM_RECV_PIPELINE))  && true
 	void * T4_Wrapper1 = __hetero_task_begin(2, observations, observations_sz, uncmp_data, uncmp_data_sz,

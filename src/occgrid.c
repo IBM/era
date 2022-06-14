@@ -4,9 +4,7 @@
 #include <stdint.h>
 #include <sys/time.h>
 
-#define HPVM
-
-#undef INT_TIME // TODO: REMOVE ME; this should be un-set during compilation
+#undef HPVM
 
 #include "globals.h"
 #include "occgrid.h"
@@ -16,8 +14,6 @@
 #include "hpvm.h"
 #include "hetero.h"
 #endif
-
-#undef HPVM 	// TODO: remove me
 
 #ifdef INT_TIME
 /* This is OCC-GRID Internal Timing information (gathering resources) */
