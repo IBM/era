@@ -183,6 +183,7 @@ class World(object):
         self.gnss_sensor = None
         self.imu_sensor = None
         self.radar_sensor = None
+        self.lidar_sensor = None
         self.camera_manager = None
         self._weather_presets = find_weather_presets()
         self._weather_index = 0
@@ -212,8 +213,8 @@ class World(object):
         self.player_max_speed = 1.589
         self.player_max_speed_fast = 3.713
         # Keep same camera config if the camera manager exists.
-        cam_index = self.camera_manager.index if self.camera_manager is not None else 0
-        cam_pos_index = self.camera_manager.transform_index if self.camera_manager is not None else 0
+        cam_index = self.camera_manager.index if self.camera_manager is not None else 0 #6
+        cam_pos_index = self.camera_manager.transform_index if self.camera_manager is not None else 0 #1
         # Get a random blueprint.
         blueprint = random.choice(self.world.get_blueprint_library().filter(self._actor_filter))
         blueprint.set_attribute('role_name', self.actor_role_name)
@@ -289,6 +290,7 @@ class World(object):
 
 
         # Set up the sensors.
+        self.lidar_sensor = LidarSensor(self.player, self.hud)
         self.collision_sensor = CollisionSensor(self.player, self.hud)
         self.lane_invasion_sensor = LaneInvasionSensor(self.player, self.hud)
         self.gnss_sensor = GnssSensor(self.player)
@@ -353,7 +355,8 @@ class World(object):
             self.collision_sensor.sensor,
             self.lane_invasion_sensor.sensor,
             self.gnss_sensor.sensor,
-            self.imu_sensor.sensor]
+            self.imu_sensor.sensor,
+            self.lidar_sensor.sensor]
         for sensor in sensors:
             if sensor is not None:
                 sensor.stop()
@@ -1003,6 +1006,51 @@ class RadarSensor(object):
 # -- CameraManager -------------------------------------------------------------
 # ==============================================================================
 
+class LidarSensor(object):
+    def __init__(self, parent_actor, hud):
+        self.count = 0
+        self.sensor = None
+        self._parent = parent_actor
+        self.hud = hud
+        world = self._parent.get_world()
+        bp = world.get_blueprint_library().find('sensor.lidar.ray_cast')
+        self.lidar_range = 20
+        bp.set_attribute('channels',str(32))
+        bp.set_attribute('points_per_second',str(90000))
+        bp.set_attribute('rotation_frequency',str(40))
+        bp.set_attribute('range',str(20))
+        # lidar_location = carla.Location(0,0,2)
+        # lidar_rotation = carla.Rotation(0,0,0)
+        self.sensor = world.spawn_actor(bp, carla.Transform(carla.Location(x=1.6, z=1.7)), attach_to=self._parent, attachment_type=carla.AttachmentType.Rigid)
+        # We need to pass the lambda a weak reference to self to avoid circular
+        # reference.
+        sensor_transform = self.sensor.get_transform()
+        # print(sensor_transform.location.x, sensor_transform.location.y, sensor_transform.location.z)
+        weak_self = weakref.ref(self)
+        self.sensor.listen(lambda point_cloud: LidarSensor._process_data(weak_self, point_cloud))
+
+    @staticmethod
+    def _process_data(weak_self, point_cloud):
+        self = weak_self()
+        if not self:
+            return
+        points = np.frombuffer(point_cloud.raw_data, dtype=np.dtype('f4'))
+        print("LIDAR SENSOR")
+        print(self.count)
+        points = np.reshape(points, (int(points.shape[0] / 4), 4))
+        lidar_data = np.array(points[:, :3])
+        lidar_data = np.ravel(lidar_data)
+        print(lidar_data)
+        #TODO: Send it to era through read_bag_1/2.py
+        point_cloud.save_to_disk(f'lidar_out/lidar_data_{self.count}.ply')
+
+        self.count += 1
+        sensor_transform = self.sensor.get_transform()
+        print(sensor_transform.location.x, sensor_transform.location.y, sensor_transform.location.z)
+
+# ==============================================================================
+# -- CameraManager -------------------------------------------------------------
+# ==============================================================================
 
 class CameraManager(object):
     def __init__(self, parent_actor, hud, gamma_correction):
@@ -1028,7 +1076,7 @@ class CameraManager(object):
             ['sensor.camera.semantic_segmentation', cc.Raw, 'Camera Semantic Segmentation (Raw)', {}],
             ['sensor.camera.semantic_segmentation', cc.CityScapesPalette,
                 'Camera Semantic Segmentation (CityScapes Palette)', {}],
-            ['sensor.lidar.ray_cast', None, 'Lidar (Ray-Cast)', {'range': '50'}],
+            ['sensor.lidar.ray_cast', None, 'Lidar (Ray-Cast)', {'range': '20'}],
             ['sensor.camera.dvs', cc.Raw, 'Dynamic Vision Sensor', {}],
             ['sensor.camera.rgb', cc.Raw, 'Camera RGB Distorted',
                 {'lens_circle_multiplier': '3.0',
@@ -1047,13 +1095,16 @@ class CameraManager(object):
                 for attr_name, attr_value in item[3].items():
                     bp.set_attribute(attr_name, attr_value)
             elif item[0].startswith('sensor.lidar'):
-                self.lidar_range = 50
+                self.lidar_range = 20
 
                 for attr_name, attr_value in item[3].items():
                     bp.set_attribute(attr_name, attr_value)
                     if attr_name == 'range':
                         self.lidar_range = float(attr_value)
-
+                bp.set_attribute('channels',str(32))
+                bp.set_attribute('points_per_second',str(90000))
+                bp.set_attribute('rotation_frequency',str(40))
+                # bp.set_attribute('range',str(20))
             item.append(bp)
         self.index = None
 
@@ -1158,7 +1209,8 @@ def game_loop(args):
         world = World(client.get_world(), hud, args)
         controller = KeyboardControl(world, args.autopilot)
 
-        tm.vehicle_percentage_speed_difference(world.player, -30)
+        # Command to change speed limit of player
+        # tm.vehicle_percentage_speed_difference(world.player, -30)
 
         clock = pygame.time.Clock()
         while True:
@@ -1224,8 +1276,8 @@ def main():
         default='hero',
         help='actor role name (default: "hero")')
     argparser.add_argument(
-        '--num_npc',
-        default=20,
+        '-n', '--num_npc',
+        default=5,
         type=int,
         help='Number of NPC (default: 20)')
     argparser.add_argument(
