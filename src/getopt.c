@@ -24,7 +24,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "getopt.h"
+#include "getopt_era.h"
 
 #include <stddef.h>
 #include <string.h>
@@ -33,13 +33,13 @@ const int no_argument = 0;
 const int required_argument = 1;
 const int optional_argument = 2;
 
-char* optarg;
+char * optarg;
 int optopt;
 /* The variable optind [...] shall be initialized to 1 by the system. */
 int optind = 1;
 int opterr;
 
-static char* optcursor = NULL;
+static char * optcursor = NULL;
 
 /* Implemented based on [1] and [2] for optional arguments.
    optopt is handled FreeBSD-style, per [3].
@@ -49,9 +49,9 @@ static char* optcursor = NULL;
 [2] http://www.kernel.org/doc/man-pages/online/pages/man3/getopt.3.html
 [3] http://www.freebsd.org/cgi/man.cgi?query=getopt&sektion=3&manpath=FreeBSD+9.0-RELEASE
 */
-int getopt(int argc, char* const argv[], const char* optstring) {
+int getopt(int argc, char * const argv[], const char * optstring) {
   int optchar = -1;
-  const char* optdecl = NULL;
+  const char * optdecl = NULL;
 
   optarg = NULL;
   opterr = 0;
@@ -120,7 +120,8 @@ int getopt(int argc, char* const argv[], const char* optstring) {
           */
           if (++optind < argc) {
             optarg = argv[optind];
-          } else {
+          }
+          else {
             /* If it detects a missing option-argument, it shall return the
                colon character ( ':' ) if the first character of optstring
                was a colon, or a question-mark character ( '?' ) otherwise.
@@ -128,14 +129,16 @@ int getopt(int argc, char* const argv[], const char* optstring) {
             optarg = NULL;
             optchar = (optstring[0] == ':') ? ':' : '?';
           }
-        } else {
+        }
+        else {
           optarg = NULL;
         }
       }
 
       optcursor = NULL;
     }
-  } else {
+  }
+  else {
     /* If getopt() encounters an option character that is not contained in
        optstring, it shall return the question-mark ( '?' ) character. */
     optchar = '?';
@@ -155,13 +158,13 @@ no_more_optchars:
 
 [1] http://www.kernel.org/doc/man-pages/online/pages/man3/getopt.3.html
 */
-int getopt_long(int argc, char* const argv[], const char* optstring,
-  const struct option* longopts, int* longindex) {
-  const struct option* o = longopts;
-  const struct option* match = NULL;
+int getopt_long(int argc, char * const argv[], const char * optstring,
+  const struct option * longopts, int * longindex) {
+  const struct option * o = longopts;
+  const struct option * match = NULL;
   int num_matches = 0;
   size_t argument_name_length = 0;
-  const char* current_argument = NULL;
+  const char * current_argument = NULL;
   int retval = -1;
 
   optarg = NULL;
@@ -213,14 +216,16 @@ int getopt_long(int argc, char* const argv[], const char* optstring,
         if (optarg == NULL)
           retval = ':';
       }
-    } else if (strchr(argv[optind], '=')) {
+    }
+    else if (strchr(argv[optind], '=')) {
       /* An argument was provided to a non-argument option.
          I haven't seen this specified explicitly, but both GNU and BSD-based
          implementations show this behavior.
       */
       retval = '?';
     }
-  } else {
+  }
+  else {
     /* Unknown option or ambiguous match. */
     retval = '?';
   }
