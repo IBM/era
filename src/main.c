@@ -1668,9 +1668,12 @@ int main(int argc, char * argv[]) {
 
 	lidar_inputs_t lidar_inputs;
 
-	snprintf(bag_inet_addr_str, 20, "192.168.1.99");
-	snprintf(wifi_inet_addr_str, 20, "192.168.1.99");
-	snprintf(car_inet_addr_str, 20, "192.168.1.99");
+	// snprintf(bag_inet_addr_str, 20, "192.168.1.99");
+	// snprintf(wifi_inet_addr_str, 20, "192.168.1.99");
+	// snprintf(car_inet_addr_str, 20, "192.168.1.99");
+	snprintf(bag_inet_addr_str, 20, "127.0.0.1");
+	snprintf(wifi_inet_addr_str, 20, "127.0.0.1");
+	snprintf(car_inet_addr_str, 20, "127.0.0.1");
 
 #ifdef HW_VIT
 	DEBUG(printf("Calling init_VIT_HW_ACCEL...\n"));
