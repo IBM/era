@@ -35,38 +35,9 @@
  #endif*/
 #include "debug.h"
 
-#ifdef HW_VIT
- #include <fcntl.h>
- #include <math.h>
- #include <pthread.h>
- #include <sys/types.h>
- #include <sys/mman.h>
- #include <sys/stat.h>
- #include <string.h>
- #include <time.h>
- #include <unistd.h>
-
- #include "contig.h"
-#endif //HW_VIT
-
 #include "sdr_base.h"
 #include "sdr_viterbi.h"
 
-
-#ifdef HW_VIT
-/* extern int vitHW_fd; */
-/* extern contig_handle_t vitHW_mem; */
-/* extern uint8_t* vitHW_lmem; */
-/* extern uint8_t* vitHW_li_mem; */
-/* extern uint8_t* vitHW_lo_mem; */
-/* extern const size_t vitHW_in_size; */
-/* extern const size_t vitHW_out_size; */
-/* extern const size_t vitHW_size; */
-/* extern const size_t out_vitHW_size; */
-/* extern struct vitdodec_access vitHW_desc; */
-
-#include "mini-era.h"
-#endif // HW_VIT
 
 #ifdef INT_TIME
 struct timeval dodec_stop, dodec_start;
@@ -181,95 +152,6 @@ uint8_t* depuncture(uint8_t *in) {
   //printf("  depuncture count = %u\n", count);
   return depunctured;
 }
-
-
-
-#ifdef HW_VIT
-// These are Viterbi Harware Accelerator Variables, etc.
-//char* vitAccelName = "/dev/vitdodec_stratus.0"; //, "/dev/vitdodec.1", "/dev/vitdodec.2", "/dev/vitdodec.3", "/dev/vitdodec.4", "/dev/vitdodec.5"};
-char* vitAccelName = VIT_DEV_BASE;
-int vitHW_fd;
-contig_handle_t vitHW_mem;
-vitHW_token_t *vitHW_lmem;   // Pointer to local view of contig memory
-vitHW_token_t *vitHW_li_mem; // Pointer to input memory block
-vitHW_token_t *vitHW_lo_mem; // Pointer to output memory block
-size_t vitHW_in_len;
-size_t vitHW_out_len;
-size_t vitHW_in_size;
-size_t vitHW_out_size;
-size_t vitHW_out_offset;
-size_t vitHW_size;
-
-struct vitdodec_access vitHW_desc;
-
-void free_VIT_HW_RESOURCES()
-{
-  contig_free(vitHW_mem);
-  close(vitHW_fd);
-}
-
-static void init_vit_parameters()
-{
-  size_t vitHW_in_words_adj;
-  size_t vitHW_out_words_adj;
-  printf("Doing init_vit_parameters\n");
-  if (DMA_WORD_PER_BEAT(sizeof(vitHW_token_t)) == 0) {
-    vitHW_in_words_adj  = 24852;
-    vitHW_out_words_adj = 18585;
-  } else {
-    vitHW_in_words_adj  = round_up(24852, DMA_WORD_PER_BEAT(sizeof(vitHW_token_t)));
-    vitHW_out_words_adj = round_up(18585, DMA_WORD_PER_BEAT(sizeof(vitHW_token_t)));
-  }
-  vitHW_in_len = vitHW_in_words_adj;
-  vitHW_out_len =  vitHW_out_words_adj;
-  vitHW_in_size = vitHW_in_len * sizeof(vitHW_token_t);
-  vitHW_out_size = vitHW_out_len * sizeof(vitHW_token_t);
-  vitHW_out_offset = vitHW_in_len;
-  vitHW_size = (vitHW_out_offset * sizeof(vitHW_token_t)) + vitHW_out_size;
-  //DEBUG(
-  printf("  returning from init_vit_parameters\n");
-  printf("    in_len %u %u  in size %u tot_size %u\n", vitHW_in_len, vitHW_in_size, vitHW_size);
-  printf("   out_len %u %u out size %u out_ofst %u\n", vitHW_out_len, vitHW_out_size, vitHW_out_offset);//);
-}
-
-
-void init_VIT_HW_ACCEL()
-{
-  // This initializes the Viterbi Accelerator Pool
-  //DEBUG(
-	printf("In init_VIT_HW_ACCEL: calling init_vit_parameters\n");//);
-  init_vit_parameters();
-  printf(" Opening Vit-Do-Decode device %s\n", vitAccelName);
-  vitHW_fd = open(vitAccelName, O_RDWR, 0);
-  if(vitHW_fd < 0) {
-    fprintf(stderr, "Error: cannot open %s", vitAccelName);
-    closeout_and_exit(EXIT_FAILURE);
-  }
-  DEBUG(printf(" Allocating vitHW_mem...\n"));
-  vitHW_lmem = contig_alloc(vitHW_size, &(vitHW_mem));
-  if (vitHW_lmem == NULL) {
-    fprintf(stderr, "Error: cannot allocate %zu contig bytes", vitHW_size);
-    closeout_and_exit(EXIT_FAILURE);
-  }
-  vitHW_li_mem = &(vitHW_lmem[0]);
-  vitHW_lo_mem = &(vitHW_lmem[vitHW_out_offset]);
-  printf(" Set vitHW_li_mem = %p  AND vitHW_lo_mem = %p\n", vitHW_li_mem, vitHW_lo_mem);
-
-  vitHW_desc.esp.run = true;
-  vitHW_desc.esp.coherence = ACC_COH_NONE;
-  vitHW_desc.esp.p2p_store = 0;
-  vitHW_desc.esp.p2p_nsrcs = 0;
-  vitHW_desc.esp.contig = contig_to_khandle(vitHW_mem);
-}
-
-static void do_sdr_decoding_hw(int *fd, struct vitdodec_access *desc)
-{
-  if (ioctl(*fd, VITDODEC_IOC_ACCESS, *desc)) {
-    perror("IOCTL:");
-    exit(EXIT_FAILURE);
-  }
-}
-#endif // HW_VIT
 
 /* This is the main "do_sdr_decoding" function; takes the necessary inputs
  * from the decode call (above) and does the decoding, outputing the decoded result.
@@ -779,7 +661,7 @@ void sdr_reset() {
 //    in     : INPUT  : uint8_t Array [ MAX_ENCODED_BITS == 24780 ]
 //  <return> : OUTPUT : uint8_t Array [ MAX_ENCODED_BITS * 3 / 4 == 18585 ] : The decoded data stream
 
-void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_char, uint8_t* output) {
+void sdr_decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_char, uint8_t* output) {
   d_ofdm = ofdm;
   d_frame = frame;
 
@@ -787,7 +669,7 @@ void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t
 
   sdr_reset();
 
-  DEBUG(printf("In sdr_decode : use_hw_accel = %u : num_in_bits = %u (+ 10?)\n", use_hw_accel, frame->n_encoded_bits);
+  DEBUG(printf("In sdr_decode : num_in_bits = %u (+ 10?)\n", frame->n_encoded_bits);
 	printf("DEC: OFDM  : %u %u %u %u %u\n", ofdm->n_bpsc, ofdm->n_cbps, ofdm->n_dbps, ofdm->encoding, ofdm->rate_field);
 	printf("DEC: FRAME : %u %u %u %u %u\n", frame->psdu_size, frame->n_sym, frame->n_pad, frame->n_encoded_bits, frame->n_data_bits));
 
@@ -827,19 +709,13 @@ void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t
   });
 
   {
-    // Copy inputs into the inMemory for esp-interface version
-    #ifdef HW_VIT
-    uint8_t* inMemory  = vitHW_li_mem;
-    uint8_t* outMemory = vitHW_lo_mem;
-    #else
     uint8_t inMemory[24852];  // This is "minimally sized for max entries"
     uint8_t outMemory[18585]; // This is "minimally sized for max entries"
-    #endif
 
     int imi = 0;
     for (int ti = 0; ti < 2; ti ++) {
       for (int tj = 0; tj < 32; tj++) {
-	inMemory[imi++] = d_branchtab27_generic[ti].c[tj];
+	      inMemory[imi++] = d_branchtab27_generic[ti].c[tj];
       }
     }
     if (imi != 64) { printf("ERROR : imi = %u and should be 64\n", imi); }
@@ -879,22 +755,10 @@ void sdr_decode(bool use_hw_accel, ofdm_param *ofdm, frame_param *frame, uint8_t
    #ifdef INT_TIME
     gettimeofday(&dodec_start, NULL);
    #endif
-   #ifdef HW_VIT
-    if (use_hw_accel) {
-      vitHW_desc.cbps = ofdm->n_cbps;
-      vitHW_desc.ntraceback = d_ntraceback;
-      vitHW_desc.data_bits = frame->n_data_bits;
-      DEBUG(printf("  Preparing to call do_sdr_decoding_hw :\n");
-            printf("    cbps %u  ntrbk %u data_bits %u\n", vitHW_desc.cbps, vitHW_desc.ntraceback, vitHW_desc.data_bits));
-      do_sdr_decoding_hw(&vitHW_fd, &vitHW_desc);
-    } else
-   #else
-    {
       // Call the viterbi_butterfly2_generic function using ESP interface
-      DEBUG(printf("ESP_INTFC: Calling do_sdr_decoding with frame->n_data_bits = %u  ofdm->n_cbps = %u d_ntraceback = %u \n", frame->n_data_bits, ofdm->n_cbps, d_ntraceback));
-      do_sdr_decoding(frame->n_data_bits, ofdm->n_cbps, d_ntraceback, inMemory, outMemory);
-    }
-   #endif
+    DEBUG(printf("ESP_INTFC: Calling do_sdr_decoding with frame->n_data_bits = %u  ofdm->n_cbps = %u d_ntraceback = %u \n", frame->n_data_bits, ofdm->n_cbps, d_ntraceback));
+    do_sdr_decoding(frame->n_data_bits, ofdm->n_cbps, d_ntraceback, inMemory, outMemory);
+
    #ifdef INT_TIME
     gettimeofday(&dodec_stop, NULL);
     dodec_sec  += dodec_stop.tv_sec  - dodec_start.tv_sec;

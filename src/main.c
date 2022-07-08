@@ -213,10 +213,6 @@ void SIGPIPE_handler(int dummy) {
 	closeout_and_exit("Received a SIGPIPE...", -1);
 }
 
-#ifdef HW_VIT
-extern void init_VIT_HW_ACCEL();
-extern void free_VIT_HW_RESOURCES();
-#endif
 #ifdef XMIT_HW_FFT
 extern void free_XMIT_FFT_HW_RESOURCES();
 #endif
@@ -243,9 +239,6 @@ void closeout_and_exit(char * last_msg, int rval) {
 		close(car_sock);
 	}
 
-#ifdef HW_VIT
-	free_VIT_HW_RESOURCES();
-#endif // HW_VIT
 #ifdef XMIT_HW_FFT
 	free_XMIT_FFT_HW_RESOURCES();
 #endif
@@ -1675,11 +1668,6 @@ int main(int argc, char * argv[]) {
 	snprintf(wifi_inet_addr_str, 20, "127.0.0.1");
 	snprintf(car_inet_addr_str, 20, "127.0.0.1");
 
-#ifdef HW_VIT
-	DEBUG(printf("Calling init_VIT_HW_ACCEL...\n"));
-	init_VIT_HW_ACCEL();
-#endif
-
 	// hpvm: The inits below can probably all go in parallel
 	printf("Initializing the OccGrid state...\n");
 	init_occgrid_state(); // Initialize the occgrid functions, state, etc.
@@ -2275,11 +2263,6 @@ void dump_final_run_statistics() {
 		GRID_MAP_Y_DIM, GRID_MAP_RESLTN, RAYTR_RANGE);
 
 	printf("Timing (in usec):");
-#ifdef HW_VIT
-	printf(" with %u HW_VIT", 1);
-#else
-	printf(" with NO HW_VIT");
-#endif
 #ifdef XMIT_HW_FFT
 	printf(" and %u HW_XMIT_FFT", NUM_XMIT_FFT_ACCEL);
 #else
