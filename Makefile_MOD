@@ -337,7 +337,7 @@ $(NVDLA_MODULE):
 
 #-----------------------------------------------------------------------------------------------
 obj_t/%.o: %.c
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@ $(LDFLAGS)
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@
 
 obj_s/%.o: %.c
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DUSE_SIM_ENVIRON -c $< -o $@
@@ -357,12 +357,12 @@ $(STARGET): $(TASK_LIB) $(SCHED_LIB) obj_s $(OBJ_S)
 $(HPVMTARGET): $(OBJ_LINKED) $(TASK_LIB) $(SCHED_LIB) $(ALLMODULE_OBJS)
 	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o me_test.o
 	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) me_test.o -o wnvdla_test.o
-	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(LDFLAGS) $(NVDLA_FLAGS) -L/usr/lib/python3.6/config-3.6m-x86_64-linux-gnu -L/usr/lib -lpython3.6m -lpthread -ldl  -lutil -lm  -Xlinker -export-dynamic -Wl,-O1 -Wl,-Bsymbolic-functions
+	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(LDFLAGS) $(NVDLA_FLAGS) 
 	rm me_test.o wnvdla_test.o
 
 $(HPVMTARGET_CPU): $(OBJ_LINKED) $(TASK_LIB) $(SCHED_LIB) 
 	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o me_test.o
-	$(CROSS_COMPILE)$(CXX) $(LDLIBS) me_test.o -o $@ $(LDFLAGS) $(CROSS_COMPILE_FLAGS) -L/usr/lib/python3.6/config-3.6m-x86_64-linux-gnu -L/usr/lib -lpython3.6m -lpthread -ldl  -lutil -lm  -Xlinker -export-dynamic -Wl,-O1 -Wl,-Bsymbolic-functions
+	$(CROSS_COMPILE)$(CXX) $(LDLIBS) me_test.o -o $@ $(LDFLAGS) $(CROSS_COMPILE_FLAGS)
  
 
 
@@ -430,6 +430,7 @@ clean:
 
 
 clobber: clean
+	$(RM) *.xml
 	$(RM) $(TARGET)
 	$(RM) $(STARGET)
 	$(RM) $(HPVMTARGET)
@@ -447,11 +448,11 @@ endif
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
 src/getopt.o: ./include/getopt.h
-src/scheduler.o: ./include/getopt.h ./include/utils.h
+src/scheduler.o: ./include/getopt_era.h ./include/utils.h
 src/scheduler.o: ./include/verbose.h
 src/scheduler.o: ./include/scheduler.h ./include/base_types.h
 src/scheduler.o: ./include/calc_fmcw_dist.h
-src/main.o: ./include/getopt.h ./include/verbose.h ./include/scheduler.h
+src/main.o: ./include/getopt_era.h ./include/verbose.h ./include/scheduler.h
 src/main.o: ./include/base_types.h
 src/main.o: ./include/kernels_api.h ./include/calc_fmcw_dist.h
 src/main.o: ./include/utils.h ./include/sim_environs.h
