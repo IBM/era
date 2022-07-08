@@ -15,7 +15,7 @@ else
   CUR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 fi
 export SOC_LIB_DIR=/dccstor/epochs/aporvaa/sched/scheduler-library-hpvm/
-export HPVM_BUILD_DIR=$HPVM_DIR/build_debug2
+export HPVM_BUILD_DIR=$HPVM_DIR/build
 export LD_LIBRARY_PATH=$HPVM_DIR/build/lib:$LD_LIBRARY_PATH
 
 export PATH=$PATH:/$RISCV_BIN_DIR
