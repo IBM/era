@@ -36,6 +36,7 @@
 #include "gr_equalizer.h"
 #include "ofdm.h"
 #include "fft.h"
+#include "globalsSDRViterbi.h"
 
 #include "globalsRecv.h"
 
@@ -181,7 +182,19 @@ void compute(unsigned num_inputs, fx_pt * input_data, size_t input_data_sz,
 	fx_pt1 * avg_signal_power_arg /*= avg_signal_power -> global*/, size_t avg_signal_power_arg_sz /*= FIR_MAVG64_MAX_SIZE*/,
 	fx_pt1 * the_correlation_arg /*= the_correlation -> global*/, size_t the_correlation_arg_sz /*= DIVIDE_MAX_SIZE*/,
 	fx_pt * sync_short_out_frames_arg /*= sync_short_out_frames -> global*/, size_t sync_short_out_frames_arg_sz /*=320*/,
-	fx_pt * d_sync_long_out_frames_arg /*= d_sync_long_out_frames -> global*/, size_t d_sync_long_out_frames_arg_sz /*= SYNC_L_OUT_MAX_SIZE*/);
+	fx_pt * d_sync_long_out_frames_arg /*= d_sync_long_out_frames -> global*/, size_t d_sync_long_out_frames_arg_sz /*= SYNC_L_OUT_MAX_SIZE*/,
+        // Local variablse used by decode_signal (task in compute)
+        unsigned* num_dec_bits, size_t num_dec_bits_sz /*= sizeof(unsigned)*/,
+        uint8_t* bit_r, size_t bit_r_sz /*= DECODE_IN_SIZE_MAX*/,
+        uint8_t* bit, size_t bit_sz /*= DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES*/,
+        ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/,
+        frame_param* frame, size_t frame_sz /*= sizeof(frame_param)*/,
+        int* n_res_char, size_t n_res_char_sz /*= sizeof(int)*/,
+        // Local variables for sdr_decode_ofdm (called by decode_signal, a task in compute
+        uint8_t* inMemory, size_t inMemory_sz /*= 24852*/,
+        uint8_t* outMemory, size_t outMemory_sz /*= 18585*/,
+        int* d_ntraceback_arg, size_t d_ntraceback_arg_sz /*= sizeof(int)*/
+	);
 
 
 /********************************************************************************
@@ -319,11 +332,13 @@ recv_pipe_init() {
 }
 
 
-unsigned
-do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], fx_pt1 fft_ar_i[FRAME_EQ_IN_MAX_SIZE]) {
+void do_rcv_fft_work(fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], fx_pt1 fft_ar_i[FRAME_EQ_IN_MAX_SIZE], 
+		unsigned* num_sync_long_vals, unsigned* returnValue) {
 	DEBUG(printf("\nSetting up for FFT...\n"));
 	// FFT
 	// Here we do the FFT calls in 64-sample chunks... using a "window.rectangluar(64)" and forward fft with "Shift = true"
+
+	unsigned num_fft_frames = ((*num_sync_long_vals) + 63) / 64;
 
 	unsigned num_fft_outs = 0;
 	DO_LIMITS_ANALYSIS(float min_input = 3.0e+038;
@@ -405,7 +420,7 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
 	r_fHtotal_sec += r_fHcvtout_stop.tv_sec - r_fHcvtin_start.tv_sec;
 	r_fHtotal_usec += r_fHcvtout_stop.tv_usec - r_fHcvtin_start.tv_usec;
 #endif // INT_TIME
-
+// end #ifdef RCV_HW_FFT
 #else
 	{ // The FFT only uses one set of input/outputs (the fft_in) and overwrites the inputs with outputs
 		float fft_in_real[64];
@@ -464,7 +479,7 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
 	printf("\n"));
 
 	DO_LIMITS_ANALYSIS(printf("DO_RECV_FFT_WORK : min_input = %.15g  max_input = %.15g\n", min_input, max_input));
-	return num_fft_outs;
+	*returnValue = num_fft_outs;
 }
 
 /********************************************************************************
@@ -474,7 +489,8 @@ do_rcv_fft_work(unsigned num_fft_frames, fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE], 
 void pre_process_input_for_compute_(float * recvd_in_imag, size_t recvd_in_imag_sz,
 	float * recvd_in_real, size_t recvd_in_real_sz,
 	int num_recvd_vals,
-	fx_pt * input_data_arg /*= input_data -> global*/, size_t input_data_arg_sz /*=DELAY_16_MAX_OUT_SIZE - 16*/) {
+	fx_pt * input_data_arg /*= input_data -> global*/, size_t input_data_arg_sz /*=DELAY_16_MAX_OUT_SIZE - 16*/
+	) {
 #if defined(HPVM) && true
 	void * Section_Inner = __hetero_section_begin();
 	void * T0 = __hetero_task_begin(4, input_data_arg, input_data_arg_sz,
@@ -522,7 +538,19 @@ void do_recv_pipeline(int num_recvd_vals, float * recvd_in_real, size_t recvd_in
 	fx_pt1 * avg_signal_power_arg /*= avg_signal_power -> global*/, size_t avg_signal_power_arg_sz /*= FIR_MAVG64_MAX_SIZE*/,
 	fx_pt1 * the_correlation_arg /*= the_correlation -> global*/, size_t the_correlation_arg_sz /*= DIVIDE_MAX_SIZE*/,
 	fx_pt * sync_short_out_frames_arg /*= sync_short_out_frames -> global*/, size_t sync_short_out_frames_arg_sz /*=320*/,
-	fx_pt * d_sync_long_out_frames_arg /*= d_sync_long_out_frames -> global*/, size_t d_sync_long_out_frames_arg_sz /*= SYNC_L_OUT_MAX_SIZE*/) {
+	fx_pt * d_sync_long_out_frames_arg /*= d_sync_long_out_frames -> global*/, size_t d_sync_long_out_frames_arg_sz /*= SYNC_L_OUT_MAX_SIZE*/,
+	// Local variablse used by decode_signal (task in do_recv_pipeline)
+        unsigned* num_dec_bits, size_t num_dec_bits_sz /*= sizeof(unsigned)*/,
+        uint8_t* bit_r, size_t bit_r_sz /*= DECODE_IN_SIZE_MAX*/,
+        uint8_t* bit, size_t bit_sz /*= DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES*/,
+        ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/,
+        frame_param* frame, size_t frame_sz /*= sizeof(frame_param)*/,
+        int* n_res_char, size_t n_res_char_sz /*= sizeof(int)*/,
+        // Local variables for sdr_decode_ofdm (called by decode_signal, a task in do_recv_pipeline)
+        uint8_t* inMemory, size_t inMemory_sz /*= 24852*/,
+        uint8_t* outMemory, size_t outMemory_sz /*= 18585*/,
+        int* d_ntraceback_arg, size_t d_ntraceback_arg_sz /*= sizeof(int)*/
+	) {
 
 #if defined(HPVM) && true
 	void * Section = __hetero_section_begin();
@@ -544,7 +572,7 @@ void do_recv_pipeline(int num_recvd_vals, float * recvd_in_real, size_t recvd_in
 #endif
 
 #if defined(HPVM)
-	void * T1 = __hetero_task_begin(26,
+	void * T1 = __hetero_task_begin(35,
 		num_recvd_vals,
 		recvd_msg_len, recvd_msg_len_sz,
 		recvd_msg, recvd_msg_sz,
@@ -573,6 +601,18 @@ void do_recv_pipeline(int num_recvd_vals, float * recvd_in_real, size_t recvd_in
 		the_correlation_arg, the_correlation_arg_sz,
 		sync_short_out_frames_arg, sync_short_out_frames_arg_sz,
 		d_sync_long_out_frames_arg, d_sync_long_out_frames_arg_sz,
+		// Local variables for decode_signal, a task in compute()
+		num_dec_bits, num_dec_bits_sz,
+		bit_r, bit_r_sz,
+		bit, bit_sz,
+		ofdm, ofdm_sz,
+		frame, frame_sz,
+		n_res_char, n_res_char_sz,
+		// Local variables for sdr_decode_ofdm (called by decode_signal, a task in compute())
+		inMemory, inMemory_sz,
+		outMemory, outMemory_sz,
+		d_ntraceback_arg, d_ntraceback_arg_sz,
+		// Outputs
 		3,
 		input_data_arg, input_data_arg_sz,
 		recvd_msg_len, recvd_msg_len_sz, recvd_msg, recvd_msg_sz,
@@ -610,7 +650,19 @@ void do_recv_pipeline(int num_recvd_vals, float * recvd_in_real, size_t recvd_in
 		avg_signal_power_arg, avg_signal_power_arg_sz,
 		the_correlation_arg, the_correlation_arg_sz,
 		sync_short_out_frames_arg, sync_short_out_frames_arg_sz,
-		d_sync_long_out_frames_arg, d_sync_long_out_frames_arg_sz);
+		d_sync_long_out_frames_arg, d_sync_long_out_frames_arg_sz,
+		// Local variables for decode_signal, a task in compute()
+                num_dec_bits, num_dec_bits_sz,
+                bit_r, bit_r_sz,
+                bit, bit_sz,
+                ofdm, ofdm_sz,
+                frame, frame_sz,
+                n_res_char, n_res_char_sz,
+                // Local variables for sdr_decode_ofdm (called by decode_signal, a task in compute())
+                inMemory, inMemory_sz,
+                outMemory, outMemory_sz,
+                d_ntraceback_arg, d_ntraceback_arg_sz
+		);
 
 #if defined(INT_TIME) && !defined(HPVM)
 	gettimeofday(&r_pipe_stop, NULL);
@@ -629,16 +681,6 @@ void do_recv_pipeline(int num_recvd_vals, float * recvd_in_real, size_t recvd_in
 #if defined(HPVM) && true
 	__hetero_section_end(Section);
 #endif
-}
-
-void gr_equalize_test(float wifi_start, unsigned num_inputs,
-	fx_pt inputs[FRAME_EQ_IN_MAX_SIZE],
-	unsigned * msg_psdu,
-	unsigned * num_out_bits, uint8_t outputs[FRAME_EQ_OUT_MAX_SIZE],
-	unsigned * num_out_sym, fx_pt out_symbols[FRAME_EQ_OUT_MAX_SIZE]
-) {
-	*num_out_sym = *num_out_bits;
-	printf("Call works");
 }
 
 void compute(unsigned num_inputs, fx_pt * input_data_arg, size_t input_data_arg_sz,
@@ -666,7 +708,19 @@ void compute(unsigned num_inputs, fx_pt * input_data_arg, size_t input_data_arg_
 	fx_pt1 * avg_signal_power_arg /*= avg_signal_power -> global*/, size_t avg_signal_power_arg_sz /*= FIR_MAVG64_MAX_SIZE*/,
 	fx_pt1 * the_correlation_arg /*= the_correlation -> global*/, size_t the_correlation_arg_sz /*= DIVIDE_MAX_SIZE*/,
 	fx_pt * sync_short_out_frames_arg /*= sync_short_out_frames -> global*/, size_t sync_short_out_frames_arg_sz /*=320*/,
-	fx_pt * d_sync_long_out_frames_arg /*= d_sync_long_out_frames -> global*/, size_t d_sync_long_out_frames_arg_sz /*= SYNC_L_OUT_MAX_SIZE*/) {
+	fx_pt * d_sync_long_out_frames_arg /*= d_sync_long_out_frames -> global*/, size_t d_sync_long_out_frames_arg_sz /*= SYNC_L_OUT_MAX_SIZE*/,
+	//              Local variablse used by decode_signal (task in compute)
+        unsigned* num_dec_bits, size_t num_dec_bits_sz /*= sizeof(unsigned)*/,
+        uint8_t* bit_r, size_t bit_r_sz /*= DECODE_IN_SIZE_MAX*/,
+        uint8_t* bit, size_t bit_sz /*= DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES*/,
+        ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/,
+        frame_param* frame, size_t frame_sz /*= sizeof(frame_param)*/,
+        int* n_res_char, size_t n_res_char_sz /*= sizeof(int)*/,
+        //              Local variables for sdr_decode_ofdm (called by decode_signal, a task in compute
+        uint8_t* inMemory, size_t inMemory_sz /*= 24852*/,
+        uint8_t* outMemory, size_t outMemory_sz /*= 18585*/,
+        int* d_ntraceback_arg, size_t d_ntraceback_arg_sz /*= sizeof(int)*/
+	) {
 
 #if defined(HPVM) && true
 	void * Section = __hetero_section_begin();
@@ -1008,7 +1062,7 @@ void compute(unsigned num_inputs, fx_pt * input_data_arg, size_t input_data_arg_
 	// fx_pt1 fft_ar_r[FRAME_EQ_IN_MAX_SIZE];
 	// fx_pt1 fft_ar_i[FRAME_EQ_IN_MAX_SIZE];
 	{
-		unsigned num_fft_frames = ((*num_sync_long_vals) + 63) / 64;
+#if !defined(HPVM)
 		DO_NUM_IOS_ANALYSIS(printf("Calling FFT_COMP : num_fft_frames = %u / 64 = %u So %u values\n",
 			*num_sync_long_vals, num_fft_frames, (num_fft_frames * 64)));
 #ifdef INT_TIME
@@ -1016,11 +1070,15 @@ void compute(unsigned num_inputs, fx_pt * input_data_arg, size_t input_data_arg_
 		r_slong_sec += r_fft_start.tv_sec - r_slong_start.tv_sec;
 		r_slong_usec += r_fft_start.tv_usec - r_slong_start.tv_usec;
 #endif
-		* num_fft_outs = do_rcv_fft_work(num_fft_frames, fft_ar_r, fft_ar_i);
+#endif
+		do_rcv_fft_work(fft_ar_r, fft_ar_i, num_sync_long_vals, num_fft_outs);
+
+#if !defined(HPVM)
 #ifdef INT_TIME
 		gettimeofday(&r_fft_stop, NULL);
 		r_fft_sec += r_fft_stop.tv_sec - r_fft_start.tv_sec;
 		r_fft_usec += r_fft_stop.tv_usec - r_fft_start.tv_usec;
+#endif
 #endif
 	}
 #if defined(HPVM) 
@@ -1080,25 +1138,44 @@ void compute(unsigned num_inputs, fx_pt * input_data_arg, size_t input_data_arg_
 #endif
 
 #if defined(HPVM) 
-	void * T13 = __hetero_task_begin(4, num_eq_out_bits, num_eq_out_bits_sz, toBeEqualized, toBeEqualized_sz,
-		equalized, equalized_sz, scrambled_msg, scrambled_msg_sz,
+	void * T13 = __hetero_task_begin(13, num_eq_out_bits, num_eq_out_bits_sz, toBeEqualized, toBeEqualized_sz,
+		equalized, equalized_sz, scrambled_msg, scrambled_msg_sz, num_dec_bits, num_dec_bits_sz, 
+		bit_r, bit_r_sz, bit, bit_sz, ofdm, ofdm_sz, frame, frame_sz, n_res_char, n_res_char_sz, 
+		inMemory, inMemory_sz, outMemory, outMemory_sz, d_ntraceback_arg, d_ntraceback_arg_sz,
 		1, scrambled_msg, scrambled_msg_sz, "decode_task");
 #endif
 
 	//decode signal
+
+#if !defined(HPVM)
 	DO_NUM_IOS_ANALYSIS(printf("Calling decode_signal: IN %u\n", *num_eq_out_bits));
-	unsigned num_dec_bits;
 #ifdef INT_TIME
 	gettimeofday(&r_decsignl_start, NULL);
 	r_eqlz_sec += r_decsignl_start.tv_sec - r_eqlz_start.tv_sec;
 	r_eqlz_usec += r_decsignl_start.tv_usec - r_eqlz_start.tv_usec;
 #endif
-	decode_signal(*num_eq_out_bits, equalized, &num_dec_bits, scrambled_msg);
+#endif
+
+	decode_signal(num_eq_out_bits, num_eq_out_bits_sz, 
+			equalized, equalized_sz, 
+			num_dec_bits, num_dec_bits_sz,
+			scrambled_msg, scrambled_msg_sz, 
+			bit_r, bit_r_sz, 
+			bit, bit_sz, 
+			ofdm, ofdm_sz, 
+			frame, frame_sz,
+		       	n_res_char, n_res_char_sz, 
+			inMemory, inMemory_sz, 
+			outMemory, outMemory_sz,
+			d_ntraceback_arg, d_ntraceback_arg_sz);
+
+#if !defined(HPVM)
 	DO_NUM_IOS_ANALYSIS(printf("Back from decode_signal: OUT %u\n", num_dec_bits));
 	DEBUG(for (int ti = 0; ti < num_dec_bits; ti++) {
 		printf(" DEC_OUTS %5u : EQLZD %12.8f %12.8f : DEC_BIT %u\n", ti, crealf(toBeEqualized[ti]),
 			cimagf(toBeEqualized[ti]), scrambled_msg[ti]);
 	});
+#endif
 
 #if defined(HPVM) 
 	__hetero_task_end(T13);

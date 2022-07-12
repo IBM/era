@@ -29,6 +29,7 @@
 
 #include "globalsRecv.h"
 #include "globalsOccgrid.h"
+#include "globalsSDRViterbi.h"
 
 #include <stdint.h>
 #define STB_IMAGE_IMPLEMENTATION
@@ -43,7 +44,7 @@
 
 #define PARALLEL_PTHREADS false
 
-#define ERA1
+#define ERA2
 
 #ifdef ERA1
 char * IMAGE_FN = "gridimage_era1_";
@@ -519,7 +520,18 @@ void fuse_maps(int n_recvd_in,
 	fx_pt1 * avg_signal_power_arg /*= avg_signal_power -> global*/, size_t avg_signal_power_arg_sz /*= FIR_MAVG64_MAX_SIZE*/,
 	fx_pt1 * the_correlation_arg /*= the_correlation -> global*/, size_t the_correlation_arg_sz /*= DIVIDE_MAX_SIZE*/,
 	fx_pt * sync_short_out_frames_arg /*= sync_short_out_frames -> global*/, size_t sync_short_out_frames_arg_sz /*=320*/,
-	fx_pt * d_sync_long_out_frames_arg /*= d_sync_long_out_frames -> global*/, size_t d_sync_long_out_frames_arg_sz /*= SYNC_L_OUT_MAX_SIZE*/
+	fx_pt * d_sync_long_out_frames_arg /*= d_sync_long_out_frames -> global*/, size_t d_sync_long_out_frames_arg_sz /*= SYNC_L_OUT_MAX_SIZE*/,
+	// 		Local variablse used by decode_signal (task in do_recv_pipeline)
+	unsigned* num_dec_bits, size_t num_dec_bits_sz /*= sizeof(unsigned)*/,
+	uint8_t* bit_r, size_t bit_r_sz /*= DECODE_IN_SIZE_MAX*/,
+	uint8_t* bit, size_t bit_sz /*= DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES*/,
+	ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/,
+	frame_param* frame, size_t frame_sz /*= sizeof(frame_param)*/,
+	int* n_res_char, size_t n_res_char_sz /*= sizeof(int)*/,
+	// 		Local variables for sdr_decode_ofdm (called by decode_signal, a task in do_recv_pipeline
+	uint8_t* inMemory, size_t inMemory_sz /*= 24852*/,
+	uint8_t* outMemory, size_t outMemory_sz /*= 18585*/,
+	int* d_ntraceback_arg, size_t d_ntraceback_arg_sz /*= sizeof(int)*/
 	// End variables used by do_recv_pipeline
 ) {
 #if (defined(HPVM) && defined(HPVM_RECV_PIPELINE)) && true
@@ -527,8 +539,8 @@ void fuse_maps(int n_recvd_in,
 #endif
 
 #if (defined(HPVM) && defined(HPVM_RECV_PIPELINE)) && true
-	// 28 inputs, 3 outputs
-	void * T1 = __hetero_task_begin(28, n_recvd_in, recvd_in_real, recvd_in_real_sz,
+	// 37 inputs, 3 outputs
+	void * T1 = __hetero_task_begin(37, n_recvd_in, recvd_in_real, recvd_in_real_sz,
 		recvd_msg, recvd_msg_sz, recvd_msg_len, recvd_msg_len_sz,
 		recvd_in_imag, recvd_in_imag_sz,
 		// Start variables used by do_recv_pipeline
@@ -552,6 +564,17 @@ void fuse_maps(int n_recvd_in,
 		the_correlation_arg, the_correlation_arg_sz,
 		sync_short_out_frames_arg, sync_short_out_frames_arg_sz,
 		d_sync_long_out_frames_arg, d_sync_long_out_frames_arg_sz,
+		// Local variables for decode_signal, a task in do_recv_pipeline
+                num_dec_bits, num_dec_bits_sz,
+                bit_r, bit_r_sz,
+                bit, bit_sz,
+                ofdm, ofdm_sz,
+                frame, frame_sz,
+                n_res_char, n_res_char_sz,
+                // Local variables for sdr_decode_ofdm (called by decode_signal, a task in do_recv_pipeline)
+                inMemory, inMemory_sz,
+                outMemory, outMemory_sz,
+                d_ntraceback_arg, d_ntraceback_arg_sz,
 		// End variables used by do_recv_pipeline
 		3, recvd_msg_len, recvd_msg_len_sz,
 		recvd_in_real, recvd_in_real_sz,
@@ -589,7 +612,18 @@ void fuse_maps(int n_recvd_in,
 		avg_signal_power_arg, avg_signal_power_arg_sz,
 		the_correlation_arg, the_correlation_arg_sz,
 		sync_short_out_frames_arg, sync_short_out_frames_arg_sz,
-		d_sync_long_out_frames_arg, d_sync_long_out_frames_arg_sz);
+		d_sync_long_out_frames_arg, d_sync_long_out_frames_arg_sz,
+		// 		Local variables for decode_signal, a task in do_recv_pipeline
+                num_dec_bits, num_dec_bits_sz,
+                bit_r, bit_r_sz,
+                bit, bit_sz,
+                ofdm, ofdm_sz,
+                frame, frame_sz,
+                n_res_char, n_res_char_sz,
+                // 		Local variables for sdr_decode_ofdm (called by decode_signal, a task in do_recv_pipeline)
+                inMemory, inMemory_sz,
+                outMemory, outMemory_sz,
+                d_ntraceback_arg, d_ntraceback_arg_sz);
 
 #if defined(INT_TIME) && !(defined(HPVM) ||  defined(HPVM_RECV_PIPELINE))
 	gettimeofday(&stop_pd_recv_pipe, NULL);
@@ -786,11 +820,27 @@ void * receive_and_fuse_maps_impl(Observation * observations /*=observations -> 
 			unsigned psdu = 0;
 			size_t psdu_sz = sizeof(unsigned);
 
+			// Local variablse used by decode_signal
+			unsigned num_dec_bits = 0; size_t num_dec_bits_sz = sizeof(unsigned);
+			size_t bit_r_sz = DECODE_IN_SIZE_MAX;
+			uint8_t bit_r[DECODE_IN_SIZE_MAX];
+			size_t bit_sz = DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES;
+			uint8_t bit[DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES];
+			ofdm_param ofdm; size_t ofdm_sz = sizeof(ofdm_param);
+			frame_param frame; size_t frame_sz = sizeof(frame_param);
+			int n_res_char = 0; size_t n_res_char_sz = sizeof(int);
+
+			// Local variables for sdr_decode_ofdm
+			uint8_t inMemory[24852]; size_t inMemory_sz = 24852;
+			uint8_t outMemory[18585]; size_t outMemory_sz = 18585;
+			size_t d_ntraceback_arg_sz = sizeof(int);
+
+
 			printf("%s %d Calling fuse_maps", __FILE__, __LINE__);
 
 #if (defined(HPVM) && defined(HPVM_RECV_PIPELINE)) && true
-			// 31 inputs, 7 outputs
-			void * LaunchInner = __hetero_launch((void *) fuse_maps, 31,
+			// 40 inputs, 7 outputs
+			void * LaunchInner = __hetero_launch((void *) fuse_maps, 40,
 				n_recvd_in,
 				recvd_in_real, recvd_in_real_sz,
 				recvd_in_imag, recvd_in_imag_sz,
@@ -799,7 +849,8 @@ void * receive_and_fuse_maps_impl(Observation * observations /*=observations -> 
 				observations, observations_sz,
 				uncmp_data, uncmp_data_sz,
 				&dec_bytes, dec_bytes_sz,
-				// Local variables used by do_recv_pipeline
+				// Start variables used by do_recv_pipeline
+				// 	Local variables used by do_recv_pipeline
 				scrambled_msg, scrambled_msg_sz,
 				&ss_freq_offset, ss_freq_offset_sz,
 				&num_sync_short_vals, num_sync_short_vals_sz,
@@ -824,6 +875,17 @@ void * receive_and_fuse_maps_impl(Observation * observations /*=observations -> 
 				the_correlation, DIVIDE_MAX_SIZE * sizeof(fx_pt1),
 				sync_short_out_frames, 320 * sizeof(fx_pt),
 				d_sync_long_out_frames, SYNC_L_OUT_MAX_SIZE * sizeof(fx_pt),
+				//      Local variablse used by decode_signal (task in do_recv_pipeline)
+				&num_dec_bits, num_dec_bits_sz,
+				bit_r, bit_r_sz,
+				bit, bit_sz,
+				&ofdm, ofdm_sz,
+				&frame, frame_sz,
+				&n_res_char, n_res_char_sz,
+				//       Local variables for sdr_decode_ofdm (called by decode_signal, a task in do_recv_pipeline
+				inMemory, inMemory_sz,
+				outMemory, outMemory_sz,
+				&d_ntraceback, d_ntraceback_arg_sz,
 				// End variables used by do_recv_pipeline
 				6,
 				recvd_in_real, recvd_in_real_sz,
@@ -839,7 +901,8 @@ void * receive_and_fuse_maps_impl(Observation * observations /*=observations -> 
 				&recvd_msg_len, recvd_msg_len_sz, recvd_msg, recvd_msg_sz,
 				observations, observations_sz,
 				uncmp_data, uncmp_data_sz, &dec_bytes, dec_bytes_sz,
-				// Local variables used by do_recv_pipeline
+				// Start variables used by do_recv_pipeline
+				// 	Local variables used by do_recv_pipeline
 				scrambled_msg, scrambled_msg_sz, &ss_freq_offset, ss_freq_offset_sz,
 				&num_sync_short_vals, num_sync_short_vals_sz,
 				&sl_freq_offset, sl_freq_offset_sz,
@@ -858,7 +921,18 @@ void * receive_and_fuse_maps_impl(Observation * observations /*=observations -> 
 				avg_signal_power, FIR_MAVG64_MAX_SIZE * sizeof(fx_pt1),
 				the_correlation, DIVIDE_MAX_SIZE * sizeof(fx_pt1),
 				sync_short_out_frames, 320 * sizeof(fx_pt),
-				d_sync_long_out_frames, SYNC_L_OUT_MAX_SIZE * sizeof(fx_pt));
+				d_sync_long_out_frames, SYNC_L_OUT_MAX_SIZE * sizeof(fx_pt),
+				//      Local variablse used by decode_signal (task in do_recv_pipeline)
+				&num_dec_bits, num_dec_bits_sz,
+				bit_r, bit_r_sz,
+				bit, bit_sz,
+				&ofdm, ofdm_sz,
+				&frame, frame_sz,
+				&n_res_char, n_res_char_sz,
+				//       Local variables for sdr_decode_ofdm (called by decode_signal, a task in do_recv_pipeline
+				inMemory, inMemory_sz,
+				outMemory, outMemory_sz,
+				&d_ntraceback, d_ntraceback_arg_sz);
 #endif
 			printf("%s %d Out of fuse_maps", __FILE__, __LINE__);
 

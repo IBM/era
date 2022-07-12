@@ -37,6 +37,16 @@ uint8_t* sdr_depuncture(uint8_t *in);
  */
 void sdr_decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_char, uint8_t* output);
 
+
+void sdr_decode_ofdm(ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/,
+                frame_param* frame, size_t frame_sz /*= sizeof(frame_param)*/,
+                uint8_t* in, size_t in_sz /*= DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES*/,
+                int* n_dec_char, size_t n_dec_char_sz /*sizeof(int)*/,
+                uint8_t* output, size_t output_sz /*= MAX_ENCODED_BITS * 3 / 4*/,
+                uint8_t* inMemory, size_t inMemory_sz /*= 24852*/,
+                uint8_t* outMemory, size_t outMemory_sz /*18585*/,
+                int* d_ntraceback_arg, size_t d_ntraceback_arg_sz /*= sizeof(int)*/);
+
 typedef union branchtab27_u {
   unsigned char c[32];
 } t_branchtab27;
