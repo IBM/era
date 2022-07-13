@@ -382,7 +382,7 @@ void decompress(unsigned char * uncmp_data, size_t uncmp_data_sz,
 }
 
 
-void decompress_caller(unsigned char * uncmp_data, size_t uncmp_data_sz,
+void decompress_Wrapper2(unsigned char * uncmp_data, size_t uncmp_data_sz,
 	int * recvd_msg_len, size_t recvd_msg_len_sz,
 	unsigned char * recvd_msg, size_t recvd_msg_sz,
 	int * dec_bytes, size_t dec_bytes_sz,
@@ -405,6 +405,55 @@ void decompress_caller(unsigned char * uncmp_data, size_t uncmp_data_sz,
 	__hetero_section_end(Section_Caller);
 #endif
 
+}
+
+void decompress_Wrapper3(unsigned char * uncmp_data, size_t uncmp_data_sz,
+	int * recvd_msg_len, size_t recvd_msg_len_sz,
+	unsigned char * recvd_msg, size_t recvd_msg_sz,
+	int * dec_bytes, size_t dec_bytes_sz,
+	Observation * observation, size_t observation_sz
+) {
+#if (defined(HPVM) && defined(HPVM_RECV_PIPELINE)) && defined(RECV_CALLER)  && true 
+	void * Section_Caller = __hetero_section_begin();
+	void * T2_Wrapper = __hetero_task_begin(5, uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
+		recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz,
+		observation, observation_sz,
+		2, uncmp_data, uncmp_data_sz, dec_bytes, dec_bytes_sz, "decompress_task_Wrapper3");
+#endif
+
+	decompress_Wrapper2(uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz, recvd_msg,
+		recvd_msg_sz, dec_bytes, dec_bytes_sz,
+		observation, observation_sz);
+
+#if (defined(HPVM) && defined(HPVM_RECV_PIPELINE)) && defined(RECV_CALLER) && true 
+	__hetero_task_end(T2_Wrapper);
+	__hetero_section_end(Section_Caller);
+#endif
+
+}
+
+void decompress_Wrapper4(unsigned char * uncmp_data, size_t uncmp_data_sz,
+	int * recvd_msg_len, size_t recvd_msg_len_sz,
+	unsigned char * recvd_msg, size_t recvd_msg_sz,
+	int * dec_bytes, size_t dec_bytes_sz,
+	Observation * observation, size_t observation_sz
+) {
+#if (defined(HPVM) && defined(HPVM_RECV_PIPELINE)) && defined(RECV_CALLER)  && true 
+	void * Section_Caller = __hetero_section_begin();
+	void * T2_Wrapper = __hetero_task_begin(5, uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
+		recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz,
+		observation, observation_sz,
+		2, uncmp_data, uncmp_data_sz, dec_bytes, dec_bytes_sz, "decompress_task_Wrapper4");
+#endif
+
+	decompress_Wrapper3(uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz, recvd_msg,
+		recvd_msg_sz, dec_bytes, dec_bytes_sz,
+		observation, observation_sz);
+
+#if (defined(HPVM) && defined(HPVM_RECV_PIPELINE)) && defined(RECV_CALLER) && true 
+	__hetero_task_end(T2_Wrapper);
+	__hetero_section_end(Section_Caller);
+#endif
 }
 
 void grid_fusion(Observation * observations, size_t observations_sz,
@@ -471,7 +520,7 @@ void grid_fusion(Observation * observations, size_t observations_sz,
 #endif
 }
 
-void grid_fusion_caller(Observation * observations, size_t observations_sz,
+void grid_fusion_Wrapper2(Observation * observations, size_t observations_sz,
 	unsigned char * uncmp_data, size_t uncmp_data_sz) {
 
 #if (defined(HPVM) && defined(HPVM_RECV_PIPELINE))  && defined(RECV_CALLER)  && true 
@@ -487,6 +536,42 @@ void grid_fusion_caller(Observation * observations, size_t observations_sz,
 	__hetero_section_end(Section_Caller);
 #endif
 }
+
+void grid_fusion_Wrapper3(Observation * observations, size_t observations_sz,
+	unsigned char * uncmp_data, size_t uncmp_data_sz) {
+
+#if (defined(HPVM) && defined(HPVM_RECV_PIPELINE))  && defined(RECV_CALLER)  && true 
+	void * Section_Caller = __hetero_section_begin();
+	void * T4_Caller = __hetero_task_begin(2, observations, observations_sz, uncmp_data, uncmp_data_sz,
+		1, observations, observations_sz, "gridFusion_task_wrapper3");
+#endif
+
+	grid_fusion_Wrapper2(observations, observations_sz, uncmp_data, uncmp_data_sz);
+
+#if (defined(HPVM) && defined(HPVM_RECV_PIPELINE))  && defined(RECV_CALLER)   && true 
+	__hetero_task_end(T4_Caller);
+	__hetero_section_end(Section_Caller);
+#endif
+}
+
+void grid_fusion_Wrapper4(Observation * observations, size_t observations_sz,
+	unsigned char * uncmp_data, size_t uncmp_data_sz) {
+
+#if (defined(HPVM) && defined(HPVM_RECV_PIPELINE))  && defined(RECV_CALLER)  && true 
+	void * Section_Caller = __hetero_section_begin();
+	void * T4_Caller = __hetero_task_begin(2, observations, observations_sz, uncmp_data, uncmp_data_sz,
+		1, observations, observations_sz, "gridFusion_task_wrapper4");
+#endif
+
+	grid_fusion_Wrapper3(observations, observations_sz, uncmp_data, uncmp_data_sz);
+
+#if (defined(HPVM) && defined(HPVM_RECV_PIPELINE))  && defined(RECV_CALLER)   && true 
+	__hetero_task_end(T4_Caller);
+	__hetero_section_end(Section_Caller);
+#endif
+}
+
+
 void fuse_maps(int n_recvd_in,
 	float * recvd_in_real, size_t recvd_in_real_sz,
 	float * recvd_in_imag, size_t recvd_in_imag_sz,
@@ -521,6 +606,8 @@ void fuse_maps(int n_recvd_in,
 	fx_pt1 * the_correlation_arg /*= the_correlation -> global*/, size_t the_correlation_arg_sz /*= DIVIDE_MAX_SIZE*/,
 	fx_pt * sync_short_out_frames_arg /*= sync_short_out_frames -> global*/, size_t sync_short_out_frames_arg_sz /*=320*/,
 	fx_pt * d_sync_long_out_frames_arg /*= d_sync_long_out_frames -> global*/, size_t d_sync_long_out_frames_arg_sz /*= SYNC_L_OUT_MAX_SIZE*/,
+	// Local variable used by do_rcv_ff_work (task in do_recv_pipeline)
+        unsigned* num_fft_outs_rcv_fft, size_t num_fft_outs_rcv_fft_sz,
 	// 		Local variablse used by decode_signal (task in do_recv_pipeline)
 	unsigned* num_dec_bits, size_t num_dec_bits_sz /*= sizeof(unsigned)*/,
 	uint8_t* bit_r, size_t bit_r_sz /*= DECODE_IN_SIZE_MAX*/,
@@ -539,8 +626,8 @@ void fuse_maps(int n_recvd_in,
 #endif
 
 #if (defined(HPVM) && defined(HPVM_RECV_PIPELINE)) && true
-	// 37 inputs, 3 outputs
-	void * T1 = __hetero_task_begin(37, n_recvd_in, recvd_in_real, recvd_in_real_sz,
+	// 38 inputs, 3 outputs
+	void * T1 = __hetero_task_begin(38, n_recvd_in, recvd_in_real, recvd_in_real_sz,
 		recvd_msg, recvd_msg_sz, recvd_msg_len, recvd_msg_len_sz,
 		recvd_in_imag, recvd_in_imag_sz,
 		// Start variables used by do_recv_pipeline
@@ -564,6 +651,8 @@ void fuse_maps(int n_recvd_in,
 		the_correlation_arg, the_correlation_arg_sz,
 		sync_short_out_frames_arg, sync_short_out_frames_arg_sz,
 		d_sync_long_out_frames_arg, d_sync_long_out_frames_arg_sz,
+		// Local variable used by do_rcv_ff_work (task in do_recv_pipeline)
+        	num_fft_outs_rcv_fft, num_fft_outs_rcv_fft_sz,
 		// Local variables for decode_signal, a task in do_recv_pipeline
                 num_dec_bits, num_dec_bits_sz,
                 bit_r, bit_r_sz,
@@ -613,6 +702,8 @@ void fuse_maps(int n_recvd_in,
 		the_correlation_arg, the_correlation_arg_sz,
 		sync_short_out_frames_arg, sync_short_out_frames_arg_sz,
 		d_sync_long_out_frames_arg, d_sync_long_out_frames_arg_sz,
+		// 		Local variable used by do_rcv_ff_work (task in do_recv_pipeline)
+        	num_fft_outs_rcv_fft, num_fft_outs_rcv_fft_sz,
 		// 		Local variables for decode_signal, a task in do_recv_pipeline
                 num_dec_bits, num_dec_bits_sz,
                 bit_r, bit_r_sz,
@@ -643,7 +734,7 @@ void fuse_maps(int n_recvd_in,
 #endif
 
 #if defined(RECV_CALLER)
-	decompress_caller(uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
+	decompress_Wrapper4(uncmp_data, uncmp_data_sz, recvd_msg_len, recvd_msg_len_sz,
 		recvd_msg, recvd_msg_sz, dec_bytes, dec_bytes_sz,
 		observations, observations_sz);
 #else
@@ -662,7 +753,7 @@ void fuse_maps(int n_recvd_in,
 #endif
 
 #if defined(RECV_CALLER)
-	grid_fusion_caller(observations, observations_sz, uncmp_data, uncmp_data_sz);
+	grid_fusion_Wrapper4(observations, observations_sz, uncmp_data, uncmp_data_sz);
 #else
 	grid_fusion(observations, observations_sz, uncmp_data, uncmp_data_sz);
 #endif
@@ -835,12 +926,13 @@ void * receive_and_fuse_maps_impl(Observation * observations /*=observations -> 
 			uint8_t outMemory[18585]; size_t outMemory_sz = 18585;
 			size_t d_ntraceback_arg_sz = sizeof(int);
 
+        		unsigned num_fft_outs_rcv_fft = 0; size_t num_fft_outs_rcv_fft_sz = sizeof(unsigned);
 
 			printf("%s %d Calling fuse_maps", __FILE__, __LINE__);
 
 #if (defined(HPVM) && defined(HPVM_RECV_PIPELINE)) && true
-			// 40 inputs, 7 outputs
-			void * LaunchInner = __hetero_launch((void *) fuse_maps, 40,
+			// 41 inputs, 7 outputs
+			void * LaunchInner = __hetero_launch((void *) fuse_maps, 41,
 				n_recvd_in,
 				recvd_in_real, recvd_in_real_sz,
 				recvd_in_imag, recvd_in_imag_sz,
@@ -875,6 +967,8 @@ void * receive_and_fuse_maps_impl(Observation * observations /*=observations -> 
 				the_correlation, DIVIDE_MAX_SIZE * sizeof(fx_pt1),
 				sync_short_out_frames, 320 * sizeof(fx_pt),
 				d_sync_long_out_frames, SYNC_L_OUT_MAX_SIZE * sizeof(fx_pt),
+				// 	Local variable used by do_rcv_ff_work (task in do_recv_pipeline)
+        			&num_fft_outs_rcv_fft, num_fft_outs_rcv_fft_sz,
 				//      Local variablse used by decode_signal (task in do_recv_pipeline)
 				&num_dec_bits, num_dec_bits_sz,
 				bit_r, bit_r_sz,
@@ -922,6 +1016,8 @@ void * receive_and_fuse_maps_impl(Observation * observations /*=observations -> 
 				the_correlation, DIVIDE_MAX_SIZE * sizeof(fx_pt1),
 				sync_short_out_frames, 320 * sizeof(fx_pt),
 				d_sync_long_out_frames, SYNC_L_OUT_MAX_SIZE * sizeof(fx_pt),
+				// 	Local variable used by do_rcv_ff_work (task in do_recv_pipeline)
+        			&num_fft_outs_rcv_fft, num_fft_outs_rcv_fft_sz,
 				//      Local variablse used by decode_signal (task in do_recv_pipeline)
 				&num_dec_bits, num_dec_bits_sz,
 				bit_r, bit_r_sz,

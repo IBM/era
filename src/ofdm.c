@@ -56,7 +56,7 @@ uint64_t rdec_dec_call_usec = 0LL;
 #endif
 
 
-void decode_signal(unsigned* num_inputs, size_t num_inputs_sz /*= sizeof(unsigned)*/,
+void decode_signal_start_Wrapper(unsigned* num_inputs, size_t num_inputs_sz /*= sizeof(unsigned)*/,
 		fx_pt* constellation, size_t constellation_sz /*= DECODE_IN_SIZE_MAX*/, 
 		unsigned* num_outputs, size_t num_outputs_sz /*= sizeof(unsigned)*/,
 		uint8_t * output_data, size_t output_data_sz /*= MAX_ENCODED_BITS * 3 / 4*/,
@@ -64,21 +64,11 @@ void decode_signal(unsigned* num_inputs, size_t num_inputs_sz /*= sizeof(unsigne
 		uint8_t* bit_r, size_t bit_r_sz /*= DECODE_IN_SIZE_MAX*/,
 		uint8_t* bit, size_t bit_sz /*= DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES*/,
 		ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/,
-		frame_param* frame, size_t frame_sz /*= sizeof(frame_param)*/,
-		int* n_res_char, size_t n_res_char_sz /*= sizeof(int)*/,
-		 /* Local variables for sdr_decode_ofdm*/
-                uint8_t* inMemory, size_t inMemory_sz /*= 24852*/,
-                uint8_t* outMemory, size_t outMemory_sz /*18585*/,
-                int* d_ntraceback_arg, size_t d_ntraceback_arg_sz /*= sizeof(int)*/
-		) // hls::stream< ap_uint<1> > &output_data  )
-{
+		frame_param* frame, size_t frame_sz /*= sizeof(frame_param)*/) {
 
 #if defined(HPVM) && defined(HPVM_OFDM)
 	void* Section = __hetero_section_begin();
-#endif
-
-#if defined(HPVM) && defined(HPVM_OFDM)
-	void* T1 = __hetero_task_begin(8, num_inputs, num_inputs_sz, constellation, constellation_sz, num_outputs, num_outputs_sz, 
+	void* T = __hetero_task_begin(8, num_inputs, num_inputs_sz, constellation, constellation_sz, num_outputs, num_outputs_sz, 
 			output_data, output_data_sz, bit_r, bit_r_sz, bit, bit_sz, ofdm, ofdm_sz, frame, frame_sz, 
 			8, num_inputs, num_inputs_sz, constellation, constellation_sz, num_outputs, num_outputs_sz, 
 			output_data, output_data_sz, bit_r, bit_r_sz, bit, bit_sz, ofdm, ofdm_sz, frame, frame_sz, 
@@ -161,6 +151,78 @@ void decode_signal(unsigned* num_inputs, size_t num_inputs_sz /*= sizeof(unsigne
 	}
 
 #if defined(HPVM) && defined(HPVM_OFDM)
+	__hetero_task_end(T);
+	__hetero_section_end(Section);
+#endif
+}
+
+void decode_signal_end_Wrapper(unsigned* num_inputs, size_t num_inputs_sz /*= sizeof(unsigned)*/,
+		unsigned* num_outputs, size_t num_outputs_sz /*= sizeof(unsigned)*/) {
+	
+#if defined(HPVM) && defined(HPVM_OFDM) 
+	void* Section = __hetero_section_begin();
+	void* T = __hetero_task_begin(2, num_inputs, num_inputs_sz, num_outputs, num_outputs_sz, 
+					1, num_outputs, num_outputs_sz, "decode_signal_end_task");
+#endif
+	{
+		unsigned num_out_bits = (*num_inputs)/2; // for BPSK_1_2 // HPVM: Copied from T1 as num_inputs nor num_out_bits is modified in T1/T2
+
+		// end of decode (viterbi) function, but result bits need to be "descrambled"
+		*num_outputs = num_out_bits;
+#ifdef INT_TIME
+		gettimeofday(&rdec_dec_call_stop, NULL);
+		rdec_dec_call_sec  += rdec_dec_call_stop.tv_sec  - rdec_get_bits_stop.tv_sec;
+		rdec_dec_call_usec += rdec_dec_call_stop.tv_usec - rdec_get_bits_stop.tv_usec;
+
+		rdec_total_sec  += rdec_dec_call_stop.tv_sec  - rdec_total_start.tv_sec;
+		rdec_total_usec += rdec_dec_call_stop.tv_usec - rdec_total_start.tv_usec;
+#endif
+
+		DEBUG(printf("  done and leaving ofdm.c\n"));
+	}
+
+#if defined(HPVM) && defined(HPVM_OFDM) 
+	__hetero_task_end(T);
+	__hetero_section_end(Section);
+#endif
+}
+
+
+void decode_signal(unsigned* num_inputs, size_t num_inputs_sz /*= sizeof(unsigned)*/,
+		fx_pt* constellation, size_t constellation_sz /*= DECODE_IN_SIZE_MAX*/, 
+		unsigned* num_outputs, size_t num_outputs_sz /*= sizeof(unsigned)*/,
+		uint8_t * output_data, size_t output_data_sz /*= MAX_ENCODED_BITS * 3 / 4*/,
+		/*Local variablse used by decode_signal*/
+		uint8_t* bit_r, size_t bit_r_sz /*= DECODE_IN_SIZE_MAX*/,
+		uint8_t* bit, size_t bit_sz /*= DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES*/,
+		ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/,
+		frame_param* frame, size_t frame_sz /*= sizeof(frame_param)*/,
+		int* n_res_char, size_t n_res_char_sz /*= sizeof(int)*/,
+		 /* Local variables for sdr_decode_ofdm*/
+                uint8_t* inMemory, size_t inMemory_sz /*= 24852*/,
+                uint8_t* outMemory, size_t outMemory_sz /*18585*/,
+                int* d_ntraceback_arg, size_t d_ntraceback_arg_sz /*= sizeof(int)*/
+		) // hls::stream< ap_uint<1> > &output_data  )
+{
+
+#if defined(HPVM) && defined(HPVM_OFDM)
+	void* Section = __hetero_section_begin();
+#endif
+
+#if defined(HPVM) && defined(HPVM_OFDM)
+	void* T1 = __hetero_task_begin(8, num_inputs, num_inputs_sz, constellation, constellation_sz, num_outputs, num_outputs_sz, 
+			output_data, output_data_sz, bit_r, bit_r_sz, bit, bit_sz, ofdm, ofdm_sz, frame, frame_sz, 
+			8, num_inputs, num_inputs_sz, constellation, constellation_sz, num_outputs, num_outputs_sz, 
+			output_data, output_data_sz, bit_r, bit_r_sz, bit, bit_sz, ofdm, ofdm_sz, frame, frame_sz, 
+			"decode_signal_start_task");
+#endif
+
+	{
+		decode_signal_start_Wrapper(num_inputs, num_inputs_sz, constellation, constellation_sz, num_outputs, num_outputs_sz,
+                        output_data, output_data_sz, bit_r, bit_r_sz, bit, bit_sz, ofdm, ofdm_sz, frame, frame_sz);
+	}
+
+#if defined(HPVM) && defined(HPVM_OFDM)
 	__hetero_task_end(T1);
 #endif
 
@@ -186,20 +248,7 @@ void decode_signal(unsigned* num_inputs, size_t num_inputs_sz /*= sizeof(unsigne
 					1, num_outputs, num_outputs_sz, "decode_signal_end_task");
 #endif
 	{
-		unsigned num_out_bits = (*num_inputs)/2; // for BPSK_1_2 // HPVM: Copied from T1 as num_inputs nor num_out_bits is modified in T1/T2
-
-		// end of decode (viterbi) function, but result bits need to be "descrambled"
-		*num_outputs = num_out_bits;
-#ifdef INT_TIME
-		gettimeofday(&rdec_dec_call_stop, NULL);
-		rdec_dec_call_sec  += rdec_dec_call_stop.tv_sec  - rdec_get_bits_stop.tv_sec;
-		rdec_dec_call_usec += rdec_dec_call_stop.tv_usec - rdec_get_bits_stop.tv_usec;
-
-		rdec_total_sec  += rdec_dec_call_stop.tv_sec  - rdec_total_start.tv_sec;
-		rdec_total_usec += rdec_dec_call_stop.tv_usec - rdec_total_start.tv_usec;
-#endif
-
-		DEBUG(printf("  done and leaving ofdm.c\n"));
+		decode_signal_end_Wrapper(num_inputs, num_inputs_sz, num_outputs, num_outputs_sz);
 	}
 
 #if defined(HPVM) && defined(HPVM_OFDM) 
