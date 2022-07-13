@@ -468,29 +468,31 @@ void do_rcv_fft_work(fx_pt1* fft_ar_r, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SI
 	// end #ifdef RCV_HW_FFT
 #else
 #if defined(HPVM) 
-	void* T2 = __hetero_task_begin(5, fft_ar_r, fft_ar_r_sz, fft_ar_i, fft_ar_i_sz, 
+	void* T2 = __hetero_task_begin(4, fft_ar_r, fft_ar_r_sz, fft_ar_i, fft_ar_i_sz, 
 			num_sync_long_vals, num_sync_long_vals_sz, 
-			returnValue, returnValue_sz, 
 			num_fft_outs_rcv_fft, num_fft_outs_rcv_fft_sz,
-			5, fft_ar_r, fft_ar_r_sz, fft_ar_i, fft_ar_i_sz, 
+			4, fft_ar_r, fft_ar_r_sz, fft_ar_i, fft_ar_i_sz, 
 			num_sync_long_vals, num_sync_long_vals_sz,
 			num_fft_outs_rcv_fft, num_fft_outs_rcv_fft_sz,
-			returnValue, returnValue_sz, "fft_ri_for_loop_wrappertask");
+			"fft_ri_for_loop_wrappertask");
 
 	//void* Section_Loop = __hetero_section_begin();
 #endif
 	{ // The FFT only uses one set of input/outputs (the fft_in) and overwrites the inputs with outputs
 		for (unsigned i = 0; i < MAX_FFT_FRAMES /*SYNC_L_OUT_MAX_SIZE/64*/; i++) { // This is the "spin" to invoke the FFT
 
-			/*__hetero_parallel_loop(1, 1, fft_ar_r, fft_ar_r_sz, 
+			/*__hetero_parallel_loop(1, 4, fft_ar_r, fft_ar_r_sz, 
 						fft_ar_i, fft_ar_i_sz, 
 						num_sync_long_vals, num_sync_long_vals_sz, 
 						num_fft_outs_rcv_fft, num_fft_outs_rcv_fft_sz, 
 						// Outputs
-						1, fft_ar_r, fft_ar_r_sz, 
+						4, fft_ar_r, fft_ar_r_sz, 
 						fft_ar_i, fft_ar_i_sz, 
+						num_sync_long_vals, num_sync_long_vals_sz, 
 						num_fft_outs_rcv_fft, num_fft_outs_rcv_fft_sz, 
-						"fft_ri_task"); */
+						"fft_ri_task_loop"); */
+
+			unsigned num_fft_frames = ((*num_sync_long_vals) + 63) / 64;
 
 			DO_LIMITS_ANALYSIS(float min_input = 3.0e+038;
 					float max_input = -1.17e-038);
@@ -504,7 +506,6 @@ void do_rcv_fft_work(fx_pt1* fft_ar_r, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SI
 			float fft_in_imag[64];
 			const bool shift_inputs = false;
 
-			unsigned num_fft_frames = ((*num_sync_long_vals) + 63) / 64;
 			if (i > num_fft_frames) {
 				continue;
 			}
