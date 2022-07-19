@@ -74,10 +74,10 @@ enum NODE_CRITICALITY {
 
 #ifdef __cplusplus
 extern "C" {
-void __hpvm__task(hpvm::EPOCHS_TASKS) noexcept;
+void __hpvm__task(hpvm::EPOCHS_TASKS, ...) noexcept;
 void __hpvm__hint(hpvm::Target) noexcept;
 #else
-void __hpvm__task(enum EPOCHS_TASKS) noexcept;
+void __hpvm__task(enum EPOCHS_TASKS, ...) noexcept;
 void __hpvm__hint(enum Target) noexcept;
 #endif
 
