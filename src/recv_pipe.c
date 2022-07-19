@@ -42,6 +42,8 @@
 
 #include "recv_pipe.h"
 
+#define PARALLEL_LOOP
+
 #if defined(HPVM)
 #include "hpvm.h"
 #include "hetero.h"
@@ -476,12 +478,15 @@ void do_rcv_fft_work(fx_pt1* fft_ar_r, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SI
 			num_fft_outs_rcv_fft, num_fft_outs_rcv_fft_sz,
 			"fft_ri_for_loop_wrappertask");
 
-	//void* Section_Loop = __hetero_section_begin();
+#if defined(PARALLEL_LOOP)
+	void* Section_Loop = __hetero_section_begin();
+#endif
 #endif
 	{ // The FFT only uses one set of input/outputs (the fft_in) and overwrites the inputs with outputs
 		for (unsigned i = 0; i < MAX_FFT_FRAMES /*SYNC_L_OUT_MAX_SIZE/64*/; i++) { // This is the "spin" to invoke the FFT
 
-			/*__hetero_parallel_loop(1, 4, fft_ar_r, fft_ar_r_sz, 
+#if defined(PARALLEL_LOOP)
+			__hetero_parallel_loop(1, 4, fft_ar_r, fft_ar_r_sz, 
 						fft_ar_i, fft_ar_i_sz, 
 						num_sync_long_vals, num_sync_long_vals_sz, 
 						num_fft_outs_rcv_fft, num_fft_outs_rcv_fft_sz, 
@@ -490,7 +495,8 @@ void do_rcv_fft_work(fx_pt1* fft_ar_r, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SI
 						fft_ar_i, fft_ar_i_sz, 
 						num_sync_long_vals, num_sync_long_vals_sz, 
 						num_fft_outs_rcv_fft, num_fft_outs_rcv_fft_sz, 
-						"fft_ri_task_loop"); */
+						"fft_ri_task_loop");
+#endif
 
 			unsigned num_fft_frames = ((*num_sync_long_vals) + 63) / 64;
 
@@ -539,6 +545,7 @@ void do_rcv_fft_work(fx_pt1* fft_ar_r, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SI
 					for (unsigned j = 0; j < 64; j++) {
 					printf("   FFT_IN %4u %2u : %6u %12.8f %12.8f\n", i, j, 64 * i + j, fft_in_real[j], fft_in_imag[j]);
 					});
+			__hpvm__task(FFT_TASK, fft_ri);
 			fft_ri(fft_in_real, fft_in_imag, do_inverse, do_shift, num_samples, log_nsamples); // not-inverse, but shifting
 			DEBUG(printf("  FFT Output %4u \n", i);
 					for (unsigned j = 0; j < 64; j++) {
@@ -553,7 +560,9 @@ void do_rcv_fft_work(fx_pt1* fft_ar_r, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SI
 		} // for (i = 0 to CHUNK/64) (FFT invocations loop)
 	} // Non-HWR FFT Scope
 #if defined(HPVM) 
-	//__hetero_section_end(Section_Loop);
+#if defined(PARALLEL_LOOP)
+	__hetero_section_end(Section_Loop);
+#endif
 	__hetero_task_end(T2);
 #endif
 #endif
