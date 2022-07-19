@@ -44,7 +44,7 @@
 
 #define PARALLEL_PTHREADS false
 
-#define ERA1
+#define ERA2
 
 #ifdef ERA1
 char * IMAGE_FN = "gridimage_era1_";

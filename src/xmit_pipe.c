@@ -30,6 +30,7 @@ X. OUTPUT : <some number of complex numbers?>
 		//#define VERBOSE  // Turn on all debug output
 
 #define HPVM
+#define PARALLEL_LOOP
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -3483,7 +3484,19 @@ xmit_pipe_init() {
 
 // ADD in access/controls for the FFT HWR Accelerator
 
-void do_xmit_fft_work(int n_inputs, float scale, float * input_real, float * input_imag, float * output_real, float * output_imag) {
+void do_xmit_fft_work(int* ofc_res, size_t ofc_res_sz /*=sizeof(int)*/, float* input_real, size_t input_real_sz, 
+			float* input_imag, size_t input_imag_sz, float* output_real, size_t output_real_sz, 
+			float* output_imag, size_t output_imag_sz) {
+
+#if defined(HPVM)
+	void* Section = __hetero_section_begin();
+	void* T1 = __hetero_task_begin(2, ofc_res, ofc_res_sz, input_real, input_real_sz, 
+					1, input_real, input_real_sz, "logging_task");
+#endif
+	{
+	int n_inputs = (*ofc_res) * d_fft_len; // max is ofdm_max_out_size
+	float scale = 1 / sqrt(52.0); // HPVM: Copied from do_xmit_pipeline in T6
+
 	// Do the FFT in 64-entry windows, and add the "shift" operation to each
 	//   Also add the weighting/scaling for the window
 	bool inverse = true;
@@ -3491,10 +3504,7 @@ void do_xmit_fft_work(int n_inputs, float scale, float * input_real, float * inp
 	bool swap_odd_signs = false; // We shift the inputs instead?
 	int size = d_fft_len;
 	int log_size = d_fft_logn;
-	float recluster[2] = {
-									1.0,
-									1.0
-	}; // used to alter sign of "odd" fft results
+	float recluster[2] = {1.0, 1.0}; // used to alter sign of "odd" fft results
 	if (swap_odd_signs) {
 		recluster[1] = -1.0;
 	}
@@ -3508,8 +3518,36 @@ void do_xmit_fft_work(int n_inputs, float scale, float * input_real, float * inp
 				}
 			}
 		});
+	}
+#if defined(HPVM)
+	__hetero_task_end(T1);
+#endif
+
 
 #ifdef XMIT_HW_FFT
+
+#if defined(HPVM)
+	void* T2 = __hetero_task_begin(5, input_real, input_real_sz, input_imag, input_imag_sz, 
+					ofc_res, ofc_res_sz,
+					output_real, output_real_sz, output_imag, output_imag_sz,
+					2, output_real, output_real_sz, output_imag, output_imag_sz, "xmit_hw_fft_task");
+#endif
+
+	float scale = 1 / sqrt(52.0); // HPVM: Copied from do_xmit_pipeline in T6
+	int n_inputs = (*ofc_res) * d_fft_len; // max is ofdm_max_out_size
+
+	// Do the FFT in 64-entry windows, and add the "shift" operation to each
+	//   Also add the weighting/scaling for the window
+	bool inverse = true;
+	bool shift = true;
+	bool swap_odd_signs = false; // We shift the inputs instead?
+	int size = d_fft_len;
+	int log_size = d_fft_logn;
+	float recluster[2] = {1.0, 1.0}; // used to alter sign of "odd" fft results
+	if (swap_odd_signs) {
+		recluster[1] = -1.0;
+	}
+
 	// Now we call the init_xmit_fft_parameters for the target FFT HWR accelerator and the specific log_nsamples for this invocation
 	int num_ffts = (n_inputs + (size - 1)) / size;
 	const int fn = 0;
@@ -3591,10 +3629,55 @@ void do_xmit_fft_work(int n_inputs, float scale, float * input_real, float * inp
 	x_fHtotal_usec += x_fHcvtout_stop.tv_usec - x_fHcvtin_start.tv_usec;
 #endif // INT_TIME
 
+#if defined(HPVM)
+	__hetero_task_end(T2);
+#endif
+// the else below corresponds to ifdef XMIT_HW_FFT
 #else
+#if defined(HPVM)
+	void* T2 = __hetero_task_begin(5, input_real, input_real_sz, input_imag, input_imag_sz, 
+					output_real, output_real_sz, output_imag, output_imag_sz,
+					ofc_res, ofc_res_sz,
+					2, output_real, output_real_sz, output_imag, output_imag_sz, "fft_ri_task_loop");
+#if defined(PARALLEL_LOOP)
+	void* SectionLoop = __hetero_section_begin();
+#endif
+#endif
+
+	float scale = 1 / sqrt(52.0); // HPVM: Copied from do_xmit_pipeline in T6
+
+	// Do the FFT in 64-entry windows, and add the "shift" operation to each
+	//   Also add the weighting/scaling for the window
+	bool inverse = true;
+	bool shift = true;
+	bool swap_odd_signs = false; // We shift the inputs instead?
+	int size = d_fft_len;
+	int log_size = d_fft_logn;
+	float recluster[2] = {1.0, 1.0}; // used to alter sign of "odd" fft results
+	if (swap_odd_signs) {
+		recluster[1] = -1.0;
+	}
+
+#if !defined(HPVM)
+	{
+	int n_inputs = (*ofc_res) * d_fft_len; // max is ofdm_max_out_size
 	DO_LIMITS_ANALYSIS(float min_input = 3.0e+038; float max_input = -1.17e-038);
 	DEBUG(printf("Starting do_xmit_fft_work with size %u inverse %u shift %u on n_inputs %u\n", size, inverse, shift, n_inputs));
-	for (int k = 0; k < (n_inputs + (size - 1)); k += size) {
+	}
+#endif
+	//for (int iteration = 0; iteration < (n_inputs + (size - 1)) / size; iteration += 1) {// Original for-loop
+	for (int iteration = 0; iteration < MAX_FFT_FRAMES; iteration += 1) { // TODO: IS THE TERMINATION CONDITION VALID?
+#if defined(PARALLEL_LOOP)
+		__hetero_parallel_loop(1, 5, input_real, input_real_sz, input_imag, input_imag_sz,
+                                        output_real, output_real_sz, output_imag, output_imag_sz,
+                                        ofc_res, ofc_res_sz,
+                                        2, output_real, output_real_sz, output_imag, output_imag_sz, "fft_ri_task");
+#endif
+		int n_inputs = (*ofc_res) * d_fft_len; // max is ofdm_max_out_size
+		int k = iteration * size;
+		if (k > n_inputs + (size - 1)) {
+			continue;
+		}
 		float fft_in_real[64];
 		float fft_in_imag[64];
 
@@ -3708,9 +3791,26 @@ void do_xmit_fft_work(int n_inputs, float scale, float * input_real, float * inp
 				printf("\n");
 			});
 	} // for (k = 0 .. n_inputs
+#if defined(HPVM)
+#if defined(PARALLEL_LOOP)
+	__hetero_section_end(SectionLoop);
 #endif
+	__hetero_task_end(T2);
+#endif
+
+#endif // end for ifdef / else XMIT_HW_FFT
+
+#if defined(HPVM)
+	void* T3 = __hetero_task_begin(1, input_real, input_real_sz, 1, input_real, input_real_sz, "logging_end_task");
+#endif
+
 	DO_LIMITS_ANALYSIS(printf("DO_XMIT_FFT_WORK : min_input = %.15g  max_input = %.15g\n", min_input, max_input));
 	DEBUG(printf(" Done with fft calls... output:\n"));
+
+#if defined(HPVM)
+	__hetero_task_end(T3);
+	__hetero_section_end(Section);
+#endif
 }
 
 /********************************************************************************
@@ -3925,6 +4025,7 @@ void do_xmit_pipeline(int * in_msg_len, size_t in_msg_len_sz, char * in_msg, siz
 		2, fft_out_real, fft_out_real_sz, fft_out_imag, fft_out_imag_sz, "xmit_fft_task");
 #endif
 
+#if !defined(HPVM)
 #ifdef INT_TIME
 	gettimeofday(&x_fft_start, NULL);
 #endif
@@ -3939,7 +4040,12 @@ void do_xmit_pipeline(int * in_msg_len, size_t in_msg_len_sz, char * in_msg, siz
 	float scale = 1 / sqrt(52.0);
 
 	DO_NUM_IOS_ANALYSIS(printf("Calling do_xmit_fft_work: IN n_ins %u\n", n_ins));
-	do_xmit_fft_work(n_ins, scale, ofdm_car_str_real, ofdm_car_str_imag, fft_out_real, fft_out_imag);
+#endif
+
+	do_xmit_fft_work(ofc_res, ofc_res_sz, ofdm_car_str_real, ofdm_car_str_real_sz, ofdm_car_str_imag, ofdm_car_str_imag_sz, 
+			fft_out_real, fft_out_real_sz, fft_out_imag, fft_out_imag_sz);
+
+#if !defined(HPVM)
 #ifdef INT_TIME
 	gettimeofday(&x_fft_stop, NULL);
 	x_fft_sec += x_fft_stop.tv_sec - x_fft_start.tv_sec;
@@ -3950,6 +4056,7 @@ void do_xmit_pipeline(int * in_msg_len, size_t in_msg_len_sz, char * in_msg, siz
 		for (int i = 0; i < n_ins; i++) {
 			printf(" fft_out %6u : %11.8f + %11.8f i\n", i, fft_out_real[i], fft_out_imag[i]);
 		});
+#endif
 
 #if defined(HPVM)
 	__hetero_task_end(T6);
