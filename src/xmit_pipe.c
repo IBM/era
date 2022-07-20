@@ -3765,7 +3765,9 @@ void do_xmit_fft_work(int* ofc_res, size_t ofc_res_sz /*=sizeof(int)*/, float* i
 				printf("\nCalling FFT function with inverse = %u size = %u\n", inverse, size);
 			});
 		// NOTE: This version over-writes the input data with output data
+#if defined(HPVM) && defined(PARALLEL_LOOP)
 		__hpvm__task(FFT_TASK, fft_ri);
+#endif
 		fft_ri(fft_in_real, fft_in_imag, inverse, false, size, log_size);
 
 		for (int i = 0; i < size; i++) {

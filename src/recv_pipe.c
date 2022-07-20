@@ -545,7 +545,9 @@ void do_rcv_fft_work(fx_pt1* fft_ar_r, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SI
 					for (unsigned j = 0; j < 64; j++) {
 					printf("   FFT_IN %4u %2u : %6u %12.8f %12.8f\n", i, j, 64 * i + j, fft_in_real[j], fft_in_imag[j]);
 					});
+#if defined(HPVM) && defined(PARALLEL_LOOP)
 			__hpvm__task(FFT_TASK, fft_ri);
+#endif
 			fft_ri(fft_in_real, fft_in_imag, do_inverse, do_shift, num_samples, log_nsamples); // not-inverse, but shifting
 			DEBUG(printf("  FFT Output %4u \n", i);
 					for (unsigned j = 0; j < 64; j++) {
