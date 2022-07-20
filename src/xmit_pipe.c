@@ -30,7 +30,7 @@ X. OUTPUT : <some number of complex numbers?>
 		//#define VERBOSE  // Turn on all debug output
 
 #define HPVM
-#define PARALLEL_LOOP
+//#define PARALLEL_LOOP
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -3820,32 +3820,11 @@ void do_xmit_fft_work(int* ofc_res, size_t ofc_res_sz /*=sizeof(int)*/, float* i
 #define MAX_SIZE 24600 // really 24576 ?
 #define ofdm_max_out_size 33280 // 520*64  // 33024   // Not sure why, though
 
-void do_xmit_pipeline(int * in_msg_len, size_t in_msg_len_sz, char * in_msg, size_t in_msg_sz,
-	int * num_final_outs, size_t num_final_outs_sz,
-	float * final_out_real, size_t final_out_real_sz,
-	float * final_out_imag, size_t final_out_imag_sz,
-	// Start of local variables used by do_xmit_pipeline
-	int * psdu_len /*local*/, size_t psdu_len_sz /*=1*/,
-	uint8_t * pckt_hdr_out, size_t pckt_hdr_out_sz /*=64 -> though 48 may work*/,
-	int * pckt_hdr_len /*local*/, size_t pckt_hdr_len_sz /*=1*/,
-	float * msg_stream_real /*local*/, size_t msg_stream_real_sz /*= MAX_SIZE*/,
-	float * msg_stream_imag /*local*/, size_t msg_stream_imag_sz /*= MAX_SIZE*/,
-	float * ofdm_car_str_real /*local*/, size_t ofdm_car_str_real_sz /*= ofdm_max_out_size*/,
-	float * ofdm_car_str_imag /*local*/, size_t ofdm_car_str_imag_sz /*= ofdm_max_out_size*/,
-	int * ofc_res /*local*/, size_t ofc_res_sz /*=1*/,
-	float * fft_out_real /*local*/, size_t fft_out_real_sz /*= ofdm_max_out_size*/,
-	float * fft_out_imag /*local*/, size_t fft_out_imag_sz /*= ofdm_max_out_size*/,
-	float * cycpref_out_real, size_t cycpref_out_real_sz /*= 41360*/,
-	float * cycpref_out_imag, size_t cycpref_out_imag_sz /*= 41360*/
-	// End of local variables used by do_xmit_pipeline
-) {
 
-#if defined(INT_TIME) && !defined(HPVM)
-	gettimeofday(&x_pipe_start, NULL);
-#endif
-
+void mac_data_Wrapper(int * in_msg_len, size_t in_msg_len_sz, char * in_msg, size_t in_msg_sz,
+			int * psdu_len /*local*/, size_t psdu_len_sz /*=1*/) {
 #if defined(HPVM)
-	void * Section = __hetero_section_begin();
+	void* Section = __hetero_section_begin();
 	void * T1 = __hetero_task_begin(3, in_msg_len, in_msg_len_sz, in_msg, in_msg_sz, psdu_len, psdu_len_sz,
 		1, psdu_len, psdu_len_sz, "mac_data_task");
 #endif
@@ -3867,16 +3846,22 @@ void do_xmit_pipeline(int * in_msg_len, size_t in_msg_len_sz, char * in_msg, siz
 	x_genmacfr_sec += x_genmacfr_stop.tv_sec - x_genmacfr_start.tv_sec;
 	x_genmacfr_usec += x_genmacfr_stop.tv_usec - x_genmacfr_start.tv_usec;
 #endif
-#if defined(HPVM)
-	__hetero_task_end(T1);
-#endif
 
 #if defined(HPVM)
+	__hetero_task_end(T1);
+	__hetero_section_end(Section);
+#endif
+}
+
+void mapper_Wrapper(uint8_t * pckt_hdr_out, size_t pckt_hdr_out_sz /*=64 -> though 48 may work*/, 
+			int * psdu_len /*local*/, size_t psdu_len_sz /*=1*/, 
+			int * pckt_hdr_len /*local*/, size_t pckt_hdr_len_sz /*=1*/) {
+#if defined(HPVM)
+	void* Section = __hetero_section_begin();
 	void * T2 = __hetero_task_begin(3, pckt_hdr_out, pckt_hdr_out_sz, psdu_len, psdu_len_sz, pckt_hdr_len, pckt_hdr_len_sz,
 		3, pckt_hdr_out, pckt_hdr_out_sz, psdu_len, psdu_len_sz, pckt_hdr_len, pckt_hdr_len_sz,
 		"mapper_task");
 #endif
-
 #ifdef INT_TIME
 	gettimeofday(&x_domapwk_start, NULL);
 #endif
@@ -3891,9 +3876,14 @@ void do_xmit_pipeline(int * in_msg_len, size_t in_msg_len_sz, char * in_msg, siz
 #endif
 #if defined(HPVM)
 	__hetero_task_end(T2);
+	__hetero_section_end(Section);
 #endif
+}
 
+void packer_hdr_Wrapper(uint8_t * pckt_hdr_out, size_t pckt_hdr_out_sz /*=64 -> though 48 may work*/, 
+			int * pckt_hdr_len /*local*/, size_t pckt_hdr_len_sz /*=1*/) {
 #if defined(HPVM)
+	void* Section = __hetero_section_begin();
 	void * T3 = __hetero_task_begin(2, pckt_hdr_out, pckt_hdr_out_sz, pckt_hdr_len, pckt_hdr_len_sz,
 		2, pckt_hdr_out, pckt_hdr_out_sz, pckt_hdr_len, pckt_hdr_len_sz, "packer_hdr_task");
 #endif
@@ -3920,9 +3910,16 @@ void do_xmit_pipeline(int * in_msg_len, size_t in_msg_len_sz, char * in_msg, siz
 
 #if defined(HPVM)
 	__hetero_task_end(T3);
+	__hetero_section_end(Section);
 #endif
+}
 
+void chuck_strm_Wrapper(uint8_t * pckt_hdr_out, size_t pckt_hdr_out_sz /*=64 -> though 48 may work*/, 
+			int * pckt_hdr_len /*local*/, size_t pckt_hdr_len_sz /*=1*/, 
+			float * msg_stream_real /*local*/, size_t msg_stream_real_sz /*= MAX_SIZE*/, 
+			float * msg_stream_imag /*local*/, size_t msg_stream_imag_sz /*= MAX_SIZE*/) {
 #if defined(HPVM)
+	void* Section = __hetero_section_begin();
 	void * T4 = __hetero_task_begin(4, pckt_hdr_out, pckt_hdr_out_sz, pckt_hdr_len, pckt_hdr_len_sz,
 		msg_stream_real, msg_stream_real_sz, msg_stream_imag, msg_stream_imag_sz,
 		2, msg_stream_real, msg_stream_real_sz, msg_stream_imag, msg_stream_imag_sz,
@@ -3977,9 +3974,17 @@ void do_xmit_pipeline(int * in_msg_len, size_t in_msg_len_sz, char * in_msg, siz
 	});
 #if defined(HPVM)
 	__hetero_task_end(T4);
+	__hetero_section_end(Section);
 #endif
+}
 
+void carrier_alloc_Wrapper(float * msg_stream_real /*local*/, size_t msg_stream_real_sz /*= MAX_SIZE*/, 
+				float * msg_stream_imag /*local*/, size_t msg_stream_imag_sz /*= MAX_SIZE*/, 
+				float * ofdm_car_str_real /*local*/, size_t ofdm_car_str_real_sz /*= ofdm_max_out_size*/, 
+				float * ofdm_car_str_imag /*local*/, size_t ofdm_car_str_imag_sz /*= ofdm_max_out_size*/, 
+				int * ofc_res /*local*/, size_t ofc_res_sz /*=1*/) {
 #if defined(HPVM)
+	void* Section = __hetero_section_begin();
 	void * T5 = __hetero_task_begin(5, msg_stream_real, msg_stream_real_sz, msg_stream_imag, msg_stream_imag_sz,
 		ofdm_car_str_real, ofdm_car_str_real_sz, ofdm_car_str_imag, ofdm_car_str_imag_sz,
 		ofc_res, ofc_res_sz,
@@ -4014,6 +4019,344 @@ void do_xmit_pipeline(int * in_msg_len, size_t in_msg_len_sz, char * in_msg, siz
 	x_ocaralloc_sec += x_ocaralloc_stop.tv_sec - x_ocaralloc_start.tv_sec;
 	x_ocaralloc_usec += x_ocaralloc_stop.tv_usec - x_ocaralloc_start.tv_usec;
 #endif
+
+#if defined(HPVM)
+	__hetero_task_end(T5);
+	__hetero_section_end(Section);
+#endif
+}
+
+void cyclic_prefix_Wrapper(int * ofc_res /*local*/, size_t ofc_res_sz /*=1*/, 
+				float * fft_out_real /*local*/, size_t fft_out_real_sz /*= ofdm_max_out_size*/, 
+				float * fft_out_imag /*local*/, size_t fft_out_imag_sz /*= ofdm_max_out_size*/, 
+				float * cycpref_out_real, size_t cycpref_out_real_sz /*= 41360*/, 
+				float * cycpref_out_imag, size_t cycpref_out_imag_sz /*= 41360*/) {
+#if defined(HPVM)
+	void* Section = __hetero_section_begin();
+	void * T7 = __hetero_task_begin(5, ofc_res, ofc_res_sz, fft_out_real, fft_out_real_sz,
+		fft_out_imag, fft_out_imag_sz, cycpref_out_real, cycpref_out_real_sz,
+		cycpref_out_imag, cycpref_out_imag_sz,
+		2, cycpref_out_real, cycpref_out_real_sz, cycpref_out_imag, cycpref_out_imag_sz,
+		"cyclic_prefix_task");
+#endif
+
+	//#include "gold_fft_outputs.c"
+
+#ifdef INT_TIME
+	gettimeofday(&x_ocycpref_start, NULL);
+#endif
+
+	int num_cycpref_outs = (*ofc_res) * (d_fft_len + d_cp_size) + 1;
+
+	// float cycpref_out_real[41360]; // Large enough
+	// float cycpref_out_imag[41360]; // Large enough
+
+	DEBUG(printf("\nCalling do_ofdm_cyclic_prefixer_impl_work(%u, fft_output)\n", (*ofc_res)));
+	DO_NUM_IOS_ANALYSIS(printf("Calling do_ofdm_cyclic_prefx: IN ofc_res %u : OUT n_cycp_out %u\n",
+		(*ofc_res), num_cycpref_outs));
+	//do_ofdm_cyclic_prefixer_impl_work(ofc_res, gold_fft_out_real, gold_fft_out_imag, cycpref_out_real, cycpref_out_imag);
+	/* #ifdef INT_TIME */
+	/*  gettimeofday(&x_ocycpref_start, NULL); */
+	/* #endif */
+	do_ofdm_cyclic_prefixer_impl_work(*ofc_res, fft_out_real, fft_out_imag, cycpref_out_real, cycpref_out_imag);
+
+#ifdef INT_TIME
+	gettimeofday(&x_ocycpref_stop, NULL);
+	x_ocycpref_sec += x_ocycpref_stop.tv_sec - x_ocycpref_start.tv_sec;
+	x_ocycpref_usec += x_ocycpref_stop.tv_usec - x_ocycpref_start.tv_usec;
+#endif
+	DEBUG(
+		for (int i = 0; i < num_cycpref_outs; i++) {
+			printf(" ocypref_out %6u : %11.8f + %11.8f i\n", i, cycpref_out_real[i], cycpref_out_imag[i]);
+		}
+	printf("\n"));
+
+#if defined(HPVM)
+	__hetero_task_end(T7);
+	__hetero_section_end(Section);
+#endif
+}
+
+void padding_Wrapper(int * num_final_outs, size_t num_final_outs_sz, 
+			float * final_out_real, size_t final_out_real_sz, 
+			float * final_out_imag, size_t final_out_imag_sz, 
+			float * cycpref_out_real, size_t cycpref_out_real_sz /*= 41360*/, 
+			float * cycpref_out_imag, size_t cycpref_out_imag_sz /*= 41360*/, 
+			int * ofc_res /*local*/, size_t ofc_res_sz /*=1*/) {
+#if defined(HPVM)
+	void* Section = __hetero_section_begin();
+	void * T8 = __hetero_task_begin(6, num_final_outs, num_final_outs_sz, final_out_real, final_out_real_sz,
+		final_out_imag, final_out_imag_sz, cycpref_out_real, cycpref_out_real_sz,
+		cycpref_out_imag, cycpref_out_imag_sz, ofc_res, ofc_res_sz, 3,
+		num_final_outs, num_final_outs_sz, final_out_real, final_out_real_sz,
+		final_out_imag, final_out_imag_sz, "padding_task");
+#endif
+
+	int num_cycpref_outs_cp = (*ofc_res) * (d_fft_len + d_cp_size) + 1; // copied from above task
+	// The next "stage" is the "packet_pad2" which adds 500 zeros to the front (and no zeros to the rear) of the output
+	//   This block may also add some time-stamp tags (for UHD?) for GnuRadio use?
+	//   Not sure we care about this padding?
+	bool do_add_pre_pad = false;
+	DEBUG(printf("\nAdd the pre-padding : %u\n", do_add_pre_pad));
+	int num_pre_pad = do_add_pre_pad ? 500 : 0;
+	int num_post_pad = 0;
+	DEBUG(printf("\n"));
+
+	// Now set the Final Outputs
+	DEBUG(printf("\nFinal XMIT output:\n"));
+	*num_final_outs = num_pre_pad + num_cycpref_outs_cp + num_post_pad;
+	DO_NUM_IOS_ANALYSIS(printf("Set num_finalouts to %u = pre-pad %u + %u num_cycpref_outs\n",
+		*num_final_outs, num_pre_pad, num_cycpref_outs_cp));
+	for (int i = 0; i < num_pre_pad; i++) {
+		final_out_real[i] = 0.0;
+		final_out_imag[i] = 0.0;
+		DEBUG(printf(" fin_xmit_out %6u : %11.8f + %11.8f i\n", i, final_out_real[i], final_out_imag[i]));
+	}
+	for (int i = 0; i < num_cycpref_outs_cp; i++) {
+		int iidx = num_pre_pad + i;
+		final_out_real[iidx] = cycpref_out_real[i];
+		final_out_imag[iidx] = cycpref_out_imag[i];
+		DEBUG(printf(" fin_xmit_out %6u : %11.8f + %11.8f i\n", iidx, final_out_real[iidx], final_out_imag[iidx]));
+	}
+	/* for (int i = 0; i < num_post_pad; i++) { */
+	/*   int iidx = num_pre_pad + num_cycpref_outs_cp + i; */
+	/*   final_out_real[iidx] = 0.0; */
+	/*   final_out_imag[iidx] = 0.0; */
+	/*   DEBUG(printf(" fin_xmit_out %6u : %11.8f + %11.8f i\n", iidx, final_out_real[iidx], final_out_imag[iidx])); */
+	/* } */
+	// These next stages do not appear to have any relationship to a physical system that we might consider accelerating.
+
+	// The next "Stage" is the "throttle" block, which does not alter the output/message (just timing?)
+
+	// Then there is the channel_model...
+
+#if defined(HPVM)
+	__hetero_task_end(T8);
+	__hetero_section_end(Section);
+#endif
+}
+
+void do_xmit_pipeline(int * in_msg_len, size_t in_msg_len_sz, char * in_msg, size_t in_msg_sz,
+	int * num_final_outs, size_t num_final_outs_sz,
+	float * final_out_real, size_t final_out_real_sz,
+	float * final_out_imag, size_t final_out_imag_sz,
+	// Start of local variables used by do_xmit_pipeline
+	int * psdu_len /*local*/, size_t psdu_len_sz /*=1*/,
+	uint8_t * pckt_hdr_out, size_t pckt_hdr_out_sz /*=64 -> though 48 may work*/,
+	int * pckt_hdr_len /*local*/, size_t pckt_hdr_len_sz /*=1*/,
+	float * msg_stream_real /*local*/, size_t msg_stream_real_sz /*= MAX_SIZE*/,
+	float * msg_stream_imag /*local*/, size_t msg_stream_imag_sz /*= MAX_SIZE*/,
+	float * ofdm_car_str_real /*local*/, size_t ofdm_car_str_real_sz /*= ofdm_max_out_size*/,
+	float * ofdm_car_str_imag /*local*/, size_t ofdm_car_str_imag_sz /*= ofdm_max_out_size*/,
+	int * ofc_res /*local*/, size_t ofc_res_sz /*=1*/,
+	float * fft_out_real /*local*/, size_t fft_out_real_sz /*= ofdm_max_out_size*/,
+	float * fft_out_imag /*local*/, size_t fft_out_imag_sz /*= ofdm_max_out_size*/,
+	float * cycpref_out_real, size_t cycpref_out_real_sz /*= 41360*/,
+	float * cycpref_out_imag, size_t cycpref_out_imag_sz /*= 41360*/
+	// End of local variables used by do_xmit_pipeline
+) {
+
+#if defined(INT_TIME) && !defined(HPVM)
+	gettimeofday(&x_pipe_start, NULL);
+#endif
+
+#if defined(HPVM)
+	void * Section = __hetero_section_begin();
+	void * T1 = __hetero_task_begin(3, in_msg_len, in_msg_len_sz, in_msg, in_msg_sz, psdu_len, psdu_len_sz,
+		1, psdu_len, psdu_len_sz, "mac_data_task_wrapper");
+#endif
+
+	mac_data_Wrapper(in_msg_len, in_msg_len_sz, in_msg, in_msg_sz, psdu_len, psdu_len_sz);
+
+#if false
+	DO_NUM_IOS_ANALYSIS(printf("In do_xmit_pipeline: MSG_LEN %u\n", *in_msg_len));
+	DEBUG(printf("  MSG:");
+	for (int i = 0; i < *in_msg_len; i++) {
+		printf("%c", in_msg[i]);
+	}
+	printf("\n"); fflush(stdout));
+#ifdef INT_TIME
+	gettimeofday(&x_genmacfr_start, NULL);
+#endif
+	* psdu_len = 0;
+	// do_wifi_mac(*in_msg_len, in_msg, &psdu_len);
+	generate_mac_data_frame(in_msg, *in_msg_len, psdu_len);
+#ifdef INT_TIME
+	gettimeofday(&x_genmacfr_stop, NULL);
+	x_genmacfr_sec += x_genmacfr_stop.tv_sec - x_genmacfr_start.tv_sec;
+	x_genmacfr_usec += x_genmacfr_stop.tv_usec - x_genmacfr_start.tv_usec;
+#endif
+#endif // if false
+
+#if defined(HPVM)
+	__hetero_task_end(T1);
+#endif
+
+#if defined(HPVM)
+	void * T2 = __hetero_task_begin(3, pckt_hdr_out, pckt_hdr_out_sz, psdu_len, psdu_len_sz, pckt_hdr_len, pckt_hdr_len_sz,
+		3, pckt_hdr_out, pckt_hdr_out_sz, psdu_len, psdu_len_sz, pckt_hdr_len, pckt_hdr_len_sz,
+		"mapper_task_wrapper");
+#endif
+	mapper_Wrapper(pckt_hdr_out, pckt_hdr_out_sz, psdu_len, psdu_len_sz, pckt_hdr_len, pckt_hdr_len_sz);
+
+#if false
+#ifdef INT_TIME
+	gettimeofday(&x_domapwk_start, NULL);
+#endif
+
+	// do_mapper_work(32768, psdu_len); // noutput always seems to be 32768 ? Actualy data size is 24528 ?
+	do_mapper_work(*psdu_len); // noutput always seems to be 32768 ? Actualy data size is 24528 ?
+	// The mapper results in 24528 output bytes for a 1500 character input payload
+#ifdef INT_TIME
+	gettimeofday(&x_domapwk_stop, NULL);
+	x_domapwk_sec += x_domapwk_stop.tv_sec - x_domapwk_start.tv_sec;
+	x_domapwk_usec += x_domapwk_stop.tv_usec - x_domapwk_start.tv_usec;
+#endif
+#endif // if false
+#if defined(HPVM)
+	__hetero_task_end(T2);
+#endif
+
+#if defined(HPVM)
+	void * T3 = __hetero_task_begin(2, pckt_hdr_out, pckt_hdr_out_sz, pckt_hdr_len, pckt_hdr_len_sz,
+		2, pckt_hdr_out, pckt_hdr_out_sz, pckt_hdr_len, pckt_hdr_len_sz, "packer_hdr_task_wrapper");
+#endif
+	packer_hdr_Wrapper(pckt_hdr_out, pckt_hdr_out_sz, pckt_hdr_len, pckt_hdr_len_sz);
+
+#if false
+
+#ifdef INT_TIME
+	gettimeofday(&x_phdrgen_start, NULL);
+#endif
+
+	int mapper_payload_size = d_frame.n_encoded_bits;
+	// uint8_t pckt_hdr_out[64]; // I think this only needs to be 48 bytes...
+	*pckt_hdr_len = do_packet_header_gen(mapper_payload_size, pckt_hdr_out);
+#ifdef INT_TIME
+	gettimeofday(&x_phdrgen_stop, NULL);
+	x_phdrgen_sec += x_phdrgen_stop.tv_sec - x_phdrgen_start.tv_sec;
+	x_phdrgen_usec += x_phdrgen_stop.tv_usec - x_phdrgen_start.tv_usec;
+#endif
+	DO_NUM_IOS_ANALYSIS(printf("Called do_packet_header_gen: IN payload_size %u OUT packet_hdr_len %u\n",
+		mapper_payload_size, *pckt_hdr_len));
+	DEBUG(printf("packet_header = ");
+	for (int i = 0; i < *pckt_hdr_len; i++) {
+		printf("%1x ", pckt_hdr_out[i]);
+	}
+	printf("\n"));
+#endif // if false
+
+#if defined(HPVM)
+	__hetero_task_end(T3);
+#endif
+
+#if defined(HPVM)
+	void * T4 = __hetero_task_begin(4, pckt_hdr_out, pckt_hdr_out_sz, pckt_hdr_len, pckt_hdr_len_sz,
+		msg_stream_real, msg_stream_real_sz, msg_stream_imag, msg_stream_imag_sz,
+		2, msg_stream_real, msg_stream_real_sz, msg_stream_imag, msg_stream_imag_sz,
+		"chuck_strm_task_wrapper");
+#endif
+
+	chuck_strm_Wrapper(pckt_hdr_out, pckt_hdr_out_sz, pckt_hdr_len, pckt_hdr_len_sz,
+                msg_stream_real, msg_stream_real_sz, msg_stream_imag, msg_stream_imag_sz);
+
+#if false
+
+	// Convert the header chunks to symbols (uses simple BPSK_1_2 map: 0 -> -1+0i and 1 -> +1+0i)
+	// Convert the payload chunks to symbols (for now also using simple BPSK_1_2 map: 0 -> -1+0i and 1 -> +1+0i)
+	// We will also do the Tagged Stream Mux functionality (concatenate the Payload after the Header)
+	DEBUG(printf("\nConverting to chunks, and doing the tagged stream mux stuff...\n"));
+#ifdef INT_TIME
+	gettimeofday(&x_ck2sym_start, NULL);
+#endif
+
+	// float msg_stream_real[MAX_SIZE];
+	// float msg_stream_imag[MAX_SIZE];
+	int msg_idx = 0;
+	float bpsk_chunks2sym[2] = {
+									-1.0,
+									1.0
+	};
+	for (int i = 0; i < (*pckt_hdr_len); i++) {
+		msg_stream_real[msg_idx] = bpsk_chunks2sym[pckt_hdr_out[i]];
+		msg_stream_imag[msg_idx] = 0.0;
+		//    DEBUG(printf("HDR: msg_stream[%2u] = %4.1f + %4.1f\n", msg_idx, msg_stream_real[msg_idx], msg_stream_imag[msg_idx]));
+		msg_idx++;
+	}
+	//  printf("\n");
+	int mapper_payload_size_cp = d_frame.n_encoded_bits; // HPVM: Copied from T3 (as d_frame was not modified by T3)
+	for (int i = 0; i < mapper_payload_size_cp; i++) {
+		msg_stream_real[msg_idx] = bpsk_chunks2sym[d_map_out[i]];
+		msg_stream_imag[msg_idx] = 0.0;
+		//    DEBUG(printf("PYLD: msg_stream[%4u] = %4.1f + %4.1f\n", msg_idx, msg_stream_real[msg_idx], msg_stream_imag[msg_idx]));
+		msg_idx++;
+	}
+	//  printf("\n");
+	// This is to clear any left-over storage locations...
+	for (int i = msg_idx; i < MAX_SIZE; i++) {
+		msg_stream_real[i] = 0.0;
+		msg_stream_imag[i] = 0.0;
+		//    DEBUG(printf("LAST: msg_stream[%4u] = %4.1f + %4.1f\n", i, msg_stream_real[i], msg_stream_imag[i]));
+	}
+
+#ifdef INT_TIME
+	gettimeofday(&x_ck2sym_stop, NULL);
+	x_ck2sym_sec += x_ck2sym_stop.tv_sec - x_ck2sym_start.tv_sec;
+	x_ck2sym_usec += x_ck2sym_stop.tv_usec - x_ck2sym_start.tv_usec;
+#endif
+	DEBUG(printf("\nTagged Stream Mux output:\n");
+	for (int i = 0; i < ((*pckt_hdr_len) + mapper_payload_size_cp); i++) {
+		printf(" TSM_OUT %5u : %4.1f %4.1f\n", i, msg_stream_real[i], msg_stream_imag[i]);
+	});
+
+#endif // if false
+
+#if defined(HPVM)
+	__hetero_task_end(T4);
+#endif
+
+#if defined(HPVM)
+	void * T5 = __hetero_task_begin(5, msg_stream_real, msg_stream_real_sz, msg_stream_imag, msg_stream_imag_sz,
+		ofdm_car_str_real, ofdm_car_str_real_sz, ofdm_car_str_imag, ofdm_car_str_imag_sz,
+		ofc_res, ofc_res_sz,
+		3, ofdm_car_str_real, ofdm_car_str_real_sz, ofdm_car_str_imag, ofdm_car_str_imag_sz,
+		ofc_res, ofc_res_sz, "carrier_alloc_task_wrapper");
+#endif
+	carrier_alloc_Wrapper(msg_stream_real, msg_stream_real_sz, msg_stream_imag, msg_stream_imag_sz,
+                ofdm_car_str_real, ofdm_car_str_real_sz, ofdm_car_str_imag, ofdm_car_str_imag_sz,
+                ofc_res, ofc_res_sz);
+
+#if false
+
+	// DEBUG(printf("\nCalling do_ofdm_carrier_allocator_cvc_impl_work( %u, %u, msg_stream)\n", 520, 24576));
+	DEBUG(printf("\nCalling do_ofdm_carrier_allocator_cvc_impl_work( %u, %u, msg_stream)\n",
+		d_frame.n_sym, d_frame.n_encoded_bits));
+
+	// float ofdm_car_str_real[ofdm_max_out_size];
+	// float ofdm_car_str_imag[ofdm_max_out_size];
+
+	DO_NUM_IOS_ANALYSIS(printf("Calling do_ofdm_carrier_alloc: IN n_sym %u n_enc_bits %u\n", d_frame.n_sym,
+		d_frame.n_encoded_bits));
+	// int ofc_res = do_ofdm_carrier_allocator_cvc_impl_work(520, 24576, msg_stream_real, msg_stream_imag, ofdm_car_str_real, ofdm_car_str_imag);
+#ifdef INT_TIME
+	gettimeofday(&x_ocaralloc_start, NULL);
+#endif
+	* ofc_res = do_ofdm_carrier_allocator_cvc_impl_work(d_frame.n_sym, d_frame.n_encoded_bits,
+		msg_stream_real, msg_stream_imag, ofdm_car_str_real, ofdm_car_str_imag);
+	DO_NUM_IOS_ANALYSIS(printf("Back from do_ofdm_carrier_alloc: OUT ofc_res %u : %u max outputs (of %u)\n", ofc_res,
+		ofc_res * d_fft_len, ofdm_max_out_size));
+	DEBUG(printf(" return value was %u so max %u outputs\n", *ofc_res, (*ofc_res) * d_fft_len); printf(" do_ofdm_carrier_allocator_cvc_impl_work output:\n");
+	for (int ti = 0; ti < ((*ofc_res) * 64); ti++) {
+		printf("  ofdm_car %6u : %9.6f + %9.6f i\n", ti, ofdm_car_str_real[ti], ofdm_car_str_imag[ti]);
+	});
+
+#ifdef INT_TIME
+	gettimeofday(&x_ocaralloc_stop, NULL);
+	x_ocaralloc_sec += x_ocaralloc_stop.tv_sec - x_ocaralloc_start.tv_sec;
+	x_ocaralloc_usec += x_ocaralloc_stop.tv_usec - x_ocaralloc_start.tv_usec;
+#endif
+
+#endif // if false
 
 #if defined(HPVM)
 	__hetero_task_end(T5);
@@ -4068,8 +4411,13 @@ void do_xmit_pipeline(int * in_msg_len, size_t in_msg_len_sz, char * in_msg, siz
 		fft_out_imag, fft_out_imag_sz, cycpref_out_real, cycpref_out_real_sz,
 		cycpref_out_imag, cycpref_out_imag_sz,
 		2, cycpref_out_real, cycpref_out_real_sz, cycpref_out_imag, cycpref_out_imag_sz,
-		"cyclic_prefix_task");
+		"cyclic_prefix_task_wrapper");
 #endif
+	cyclic_prefix_Wrapper(ofc_res, ofc_res_sz, fft_out_real, fft_out_real_sz,
+                fft_out_imag, fft_out_imag_sz, cycpref_out_real, cycpref_out_real_sz,
+                cycpref_out_imag, cycpref_out_imag_sz);
+
+#if false
 
 	//#include "gold_fft_outputs.c"
 
@@ -4101,6 +4449,7 @@ void do_xmit_pipeline(int * in_msg_len, size_t in_msg_len_sz, char * in_msg, siz
 			printf(" ocypref_out %6u : %11.8f + %11.8f i\n", i, cycpref_out_real[i], cycpref_out_imag[i]);
 		}
 	printf("\n"));
+#endif // if false
 
 #if defined(HPVM)
 	__hetero_task_end(T7);
@@ -4111,8 +4460,13 @@ void do_xmit_pipeline(int * in_msg_len, size_t in_msg_len_sz, char * in_msg, siz
 		final_out_imag, final_out_imag_sz, cycpref_out_real, cycpref_out_real_sz,
 		cycpref_out_imag, cycpref_out_imag_sz, ofc_res, ofc_res_sz, 3,
 		num_final_outs, num_final_outs_sz, final_out_real, final_out_real_sz,
-		final_out_imag, final_out_imag_sz, "padding_task");
+		final_out_imag, final_out_imag_sz, "padding_task_wrapper");
 #endif
+	padding_Wrapper(num_final_outs, num_final_outs_sz, final_out_real, final_out_real_sz,
+                final_out_imag, final_out_imag_sz, cycpref_out_real, cycpref_out_real_sz,
+                cycpref_out_imag, cycpref_out_imag_sz, ofc_res, ofc_res_sz);
+
+#if false
 
 	int num_cycpref_outs_cp = (*ofc_res) * (d_fft_len + d_cp_size) + 1; // copied from above task
 	// The next "stage" is the "packet_pad2" which adds 500 zeros to the front (and no zeros to the rear) of the output
@@ -4160,6 +4514,8 @@ void do_xmit_pipeline(int * in_msg_len, size_t in_msg_len_sz, char * in_msg, siz
 																																																								// x_pipe_sec  += x_pipe_stop.tv_sec  - x_pipe_start.tv_sec;
 																																																								// x_pipe_usec += x_pipe_stop.tv_usec - x_pipe_start.tv_usec;
 #endif
+
+#endif // if false
 
 #if defined(HPVM)
 	__hetero_task_end(T8);

@@ -42,7 +42,7 @@
 
 #include "recv_pipe.h"
 
-#define PARALLEL_LOOP
+//#define PARALLEL_LOOP
 
 #if defined(HPVM)
 #include "hpvm.h"

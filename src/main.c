@@ -44,7 +44,7 @@
 
 #define PARALLEL_PTHREADS false
 
-#define ERA1
+#define ERA2
 
 #ifdef ERA1
 char * IMAGE_FN = "gridimage_era1_";
@@ -1133,6 +1133,7 @@ void * receive_and_fuse_maps(void * parm_ptr, size_t parm_ptr_sz) {
 	 // next_obs).
 	 // Now, that particular index (and only that index) was being used in the function. So a change was
 	 // made to directly pass in the observation value that the index pointed to by next_obs.
+
 void process_lidar_to_occgrid(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /*=sizeof( * lidar_inputs)*/,
 	Observation * observationVal /* observations[*next_obs_cp] -> from global array*/, size_t observations_sz /*=sizeof(Observation)*/,
 	int * n_cmp_bytes /*return by arg*/, size_t n_cmp_bytes_sz /*=1*/,
@@ -1422,6 +1423,70 @@ void process_lidar_to_occgrid(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /
 #endif
 }
 
+void process_lidar_to_occgrid_Wrapper(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /*=sizeof( * lidar_inputs)*/,
+	Observation * observationVal /* observations[*next_obs_cp] -> from global array*/, size_t observations_sz /*=sizeof(Observation)*/,
+	int * n_cmp_bytes /*return by arg*/, size_t n_cmp_bytes_sz /*=1*/,
+	unsigned char * cmp_data /*return by arg*/, size_t cmp_data_sz /*=MAX_COMPRESSED_DATA_SIZE*/,
+	// Start of global variables used internally by function
+	int * curr_obs_cp /*=curr_obs -> global*/, size_t curr_obs_cp_sz /*=sizeof(int)*/,
+	int * next_obs_cp /*=next_obs -> global*/, size_t next_obs_cp_sz /*=sizeof(int)*/,
+	int * lidar_count_cp /*lidar_count -> global*/, size_t lidar_count_cp_sz /*=sizeof(unsigned)*/,
+	int * lmap_count_cp /*=lmap_count -> global*/, size_t lmap_count_cp_sz /*=sizeof(unsigned)*/,
+	// End of global variables used internally by function
+	// Start of arguments to cloudToOccgrid (called by process_lidar_to_occgrid)
+	double * AVxyzw, size_t AVxyzw_sz /*=sizeof(double)*/,
+	bool * rolling_window, size_t rolling_window_sz /*=sizeof(bool)*/,
+	double * min_obstacle_height, size_t min_obstacle_height_sz /*=sizeof(double)*/,
+	double * max_obstacle_height, size_t max_obstacle_height_sz /*=sizeof(double)*/,
+	double * raytrace_range, size_t raytrace_range_sz /*=sizeof(double)*/,
+	unsigned int * size_x, size_t size_x_sz /*=sizeof(unsigned int)*/,
+	unsigned int * size_y, size_t size_y_sz /*=sizeof(unsigned int)*/,
+	unsigned int * resolution, size_t resolution_sz /*=sizeof(unsigned int)*/,
+	int * timer_sequentialize, size_t timer_sequentialize_sz /*=sizeof(int) */
+	// End of arguments to cloudToOccgrid (called by process_lidar_to_occgrid)
+) {
+
+
+#if (defined(HPVM) && defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
+	void * Section = __hetero_section_begin();
+#endif
+
+#if (defined(HPVM) && defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
+	void * T1 = __hetero_task_begin(17, lidar_inputs, lidarin_sz, n_cmp_bytes, n_cmp_bytes_sz,
+		cmp_data, cmp_data_sz, observationVal, observations_sz, timer_sequentialize, timer_sequentialize_sz,
+		// Args for cloudToOccgrid
+		AVxyzw, AVxyzw_sz,
+		rolling_window, rolling_window_sz, min_obstacle_height, min_obstacle_height_sz,
+		max_obstacle_height, max_obstacle_height_sz, raytrace_range, raytrace_range_sz,
+		size_x, size_x_sz, size_y, size_y_sz, resolution, resolution_sz,
+		// Global vars used by process_lidar_to_occgrid
+		curr_obs_cp, curr_obs_cp_sz, next_obs_cp, next_obs_cp_sz, lidar_count_cp, lidar_count_cp_sz,
+		lmap_count_cp, lmap_count_cp_sz,
+		// Output
+		3, observationVal, observations_sz, n_cmp_bytes, n_cmp_bytes_sz, cmp_data, cmp_data_sz,
+		"proccess_lidar_to_occgrid_caller_task_Wrapper1");
+#endif
+
+	process_lidar_to_occgrid(lidar_inputs, lidarin_sz, observationVal, observations_sz,
+		n_cmp_bytes, n_cmp_bytes_sz, cmp_data, cmp_data_sz,
+		// Global vars used by process_lidar_to_occgrid
+		curr_obs_cp, curr_obs_cp_sz, next_obs_cp, next_obs_cp_sz, lidar_count_cp, lidar_count_cp_sz,
+		lmap_count_cp, lmap_count_cp_sz,
+		// Args for cloudToOccgrid
+		AVxyzw, AVxyzw_sz, rolling_window, rolling_window_sz, min_obstacle_height, min_obstacle_height_sz,
+		max_obstacle_height, max_obstacle_height_sz, raytrace_range, raytrace_range_sz,
+		size_x, size_x_sz, size_y, size_y_sz, resolution, resolution_sz,
+		timer_sequentialize, timer_sequentialize_sz); // buffer, total_bytes_read);
+
+#if (defined(HPVM) && defined(HPVM_PROCESS_LIDAR)) && true
+	__hetero_task_end(T1);
+#endif
+
+#if (defined(HPVM) && defined(HPVM_PROCESS_LIDAR_INTERNAL)) && true
+	__hetero_section_end(Section);
+#endif
+}
+
 // Local variables for do_xmit_pipeline
 #define MAX_SIZE 24600          // from xmit_pipe.c
 #define ofdm_max_out_size 33280 // from xmit_pipe.c
@@ -1681,7 +1746,7 @@ void lidar_root(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /*=sizeof( * li
 		"proccess_lidar_to_occgrid_caller_task");
 #endif
 
-	process_lidar_to_occgrid(lidar_inputs, lidarin_sz, observationVal, observations_sz,
+	process_lidar_to_occgrid_Wrapper(lidar_inputs, lidarin_sz, observationVal, observations_sz,
 		n_cmp_bytes, n_cmp_bytes_sz, cmp_data, cmp_data_sz,
 		// Global vars used by process_lidar_to_occgrid
 		curr_obs_cp, curr_obs_cp_sz, next_obs_cp, next_obs_cp_sz, lidar_count_cp, lidar_count_cp_sz,
