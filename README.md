@@ -48,6 +48,8 @@ cmake ..
 make -j
 ```
 
+Download the [yolov2-tiny.weights](https://pjreddie.com/media/files/yolov2-tiny.weights) weights file into `<your_era_home>/build`.
+
 
 ### cmake Targets
 
