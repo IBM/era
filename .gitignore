@@ -62,4 +62,5 @@ build/*
 *.bag
 weights.ckpt
 **/__pycache__
+**.weights
 

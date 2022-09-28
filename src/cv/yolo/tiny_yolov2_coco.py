@@ -6,8 +6,11 @@ import torch
 import torch.nn as nn
 import torchvision
 import lightnet as ln
+import pytorch_lightning as pl
 import lightnet.network as lnn
-from collections import OrderedDict, Iterable
+from loss_func import RegionLoss
+from collections import OrderedDict
+from _collections_abc import Iterable
 from torchvision import transforms
 from IPython.display import display
 from PIL import Image, ImageDraw
@@ -135,18 +138,15 @@ class TinyYOLOv2NonLeaky(lnn.module.Darknet):
 
 
     def predict(self, im, filename):
-
+        # have to load again here because for some reason the first load will not
+        # live between function calls. hardcoding weights file for simplicity
+        self = TinyYOLOv2NonLeaky()
+        self.load('yolov2-tiny.weights')
         transform     = transforms.Compose([transforms.ToTensor()])
         input_tensor  = transform(im.astype(np.uint8)).to('cpu').unsqueeze(0)
-        output_tensor = lnn.module.Darknet.forward(self, input_tensor)
+        output_tensor = self(input_tensor)
         output_df     = self.postprocessing(output_tensor)
-
-        # We add the corresponding COCO IDs to each DataFrame row
-        i = 0
-        for index, row in output_df.iterrows():
-            output_df.at[i,'id'] = int(self.coco_ids[self.classes.index(row['class_label'])])
-            i += 1        
-        #display(output_df)
+        print(output_df)
 
         im_bboxes = self.draw_bboxes(im, output_df)
         if (len(output_df) > 0):

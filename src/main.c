@@ -704,7 +704,7 @@ int main(int argc, char *argv[])
 
   /*****************************************************************************/
   /* NEW: PyTorch TinyYOLOv2 support (May 2022)                                */
-  if (cv_toolset_init("tiny_yolov2_coco", "yolov2-tiny.weights") != 0) {
+  if (cv_toolset_init("tiny_yolov2_atr", "../src/cv/yolo/weights.ckpt") != 0) {
       printf("Computer Vision toolset initialization failed...\n");
       exit(1);
   }
@@ -1024,13 +1024,24 @@ int main(int argc, char *argv[])
     /*****************************************************************************/
     /* NEW: PyTorch TinyYOLOv2 support (May 2022)                                */
     int width, height, channels;
-    uint8_t* rgb_image = stbi_load("test.jpg", &width, &height, &channels, 3);
+    /* Pick a random test image */
+    int r = rand() % 12;
+    char *classes[12] = {"BMP2", "D20", "MTLB", "T72", "ZSU23", "2S3", "PICKUP", "MAN", "VEHICLE", "SUV", "BRDM2", "BTR70"};
+    char test_img_in[100];
+    char test_img_out[100];
+    strcpy(test_img_in, "../cv_input/test_"); 
+    strcpy(test_img_out, "../cv_output/test_"); 
+    strcat(test_img_in, classes[r]);
+    strcat(test_img_out, classes[r]);
+    strcat(test_img_in, ".png");
+    strcat(test_img_out, ".png");
+    uint8_t *rgb_image = stbi_load(test_img_in, &width, &height, &channels, 1);
 
     if (rgb_image != NULL) {
 
 	char filename[300];
 	int nboxes = 0;
-	snprintf(filename, 270, "test_output.jpg");
+  snprintf(filename, 270, test_img_out);
 
 	dim_t dimensions;
 	dimensions.width  = width;

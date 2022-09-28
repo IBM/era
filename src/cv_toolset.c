@@ -196,7 +196,7 @@ int cv_toolset_init(char *python_module, char *model_weights) {
   }
 
   // Returns borrowed reference
-  python_class = PyDict_GetItemString(dict, "TinyYOLOv2NonLeaky");
+  python_class = PyDict_GetItemString(dict, "LITinyYolo");
   //Py_DECREF(dict);
   if (python_class == NULL) {
       PyErr_Print();
