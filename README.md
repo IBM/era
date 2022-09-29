@@ -48,7 +48,11 @@ cmake ..
 make -j
 ```
 
-Download the [yolov2-tiny.weights](https://pjreddie.com/media/files/yolov2-tiny.weights) weights file into `<your_era_home>/build`.
+Set up the `PYTHONPATH` environment variable to point to the TinyYoloV2/Lightnet Python files:
+
+```
+export PYTHONPATH=<your_era_dir>/src/cv/yolo. 
+```
 
 
 ### cmake Targets
