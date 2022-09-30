@@ -59,7 +59,7 @@ typedef struct {
 
 int cv_toolset_init(char *python_module, char *model_weights);
 detection_t *run_object_classification(unsigned char *data, dim_t dimensions,
-					   char *filename, int *nboxes);
+					   char *filename, int *nboxes, char *model_weights);
 /*****************************************************************************/
 
 #endif

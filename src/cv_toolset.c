@@ -241,7 +241,7 @@ int cv_toolset_init(char *python_module, char *model_weights) {
 }
 
 
-detection_t *run_object_classification(unsigned char *data, dim_t dimensions, char *filename, int *nboxes) {
+detection_t *run_object_classification(unsigned char *data, dim_t dimensions, char *filename, int *nboxes, char *model_weights) {
 
   detection_t *detections = NULL;
 
@@ -254,7 +254,7 @@ detection_t *run_object_classification(unsigned char *data, dim_t dimensions, ch
       if (pValue) {
 
 	  // Returns new reference
-	  PyObject *list = PyObject_CallMethod(python_yolo_model, "predict", "Os", pValue, filename);
+	  PyObject *list = PyObject_CallMethod(python_yolo_model, "predict", "Oss", pValue, filename, model_weights);
 	  Py_XDECREF(pValue);
 
 	  if (list) {

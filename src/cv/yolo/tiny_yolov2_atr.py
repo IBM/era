@@ -13,10 +13,6 @@ from torchvision import transforms
 import numpy as np
 import pandas as pd
 
-# CHANGE AS NEEDED
-era_dir = '/home/gracen/repos/era'
-model_weights = era_dir+'/src/cv/yolo/weights.ckpt'
-
 
 classes = ['BMP2', 'D20', 'MTLB', 'T72', 'ZSU23', '2S3',
            'PICKUP', 'MAN', 'VEHICLE', 'SUV', 'BRDM2', 'BTR70']
@@ -97,11 +93,11 @@ class LITinyYolo(pl.LightningModule):
         prediction = self.network(image)
         return prediction
 
-    def predict(self, img, img_path):
+    def predict(self, img, img_path, weights_file):
         # img_path is path to output image
         img_rgb = np.dstack((img, img, img))  # make RGB
         self = LITinyYolo().load_from_checkpoint(
-            model_weights, classes=classes)  # load model again
+            weights_file, classes=classes)  # load model again
         transform = transforms.Compose([transforms.ToTensor()])
         img = transform(img_rgb.astype(np.uint8)).to('cpu').unsqueeze(0)
 
@@ -113,7 +109,12 @@ class LITinyYolo(pl.LightningModule):
         if (len(img_detections) > 0):
             cv2.imwrite(img_path, im_bboxes)
 
-        return img_detections.to_dict(orient='records')
+        img_detections = img_detections.to_dict(orient='records')
+            
+        for detection in img_detections:
+            detection['id'] = classes.index(detection['class_label'])
+            
+        return img_detections
 
     def postprocessing(self, predictions):
         return ln.data.transform.Compose([

@@ -63,4 +63,5 @@ build/*
 weights.ckpt
 **/__pycache__
 **.weights
+cv_output/*.png
 

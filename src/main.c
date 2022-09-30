@@ -704,7 +704,7 @@ int main(int argc, char *argv[])
 
   /*****************************************************************************/
   /* NEW: PyTorch TinyYOLOv2 support (May 2022)                                */
-  if (cv_toolset_init("tiny_yolov2_atr", "../src/cv/yolo/weights.ckpt") != 0) {
+  if (cv_toolset_init("tiny_yolov2_atr", "../src/cv/yolo/model.weights") != 0) {
       printf("Computer Vision toolset initialization failed...\n");
       exit(1);
   }
@@ -1048,7 +1048,7 @@ int main(int argc, char *argv[])
 	dimensions.height = height;
 	dimensions.c      = channels;
 
-	detection_t *dets = run_object_classification(rgb_image, dimensions, filename, &nboxes);
+	detection_t *dets = run_object_classification(rgb_image, dimensions, filename, &nboxes, "../src/cv/yolo/model.weights");
 
 	if (dets == NULL)
 	  printf("run_object_classification failed (skipping this frame)\n");
