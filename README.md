@@ -54,6 +54,15 @@ Set up the `PYTHONPATH` environment variable to point to the TinyYoloV2/Lightnet
 export PYTHONPATH=<your_era_dir>/src/cv/yolo. 
 ```
 
+Download the ATR and COCO dataset sample weight files for the TinyYoloV2 model from <a href="https://ibm.box.com/v/era-weight-files">here</a> into `<your_era_dir>/src/cv/yolo`. At runtime, the TinyYoloV2 model will look for a weight file called `<your_era_dir>/src/cv/yolo/model.weights`, so create a soft link accordingly:
+
+```
+cd src/cv/yolo/
+ln -s atr.weights model.weights
+```
+
+During execution, ERA will consume input (sample) images from `<your_era_dir>/cv_input` and generate output (annotated) images into `<your_era_dir>/cv_output`.
+
 
 ### cmake Targets
 
