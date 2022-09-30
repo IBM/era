@@ -113,7 +113,12 @@ class LITinyYolo(pl.LightningModule):
         if (len(img_detections) > 0):
             cv2.imwrite(img_path, im_bboxes)
 
-        return img_detections.to_dict(orient='records')
+        img_detections = img_detections.to_dict(orient='records')
+            
+        for detection in img_detections:
+            detection['id'] = classes.index(detection['class_label'])
+            
+        return img_detections
 
     def postprocessing(self, predictions):
         return ln.data.transform.Compose([
