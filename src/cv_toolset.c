@@ -182,7 +182,7 @@ int cv_toolset_init(char *python_module, char *model_weights) {
   Py_DECREF(module_name);
   if (module == NULL) {
       PyErr_Print();
-      printf("Fails to import the module. Perhaps PYTHONPATH needs to be set: export PYTHONPATH=<your_tds_dir>/yolo\n");
+      printf("Fails to import the module. Perhaps PYTHONPATH needs to be set: export PYTHONPATH=<your_era_dir>/src/cv/yolo\n");
       return 1;
   }
 
