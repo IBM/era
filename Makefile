@@ -152,6 +152,9 @@ CONFIG_GRID_MAP_Y_DIM=100
 CONFIG_GRID_MAP_RESLTN=2.0
 CONFIG_RAYTR_RANGE=100
 
+#Additional output
+CONFIG_FUSED_MAP=y
+
 CFLAGS += -DGRID_MAP_X_DIM=$(CONFIG_GRID_MAP_X_DIM)
 CFLAGS += -DGRID_MAP_Y_DIM=$(CONFIG_GRID_MAP_Y_DIM)
 CFLAGS += -DGRID_MAP_RESLTN=$(CONFIG_GRID_MAP_RESLTN)
@@ -181,6 +184,7 @@ CFLAGS += -DSUPER_VERBOSE
 endif
 
 ifdef CONFIG_FUSED_MAP
+$(info $$CONFIG_FUSED_MAP is [${CONFIG_FUSED_MAP}])
 CFLAGS += -DWRITE_FUSED_MAPS
 endif
 ifdef CONFIG_GDB
@@ -276,7 +280,9 @@ all: $(TARGET)
 #hpvm-epochs: CFLAGS += -DHPVM -DDEVICE=EPOCHS_TARGET
 #hpvm-epochs: CFLAGS := $(filter-out -I$(SCHED_LIB_DIR)/include -I$(TASK_LIB_DIR)/include, $(CFLAGS))
 #hpvm-epochs: CFLAGS := $(filter-out -I$(SCHED_LIB_DIR)/include, $(CFLAGS))
-hpvm-epochs: CONFIG_FILE ?= soc_utils/config_files/base_me_p2.config 
+hpvm-epochs: CONFIG_FILE ?= $(SCHED_CONFIG)
+
+$(info $$SCHED_CONFIG is [${SCHED_CONFIG}]) 
 hpvm-epochs: TASK_CONFIG_FILE ?= $(TASK_LIB_DIR)/task_lib.config 
 hpvm-epochs: BACKEND_LOAD = -load LLVMDFG2LLVM_EPOCHS.so
 hpvm-epochs: BACKEND_FLAG = -dfg2llvm-epochs -sched-lib-path=$(SCHED_MODULE) -sched-config=$(CONFIG_FILE) -task-config=$(TASK_CONFIG_FILE) -task-lib-path=$(TASK_MODULE)
