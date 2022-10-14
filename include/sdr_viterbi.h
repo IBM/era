@@ -38,7 +38,7 @@ uint8_t* sdr_depuncture(uint8_t *in);
 void sdr_decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_char, uint8_t* output);
 
 
-void sdr_decode_ofdm(ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/,
+void sdr_decode_ofdm(size_t vit_size, ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/,
                 frame_param* frame, size_t frame_sz /*= sizeof(frame_param)*/,
                 uint8_t* in, size_t in_sz /*= DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES*/,
                 int* n_dec_char, size_t n_dec_char_sz /*sizeof(int)*/,

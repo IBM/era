@@ -12,7 +12,7 @@
 #include <unistd.h>
 
 #define HPVM
-#define HPVM_CV_ROOT
+// #define HPVM_CV_ROOT
 #define HPVM_PROCESS_LIDAR
 #define HPVM_PROCESS_LIDAR_INTERNAL
 #define HPVM_RECV_PIPELINE
@@ -44,7 +44,8 @@
 
 #define PARALLEL_PTHREADS false
 
-#define ERA2
+#define X86
+#define ERA1
 
 #ifdef ERA1
 char * IMAGE_FN = "gridimage_era1_";
@@ -612,6 +613,7 @@ void fuse_maps(int n_recvd_in,
 	unsigned* num_dec_bits, size_t num_dec_bits_sz /*= sizeof(unsigned)*/,
 	uint8_t* bit_r, size_t bit_r_sz /*= DECODE_IN_SIZE_MAX*/,
 	uint8_t* bit, size_t bit_sz /*= DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES*/,
+	size_t vit_size,
 	ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/,
 	frame_param* frame, size_t frame_sz /*= sizeof(frame_param)*/,
 	int* n_res_char, size_t n_res_char_sz /*= sizeof(int)*/,
@@ -627,7 +629,7 @@ void fuse_maps(int n_recvd_in,
 
 #if (defined(HPVM) && defined(HPVM_RECV_PIPELINE)) && true
 	// 38 inputs, 3 outputs
-	void * T1 = __hetero_task_begin(38, n_recvd_in, recvd_in_real, recvd_in_real_sz,
+	void * T1 = __hetero_task_begin(39, n_recvd_in, recvd_in_real, recvd_in_real_sz,
 		recvd_msg, recvd_msg_sz, recvd_msg_len, recvd_msg_len_sz,
 		recvd_in_imag, recvd_in_imag_sz,
 		// Start variables used by do_recv_pipeline
@@ -658,6 +660,7 @@ void fuse_maps(int n_recvd_in,
                 bit_r, bit_r_sz,
                 bit, bit_sz,
                 ofdm, ofdm_sz,
+								vit_size,
                 frame, frame_sz,
                 n_res_char, n_res_char_sz,
                 // Local variables for sdr_decode_ofdm (called by decode_signal, a task in do_recv_pipeline)
@@ -708,6 +711,7 @@ void fuse_maps(int n_recvd_in,
                 num_dec_bits, num_dec_bits_sz,
                 bit_r, bit_r_sz,
                 bit, bit_sz,
+								vit_size,
                 ofdm, ofdm_sz,
                 frame, frame_sz,
                 n_res_char, n_res_char_sz,
@@ -917,6 +921,7 @@ void * receive_and_fuse_maps_impl(Observation * observations /*=observations -> 
 			uint8_t bit_r[DECODE_IN_SIZE_MAX];
 			size_t bit_sz = DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES;
 			uint8_t bit[DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES];
+			size_t vit_size = 0;
 			ofdm_param ofdm; size_t ofdm_sz = sizeof(ofdm_param);
 			frame_param frame; size_t frame_sz = sizeof(frame_param);
 			int n_res_char = 0; size_t n_res_char_sz = sizeof(int);
@@ -931,8 +936,8 @@ void * receive_and_fuse_maps_impl(Observation * observations /*=observations -> 
 			printf("%s %d Calling fuse_maps", __FILE__, __LINE__);
 
 #if (defined(HPVM) && defined(HPVM_RECV_PIPELINE)) && true
-			// 41 inputs, 7 outputs
-			void * LaunchInner = __hetero_launch((void *) fuse_maps, 41,
+			// 42 inputs, 7 outputs
+			void * LaunchInner = __hetero_launch((void *) fuse_maps, 42,
 				n_recvd_in,
 				recvd_in_real, recvd_in_real_sz,
 				recvd_in_imag, recvd_in_imag_sz,
@@ -973,6 +978,7 @@ void * receive_and_fuse_maps_impl(Observation * observations /*=observations -> 
 				&num_dec_bits, num_dec_bits_sz,
 				bit_r, bit_r_sz,
 				bit, bit_sz,
+				vit_size,
 				&ofdm, ofdm_sz,
 				&frame, frame_sz,
 				&n_res_char, n_res_char_sz,
@@ -1022,6 +1028,7 @@ void * receive_and_fuse_maps_impl(Observation * observations /*=observations -> 
 				&num_dec_bits, num_dec_bits_sz,
 				bit_r, bit_r_sz,
 				bit, bit_sz,
+				vit_size,
 				&ofdm, ofdm_sz,
 				&frame, frame_sz,
 				&n_res_char, n_res_char_sz,
@@ -1037,7 +1044,6 @@ void * receive_and_fuse_maps_impl(Observation * observations /*=observations -> 
 			// Connect to the Car-Socket and send the data...
 
 			Costmap2D * local_map = &(observations[curr_obs].master_costmap); // Copied from fuse_maps::T3
-			//APORVA TODO: Use this fused map to determine what message to send back to CARLA
 #ifdef INT_TIME
 			gettimeofday(&start_pd_wifi_send, NULL);
 #endif
@@ -1852,14 +1858,14 @@ void cv_root_wrapper(unsigned tr_val, label_t * out_label, size_t outlabel_sz) {
 void cv_root(uint8_t * rgb_image, size_t rgb_image_sz, dim_t * dimensions, size_t dimensions_sz,
 	char * filename, size_t filename_sz, int * nboxes, size_t nboxes_sz,
 	detection_t * dets, size_t dets_sz) {
-#if (defined(HPVM) && defined(HPVM_CV_ROOT)) && false
+#if (defined(HPVM) && defined(HPVM_CV_ROOT)) && true
 	void * Section = __hetero_section_begin();
 	void * T1 = __hetero_task_begin(5, rgb_image, rgb_image_sz, dimensions, dimensions_sz, filename, filename_sz,
 		nboxes, nboxes_sz, dets, dets_sz, 1, dets, dets_sz, "cv_root_task");
 #endif
-	// dets = run_object_classification(rgb_image, *dimensions, filename, nboxes); // TODO: Uncomment me; this is commented cause my machine doesn't have opencv.
+	dets = run_object_classification(rgb_image, *dimensions, filename, nboxes); 
 
-#if  (defined(HPVM) && defined(HPVM_CV_ROOT)) && false
+#if  (defined(HPVM) && defined(HPVM_CV_ROOT)) && true
 	__hetero_task_end(T1);
 	__hetero_section_end(Section);
 #endif
@@ -1896,12 +1902,29 @@ int main(int argc, char * argv[]) {
 
 	lidar_inputs_t lidar_inputs;
 
-	// snprintf(bag_inet_addr_str, 20, "192.168.1.99");
-	// snprintf(wifi_inet_addr_str, 20, "192.168.1.99");
-	// snprintf(car_inet_addr_str, 20, "192.168.1.99");
+#ifdef RISCV
+	snprintf(bag_inet_addr_str, 20, "192.168.1.99");
+	snprintf(wifi_inet_addr_str, 20, "192.168.1.99");
+	snprintf(car_inet_addr_str, 20, "192.168.1.99");
+#else //X86
 	snprintf(bag_inet_addr_str, 20, "127.0.0.1");
 	snprintf(wifi_inet_addr_str, 20, "127.0.0.1");
 	snprintf(car_inet_addr_str, 20, "127.0.0.1");
+  //Carla interface
+	// snprintf(bag_inet_addr_str, 20, "9.2.210.65");
+	// snprintf(wifi_inet_addr_str, 20, "192.168.1.99");
+	// snprintf(car_inet_addr_str, 20, "9.2.210.65");
+#endif
+
+	
+#ifdef ERA1
+	printf("This is ERA1\n");
+#endif
+
+#ifdef ERA2
+	printf("This is ERA2\n");
+#endif
+
 
 	// hpvm: The inits below can probably all go in parallel
 	printf("Initializing the OccGrid state...\n");
@@ -1921,12 +1944,10 @@ int main(int argc, char * argv[]) {
 	/*****************************************************************************/
 	/* NEW: PyTorch TinyYOLOv2 support (May 2022)                                */
 	// TODO: Uncomment the if-statement below! This is commented as my machine doesn't have opencv installed so everything related to cv is currently being ignored on my side.
-		/******* TODO: Uncomment me *******
-	if (cv_toolset_init("tiny_yolov2_coco", "yolov2-tiny.weights") != 0) {
+	if (cv_toolset_init("tiny_yolov2_coco", "/dccstor/epochs/aporvaa/hetero_era/src/cv/yolo/yolov2-tiny.weights") != 0) {
 		printf("Computer Vision toolset initialization failed...\n");
 		exit(1);
 	}
-	******* TODO: Uncomment me *******/
 	/*****************************************************************************/
 #endif
 
@@ -2441,7 +2462,7 @@ int main(int argc, char * argv[]) {
 		/*****************************************************************************/
 		/* NEW: PyTorch TinyYOLOv2 support (May 2022)                                */
 		int width, height, channels;
-		uint8_t * rgb_image = stbi_load("test.jpg", &width, &height, &channels, 3);
+		uint8_t * rgb_image = stbi_load("/dccstor/epochs/aporvaa/hetero_era/test.jpg", &width, &height, &channels, 3);
 
 		if (rgb_image != NULL) {
 

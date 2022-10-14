@@ -792,7 +792,7 @@ void sdr_decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_ch
 	return;
 	}
 
-void sdr_decode_ofdm(ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/, 
+void sdr_decode_ofdm(size_t vit_size, ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/, 
 		frame_param* frame, size_t frame_sz /*= sizeof(frame_param)*/, 
 		uint8_t* in, size_t in_sz /*= DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES*/, 
 		int* n_dec_char, size_t n_dec_char_sz /*sizeof(int)*/, 
@@ -923,11 +923,10 @@ void sdr_decode_ofdm(ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/,
 #endif
 
 #if defined(HPVM) && defined(SDR_HPVM)
-		void* T2 = __hetero_task_begin(5, frame, frame_sz, ofdm, ofdm_sz, inMemory, inMemory_sz, 
-						outMemory, outMemory_sz, d_ntraceback_arg, d_ntraceback_arg_sz, 
-						5, frame, frame_sz, ofdm, ofdm_sz, inMemory, inMemory_sz, 
-						outMemory, outMemory_sz, d_ntraceback_arg, d_ntraceback_arg_sz, "do_sdr_decoding");
-//		__hpvm__task(VIT_TASK);
+		void* T2 = __hetero_task_begin(5, vit_size, ofdm, ofdm_sz, frame, frame_sz, d_ntraceback_arg, d_ntraceback_arg_sz, inMemory, inMemory_sz, 
+						2, inMemory, inMemory_sz,	outMemory, outMemory_sz, "do_sdr_decoding");
+    // __hpvm__hint(DEVICE);
+    __hpvm__task(VIT_TASK);
 #endif
 
 		printf("Calling do_sdr_decoding\n");

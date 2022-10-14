@@ -195,6 +195,7 @@ void decode_signal(unsigned* num_inputs, size_t num_inputs_sz /*= sizeof(unsigne
 		/*Local variablse used by decode_signal*/
 		uint8_t* bit_r, size_t bit_r_sz /*= DECODE_IN_SIZE_MAX*/,
 		uint8_t* bit, size_t bit_sz /*= DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES*/,
+		size_t vit_size,
 		ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/,
 		frame_param* frame, size_t frame_sz /*= sizeof(frame_param)*/,
 		int* n_res_char, size_t n_res_char_sz /*= sizeof(int)*/,
@@ -228,14 +229,14 @@ void decode_signal(unsigned* num_inputs, size_t num_inputs_sz /*= sizeof(unsigne
 
 
 #if defined(HPVM) && defined(HPVM_OFDM) 
-	void* T2 = __hetero_task_begin(8, ofdm, ofdm_sz, frame, frame_sz, bit, bit_sz, n_res_char, n_res_char_sz, 
+	void* T2 = __hetero_task_begin(9, vit_size, ofdm, ofdm_sz, frame, frame_sz, bit, bit_sz, n_res_char, n_res_char_sz, 
 					output_data, output_data_sz, inMemory, inMemory_sz, outMemory, outMemory_sz,
 					d_ntraceback_arg, d_ntraceback_arg_sz, 
 					5, ofdm, ofdm_sz, frame, frame_sz, bit, bit_sz, n_res_char, n_res_char_sz, 
 					output_data, output_data_sz, "sdr_decode_task");
 #endif	
 	{
-		sdr_decode_ofdm(ofdm, ofdm_sz, frame, frame_sz, bit /*input_data*/, bit_sz, n_res_char, n_res_char_sz, 
+		sdr_decode_ofdm(vit_size, ofdm, ofdm_sz, frame, frame_sz, bit /*input_data*/, bit_sz, n_res_char, n_res_char_sz, 
 				output_data, output_data_sz, inMemory, inMemory_sz, outMemory, outMemory_sz,
 				d_ntraceback_arg, d_ntraceback_arg_sz);
 	}

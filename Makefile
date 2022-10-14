@@ -37,16 +37,25 @@ NC='\033[0m'
 
 #INCDIR ?=
 INCDIR += -I./include -I./soc_utils -I$(SCHED_LIB_DIR)/include -I$(TASK_LIB_DIR)/include
+INCDIR += -I$(CONDA_ENV_PATH)/include/python3.8
+INCDIR += -I$(CONDA_ENV_PATH)/lib/python3.8/site-packages/numpy/core/include/
+ifdef DO_CROSS_COMPILATION
+ INCDIR += -I/dccstor/epochs/aporvaa/.local/riscv_boost_cc/include/
+ INCDIR += -I/dccstor/epochs/aporvaa/riscv/sysroot/usr/include/
+endif
 ifdef COMPILE_TO_ESP
  INCDIR += -I$(ESP_DRIVERS)/common/include
  INCDIR += -I$(ESP_DRIVERS)/linux/include
 endif
 
-CFLAGS ?= -O2 #-g
+CFLAGS ?= -O1 #-g
 CFLAGS += $(INCDIR)
 CFLAGS += -DINT_TIME
 ifdef COMPILE_TO_ESP
  CFLAGS += -DCOMPILE_TO_ESP
+endif
+ifdef DO_CROSS_COMPILATION
+ CFLAGS +=--target=riscv64 -march=rv64g -mabi=lp64d
 endif
 #  -- ALWAYS use this one! --   ifdef CONFIG_ESP_INTERFACE
 CFLAGS += -DUSE_ESP_INTERFACE
@@ -91,7 +100,7 @@ CB_STR =
 ifdef CONFIG_FFT_EN
  SW_STR =
  FA_STR = F$(CONFIG_FFT_ACCEL_VER)
- CFLAGS += -DHW_FFT
+# CFLAGS += -DHW_FFT # MY CHANGE
  CFLAGS += -DUSE_FFT_FX=$(CONFIG_FFT_FX)
  CFLAGS += -DUSE_FFT_ACCEL_VERSION=$(CONFIG_FFT_ACCEL_VER)
  CFLAGS += -DFFT_DEV_BASE='"$(FFT_DEVICE_BASE)"'
@@ -116,7 +125,8 @@ endif
 ifdef CONFIG_CV_EN
  SW_STR =
  CA_STR = CH
- CFLAGS += -DHW_CV -DENABLE_NVDLA -I/usr/include/python3.6m
+# CFLAGS += -DHW_CV # MY CHANGE
+ CFLAGS += -DENABLE_NVDLA -I/usr/include/python3.6m
 #  CFLAGS += -DCNN_DEV_BASE='"$(CNN_DEVICE_BASE)"' -I/usr/include/python3.6m
 else # Not using the HWR accelerator
  ifdef CONFIG_FAKE_CV_EN
@@ -136,9 +146,26 @@ ifdef SL_VIZ
 CFLAGS += -DSL_VIZ
 endif
 
+# These are the settings for the size of the Costmap, etc.
+CONFIG_GRID_MAP_X_DIM=100
+CONFIG_GRID_MAP_Y_DIM=100
+CONFIG_GRID_MAP_RESLTN=2.0
+CONFIG_RAYTR_RANGE=100
+
+CFLAGS += -DGRID_MAP_X_DIM=$(CONFIG_GRID_MAP_X_DIM)
+CFLAGS += -DGRID_MAP_Y_DIM=$(CONFIG_GRID_MAP_Y_DIM)
+CFLAGS += -DGRID_MAP_RESLTN=$(CONFIG_GRID_MAP_RESLTN)
+CFLAGS += -DRAYTR_RANGE=$(CONFIG_RAYTR_RANGE)
+
 ifdef CONFIG_VERBOSE
-CFLAGS += -DVERBOSE
-OPTFLAGS += -debug
+#CFLAGS += -DVERBOSE
+#OPTFLAGS += -debug
+endif
+
+ifdef CONFIG_HW_SM_DECODE
+  CFLAGS += -DDEC_SIG_FIELD_ON_HW=$(CONFIG_HW_SM_DECODE)
+else
+  CFLAGS += -DDEC_SIG_FIELD_ON_HW=false
 endif
 
 ifdef HPVM_BASE_CRIT
@@ -178,6 +205,9 @@ SCHED_MODULE = $(SCHED_LIB_DIR)/libscheduler.bc
 TASK_MODULE = $(TASK_LIB_DIR)/libtasks.bc
 
 LDLIBS ?=
+ifdef DO_CROSS_COMPILATION
+ LDLIBS += -L/dccstor/epochs/aporvaa/.local/riscv_boost_cc/lib
+endif
 ifdef COMPILE_TO_ESP
  ESP_BUILD_DRIVERS=$(SCHED_LIB_DIR)/esp-build/drivers
  LDLIBS += -L$(ESP_BUILD_DRIVERS)/contig_alloc
@@ -188,6 +218,7 @@ endif
 # LDLIBS += 
 #endif
 LDLIBS += -L$(TASK_LIB_DIR) -L$(SCHED_LIB_DIR)
+LDLIBS += -L$(CONDA_ENV_PATH)/lib
 
 LDFLAGS ?=
 LDFLAGS += -ltasks -lscheduler
@@ -195,11 +226,12 @@ LDFLAGS += -lm
 LDFLAGS += -lpthread
 LDFLAGS += -lboost_graph -lboost_regex
 LDFLAGS += -ldl -rdynamic
+LDFLAGS += -lpython3.8
 ifdef COMPILE_TO_ESP
- LDFLAGS += -lrt
- LDFLAGS += -lesp
- LDFLAGS += -ltest
- LDFLAGS += -lcontig
+LDFLAGS += -lrt
+LDFLAGS += -lesp
+LDFLAGS += -ltest
+LDFLAGS += -lcontig
 endif
 ifndef CONFIG_KERAS_CV_BYPASS
  LDFLAGS += -lpython3.6m
@@ -210,7 +242,8 @@ SRC_D = $(wildcard src/*.c)
 HDR_T = $(wildcard include/*.h)
 OBJ_T = $(SRC_T:%.c=obj_t/%.o)
 OBJ_S = $(SRC_T:%.c=obj_s/%.o)
-OBJ_HPVM = obj_hpvm/hpvm_src_main.ll obj_hpvm/hpvm_src_xmit_pipe.ll obj_hpvm/hpvm_src_occgrid.ll obj_hpvm/hpvm_src_recv_pipe.ll
+OBJ_HPVM = $(SRC_T:%.c=obj_hpvm/hpvm_src_%.ll)
+# OBJ_HPVM = obj_hpvm/hpvm_src_main.ll obj_hpvm/hpvm_src_xmit_pipe.ll obj_hpvm/hpvm_src_occgrid.ll obj_hpvm/hpvm_src_recv_pipe.ll
 #OBJ_LL = $(SRC_T:%.c=obj_hpvm/%.ll)
 OBJ_LL = $(filter-out $(OBJ_HPVM), $(SRC_T:%.c=obj_hpvm/%.ll))
 OBJ_H = obj_hpvm/hpvm_tasks.host.ll 
@@ -251,11 +284,11 @@ hpvm-epochs: HPVM = hpvm
 
 hpvm-cpu: CFLAGS += -DHPVM -DDEVICE=CPU_TARGET
 #hpvm-cpu: CFLAGS := $(filter-out -I$(SCHED_LIB_DIR)/include -I$(TASK_LIB_DIR)/include, $(CFLAGS))
-hpvm-cpu: CFLAGS := $(filter-out -I$(SCHED_LIB_DIR)/include, $(CFLAGS))
+# MY CHANGE hpvm-cpu: CFLAGS := $(filter-out -I$(SCHED_LIB_DIR)/include, $(CFLAGS))
 hpvm-cpu: BACKEND_LOAD = -load LLVMDFG2LLVM_CPU.so
 hpvm-cpu: BACKEND_FLAG = -dfg2llvm-cpu 
-hpvm-cpu: LDFLAGS := $(filter-out -ltasks -lscheduler, $(LDFLAGS))
-hpvm-cpu: LDLIBS := $(filter-out -L$(TASK_LIB_DIR) -L$(SCHED_LIB_DIR), $(LDLIBS))
+# MY CHANGE hpvm-cpu: LDFLAGS := $(filter-out -ltasks -lscheduler, $(LDFLAGS))
+# MY CHANGE hpvm-cpu: LDLIBS := $(filter-out -L$(TASK_LIB_DIR) -L$(SCHED_LIB_DIR), $(LDLIBS))
 
 
 hpvm-epochs: check_env obj_hpvm $(SCHED_MODULE) $(TASK_MODULE) $(NVDLA_MODULE) $(HPVMTARGET)
@@ -279,7 +312,7 @@ ESP_NVDLA_DIR = esp_hardware/nvdla
 INC_DIR +=  -I$(ESP_NVDLA_DIR) -I$(ROOT)/core/include
 
 NVDLA_MAKE_DIR = $(HPVM_DIR)/test/epoch_dnn
-NVDLA_RES_DIR = $(NVDLA_MAKE_DIR)/gen_miniera
+NVDLA_RES_DIR = $(NVDLA_MAKE_DIR)/gen_yolo
 
 NVDLA_RUNTIME_DIR = $(ROOT)
 NVDLA_RUNTIME = $(NVDLA_RUNTIME_DIR)/out
@@ -313,12 +346,12 @@ $(NVDLA_MODULE):
 	@echo -e ${YEL}Compiling NVDLA Runtime Library${NC}
 	@cd $(NVDLA_RUNTIME_DIR) && make ROOT=$(ROOT) runtime
 	@echo -e ${YEL}Compiling HPVM Module for NVDLA${NC}
-	cd $(NVDLA_MAKE_DIR) && ln -sf $(CUR_DIR)/user_scripts/miniera.py . && python miniera.py && cp $(NVDLA_RES_DIR)/$(NVDLA_MODULE) $(CUR_DIR)
+	($(CONDA_ACTIVATE) hpvm; cd $(NVDLA_MAKE_DIR) && python yolo.py && cp $(NVDLA_RES_DIR)/$(NVDLA_MODULE) $(CUR_DIR))
 	#@cd $(NVDLA_MAKE_DIR) && python gen_me_hpvm_mod.py && cp $(NVDLA_RES_DIR)/$(NVDLA_MODULE) $(CUR_DIR)
 
 #-----------------------------------------------------------------------------------------------
 obj_t/%.o: %.c
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@ $(LDFLAGS)
+	$(CROSS_COMPILE)$(CC) $(CFLAGS) -c $< -o $@
 
 obj_s/%.o: %.c
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -DUSE_SIM_ENVIRON -c $< -o $@
@@ -338,12 +371,15 @@ $(STARGET): $(TASK_LIB) $(SCHED_LIB) obj_s $(OBJ_S)
 $(HPVMTARGET): $(OBJ_LINKED) $(TASK_LIB) $(SCHED_LIB) $(ALLMODULE_OBJS)
 	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o me_test.o
 	$(CROSS_COMPILE)$(LD) -r $(ALLMODULE_OBJS) me_test.o -o wnvdla_test.o
-	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(LDFLAGS) $(NVDLA_FLAGS)
+	$(CROSS_COMPILE)$(CXX) $(LDLIBS) wnvdla_test.o -o $@ $(LDFLAGS) $(NVDLA_FLAGS) 
+	# -Xlinker -export-dynamic -Wl,-O1 -Wl,-Bsymbolic-functions
 	rm me_test.o wnvdla_test.o
 
 $(HPVMTARGET_CPU): $(OBJ_LINKED) $(TASK_LIB) $(SCHED_LIB) 
 	$(HPVMCC) $(CROSS_COMPILE_FLAGS) -fPIC $< -c -o me_test.o
 	$(CROSS_COMPILE)$(CXX) $(LDLIBS) me_test.o -o $@ $(LDFLAGS) $(CROSS_COMPILE_FLAGS)
+	# -Xlinker -export-dynamic -Wl,-O1 -Wl,-Bsymbolic-functions
+ 
 
 
 
@@ -357,7 +393,8 @@ obj_hpvm:
 	mkdir $@
 
 obj_hpvm/hpvm_src_%.ll : src/%.c
-	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $< $(OPTFLAGS)
+	echo $<
+	$(HPVMCC) $(CFLAGS) -fno-exceptions -emit-llvm -S -o $@ $< $(OPTFLAGS)
 
 # obj_hpvm/hpvm_xmit_pipe.ll : src/xmit_pipe.c
 # 	$(HPVMCC) $(CFLAGS) -emit-llvm -S -o $@ $< $(OPTFLAGS)
@@ -409,6 +446,7 @@ clean:
 
 
 clobber: clean
+	$(RM) *.xml
 	$(RM) $(TARGET)
 	$(RM) $(STARGET)
 	$(RM) $(HPVMTARGET)
@@ -426,11 +464,11 @@ endif
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
 src/getopt.o: ./include/getopt.h
-src/scheduler.o: ./include/getopt.h ./include/utils.h
+src/scheduler.o: ./include/getopt_era.h ./include/utils.h
 src/scheduler.o: ./include/verbose.h
 src/scheduler.o: ./include/scheduler.h ./include/base_types.h
 src/scheduler.o: ./include/calc_fmcw_dist.h
-src/main.o: ./include/getopt.h ./include/verbose.h ./include/scheduler.h
+src/main.o: ./include/getopt_era.h ./include/verbose.h ./include/scheduler.h
 src/main.o: ./include/base_types.h
 src/main.o: ./include/kernels_api.h ./include/calc_fmcw_dist.h
 src/main.o: ./include/utils.h ./include/sim_environs.h

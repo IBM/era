@@ -29,6 +29,7 @@ void decode_signal(unsigned* num_inputs, size_t num_inputs_sz /*= sizeof(unsigne
                 /*Local variablse used by decode_signal*/
                 uint8_t* bit_r, size_t bit_r_sz /*= DECODE_IN_SIZE_MAX*/,
                 uint8_t* bit, size_t bit_sz /*= DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES*/,
+                size_t vit_size,
                 ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/,
                 frame_param* frame, size_t frame_sz /*= sizeof(frame_param)*/,
 		int* n_res_char, size_t n_res_char_sz /*= sizeof(int)*/,

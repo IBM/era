@@ -124,10 +124,11 @@ void do_recv_pipeline(int num_recvd_vals, float* recvd_in_real, size_t recvd_in_
 		unsigned* num_dec_bits, size_t num_dec_bits_sz /*= sizeof(unsigned)*/,
 		uint8_t* bit_r, size_t bit_r_sz /*= DECODE_IN_SIZE_MAX*/,
 		uint8_t* bit, size_t bit_sz /*= DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES*/,
+		size_t vit_size,
 		ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/,
 		frame_param* frame, size_t frame_sz /*= sizeof(frame_param)*/,
 		int* n_res_char, size_t n_res_char_sz /*= sizeof(int)*/,
-		// Local variables for sdr_decode_ofdm (called by decode_signal, a task in do_recv_pipeline
+		// Local variables for sdr_decode_ofdm (called by decode_signal, a task in do_recv_pipeline)
 		uint8_t* inMemory, size_t inMemory_sz /*= 24852*/,
 		uint8_t* outMemory, size_t outMemory_sz /*= 18585*/,
 		int* d_ntraceback_arg, size_t d_ntraceback_arg_sz /*= sizeof(int)*/

@@ -191,10 +191,11 @@ void compute(unsigned num_inputs, fx_pt * input_data, size_t input_data_sz,
 		unsigned* num_dec_bits, size_t num_dec_bits_sz /*= sizeof(unsigned)*/,
 		uint8_t* bit_r, size_t bit_r_sz /*= DECODE_IN_SIZE_MAX*/,
 		uint8_t* bit, size_t bit_sz /*= DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES*/,
+	  size_t vit_size,
 		ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/,
 		frame_param* frame, size_t frame_sz /*= sizeof(frame_param)*/,
 		int* n_res_char, size_t n_res_char_sz /*= sizeof(int)*/,
-		// Local variables for sdr_decode_ofdm (called by decode_signal, a task in compute
+		// Local variables for sdr_decode_ofdm (called by decode_signal, a task in compute)
 		uint8_t* inMemory, size_t inMemory_sz /*= 24852*/,
 		uint8_t* outMemory, size_t outMemory_sz /*= 18585*/,
 		int* d_ntraceback_arg, size_t d_ntraceback_arg_sz /*= sizeof(int)*/
@@ -703,6 +704,7 @@ void do_recv_pipeline(int num_recvd_vals, float * recvd_in_real, size_t recvd_in
 		unsigned* num_dec_bits, size_t num_dec_bits_sz /*= sizeof(unsigned)*/,
 		uint8_t* bit_r, size_t bit_r_sz /*= DECODE_IN_SIZE_MAX*/,
 		uint8_t* bit, size_t bit_sz /*= DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES*/,
+		size_t vit_size,
 		ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/,
 		frame_param* frame, size_t frame_sz /*= sizeof(frame_param)*/,
 		int* n_res_char, size_t n_res_char_sz /*= sizeof(int)*/,
@@ -732,7 +734,7 @@ void do_recv_pipeline(int num_recvd_vals, float * recvd_in_real, size_t recvd_in
 #endif
 
 #if defined(HPVM)
-			void * T1 = __hetero_task_begin(36,
+			void * T1 = __hetero_task_begin(37,
 					num_recvd_vals,
 					recvd_msg_len, recvd_msg_len_sz,
 					recvd_msg, recvd_msg_sz,
@@ -767,6 +769,7 @@ void do_recv_pipeline(int num_recvd_vals, float * recvd_in_real, size_t recvd_in
 					num_dec_bits, num_dec_bits_sz,
 					bit_r, bit_r_sz,
 					bit, bit_sz,
+					vit_size,
 					ofdm, ofdm_sz,
 					frame, frame_sz,
 					n_res_char, n_res_char_sz,
@@ -819,6 +822,7 @@ void do_recv_pipeline(int num_recvd_vals, float * recvd_in_real, size_t recvd_in
 					num_dec_bits, num_dec_bits_sz,
 					bit_r, bit_r_sz,
 					bit, bit_sz,
+					vit_size,
 					ofdm, ofdm_sz,
 					frame, frame_sz,
 					n_res_char, n_res_char_sz,
@@ -1690,6 +1694,7 @@ void compute(unsigned num_inputs, fx_pt * input_data_arg, size_t input_data_arg_
 		unsigned* num_dec_bits, size_t num_dec_bits_sz /*= sizeof(unsigned)*/,
 		uint8_t* bit_r, size_t bit_r_sz /*= DECODE_IN_SIZE_MAX*/,
 		uint8_t* bit, size_t bit_sz /*= DECODE_IN_SIZE_MAX + OFDM_PAD_ENTRIES*/,
+	  size_t vit_size,
 		ofdm_param* ofdm, size_t ofdm_sz /*= sizeof(ofdm_param)*/,
 		frame_param* frame, size_t frame_sz /*= sizeof(frame_param)*/,
 		int* n_res_char, size_t n_res_char_sz /*= sizeof(int)*/,
@@ -1904,9 +1909,9 @@ void compute(unsigned num_inputs, fx_pt * input_data_arg, size_t input_data_arg_
 #endif
 
 #if defined(HPVM) 
-			void * T13 = __hetero_task_begin(13, num_eq_out_bits, num_eq_out_bits_sz, toBeEqualized, toBeEqualized_sz,
+			void * T13 = __hetero_task_begin(14, num_eq_out_bits, num_eq_out_bits_sz, toBeEqualized, toBeEqualized_sz,
 					equalized, equalized_sz, scrambled_msg, scrambled_msg_sz, num_dec_bits, num_dec_bits_sz, 
-					bit_r, bit_r_sz, bit, bit_sz, ofdm, ofdm_sz, frame, frame_sz, n_res_char, n_res_char_sz, 
+					bit_r, bit_r_sz, bit, bit_sz, vit_size, ofdm, ofdm_sz, frame, frame_sz, n_res_char, n_res_char_sz, 
 					inMemory, inMemory_sz, outMemory, outMemory_sz, d_ntraceback_arg, d_ntraceback_arg_sz,
 					1, scrambled_msg, scrambled_msg_sz, "decode_task");
 #endif
@@ -1928,6 +1933,7 @@ void compute(unsigned num_inputs, fx_pt * input_data_arg, size_t input_data_arg_
 					scrambled_msg, scrambled_msg_sz, 
 					bit_r, bit_r_sz, 
 					bit, bit_sz, 
+					vit_size,
 					ofdm, ofdm_sz, 
 					frame, frame_sz,
 					n_res_char, n_res_char_sz, 

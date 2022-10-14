@@ -2,16 +2,28 @@
 
 import subprocess
 import shlex
-import os
+import os, signal
 import sys
 
 n_cars  = 2
-bagfile = '/home/gaurip2/era/era/data/2020-09-10-14-43-09.bag'
-src_dir = '/home/gaurip2/era_hetero_copy/era/src'
-bin_dir = '/home/gaurip2/era_hetero_copy/era/'
+bagfile = '/dccstor/epochs/aporvaa/hetero_era/data/2020-09-10-14-43-09.bag'
+src_dir = '/dccstor/epochs/aporvaa/hetero_era/XF_x86_hpvm'
+bin_dir = '/dccstor/epochs/aporvaa/hetero_era/XF_x86_hpvm'
 
 processes = []
 cwd = os.getcwd()
+
+
+def close_port(port):
+    
+    command = "lsof -i :%s | awk '{print $2}'" % port
+    pids = subprocess.check_output(command, shell=True)
+    pids = pids.strip().decode("utf-8")
+    for pid in pids.split('\n'):
+        if pid.isnumeric():
+            print('[' + pid + ']')
+            os.kill(int(pid), signal.SIGKILL)
+
 
 def main():
 
@@ -28,6 +40,17 @@ def main():
         print('***** Starting ERA with ' + str(n_cars) + ' cars (max steps: ' + str(steps) + ') *****\n')
     else:
         print('***** Starting ERA with ' + str(n_cars) + ' cars *****\n')
+    
+    print('>>> Closing open ports from previous runs')
+    close_port(5556)    # Bag server (car 1)
+    close_port(5557)    # Bag server (car 2)
+    close_port(5558)    # XMIT server (car 1)
+    close_port(5559)    # RECV server (car 1)
+    close_port(5560)    # XMIT server (car 2)
+    close_port(5561)    # RECV server (car 2)
+    close_port(5562)    # Car server (car 1)
+    close_port(5563)    # Car server (car 2)
+    print()
     
     print('>>> Starting bag (trace) reading')
     for car in range(n_cars):
