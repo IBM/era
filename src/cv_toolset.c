@@ -28,7 +28,7 @@
 #include "globals.h"
 #include "debug.h"
 
-
+#ifdef CV_PIPELINE
 #ifdef USE_OLD_MODEL
 
 PyObject * pName, * pModule, * pFunc, * pFunc_load;
@@ -378,3 +378,4 @@ detection_t * run_object_classification(unsigned char * data, dim_t dimensions, 
 /*****************************************************************************/
 
 #endif
+#endif // CV_PIPELINE

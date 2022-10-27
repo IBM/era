@@ -19,7 +19,6 @@ import pandas as pd
 BOX_COLOR = (255, 0, 0) # Red
 TEXT_COLOR = (255, 255, 255) # White
 
-print("Hello1")
 class TinyYOLOv2NonLeaky(lnn.module.Darknet):
     stride = 32
     inner_stride = 32
@@ -136,23 +135,17 @@ class TinyYOLOv2NonLeaky(lnn.module.Darknet):
 
 
     def predict(self, im, filename):
-        print("Inside predict")
         transform     = transforms.Compose([transforms.ToTensor()])
-        print("Inside predict0")
         input_tensor  = transform(im.astype(np.uint8)).to('cpu').unsqueeze(0)
-        print("Inside predict01")
         output_tensor = lnn.module.Darknet.forward(self, input_tensor)
-        print("Inside predict02")
         output_df     = self.postprocessing(output_tensor)
 
-        print("Inside predict1")
         # We add the corresponding COCO IDs to each DataFrame row
         i = 0
         for index, row in output_df.iterrows():
             output_df.at[i,'id'] = int(self.coco_ids[self.classes.index(row['class_label'])])
             i += 1        
         #display(output_df)
-        print("Inside predict2")
         im_bboxes = self.draw_bboxes(im, output_df)
         if (len(output_df) > 0):
             # Something was detected. We save the image.
@@ -163,10 +156,8 @@ class TinyYOLOv2NonLeaky(lnn.module.Darknet):
         #plt.axis('off')
         #plt.imshow(im_bboxes)
         #plt.show()
-        print("Inside predict3")
         # We return the pandas DataFrame (output_df) converted to a list of
         # dcitionaries to facilitate its consumption on the C domain.
-        print("Returning from predict")
         return output_df.to_dict(orient='records')
 
 

@@ -40,6 +40,7 @@
 #include "hetero.h"
 #endif
 
+// #define CV_PIPELINE
 // #define USE_OLD_MODEL
 
 #define PARALLEL_PTHREADS false
@@ -1818,6 +1819,7 @@ void lidar_root(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /*=sizeof( * li
 #endif
 }
 
+#ifdef CV_PIPELINE
 #ifdef USE_OLD_MODEL
 
 void cv_root(unsigned tr_val, label_t * out_label, size_t outlabel_sz) {
@@ -1889,7 +1891,7 @@ void cv_root_wrapper(uint8_t * rgb_image, size_t rgb_image_sz, dim_t * dimension
 }
 
 #endif // ifdef USE_OLD_MODEL
-
+#endif // CV_PIPELINE
 
 int main(int argc, char * argv[]) {
 	struct sockaddr_in bag_servaddr;
@@ -1935,6 +1937,7 @@ int main(int argc, char * argv[]) {
 	recv_pipe_init();
 	printf("Initializing the Computer Vision toolset...\n");
 
+#ifdef CV_PIPELINE
 #ifdef USE_OLD_MODEL
 	if (cv_toolset_init() != success) {
 		printf("Computer Vision toolset initialization failed...\n");
@@ -1950,6 +1953,7 @@ int main(int argc, char * argv[]) {
 	}
 	/*****************************************************************************/
 #endif
+#endif // CV_PIPELINE
 
 	signal(SIGINT, INThandler);
 	signal(SIGPIPE, SIGPIPE_handler);
@@ -2431,6 +2435,7 @@ int main(int argc, char * argv[]) {
 		/*     simulator (e.g. CARLA).                                         */
 		/***********************************************************************/
 
+#ifdef CV_PIPELINE
 #ifdef USE_OLD_MODEL
 
 #ifdef INT_TIME
@@ -2501,6 +2506,7 @@ int main(int argc, char * argv[]) {
 		}
 		/*****************************************************************************/
 #endif
+#endif // CV_PIPELINE
 
 	}
 

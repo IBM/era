@@ -37,12 +37,14 @@ NC='\033[0m'
 
 #INCDIR ?=
 INCDIR += -I./include -I./soc_utils -I$(SCHED_LIB_DIR)/include -I$(TASK_LIB_DIR)/include
-INCDIR += -I$(CONDA_ENV_PATH)/include/python3.8
-INCDIR += -I$(CONDA_ENV_PATH)/lib/python3.8/site-packages/numpy/core/include/
 ifdef DO_CROSS_COMPILATION
  INCDIR += -I/dccstor/epochs/aporvaa/.local/riscv_boost_cc/include/
  INCDIR += -I/dccstor/epochs/aporvaa/riscv/sysroot/usr/include/
+else
+INCDIR += -I$(CONDA_ENV_PATH)/include/python3.8
+INCDIR += -I$(CONDA_ENV_PATH)/lib/python3.8/site-packages/numpy/core/include/
 endif
+
 ifdef COMPILE_TO_ESP
  INCDIR += -I$(ESP_DRIVERS)/common/include
  INCDIR += -I$(ESP_DRIVERS)/linux/include
@@ -211,6 +213,8 @@ TASK_MODULE = $(TASK_LIB_DIR)/libtasks.bc
 LDLIBS ?=
 ifdef DO_CROSS_COMPILATION
  LDLIBS += -L/dccstor/epochs/aporvaa/.local/riscv_boost_cc/lib
+else
+ LDLIBS += -L$(CONDA_ENV_PATH)/lib
 endif
 ifdef COMPILE_TO_ESP
  ESP_BUILD_DRIVERS=$(SCHED_LIB_DIR)/esp-build/drivers
@@ -222,7 +226,6 @@ endif
 # LDLIBS += 
 #endif
 LDLIBS += -L$(TASK_LIB_DIR) -L$(SCHED_LIB_DIR)
-LDLIBS += -L$(CONDA_ENV_PATH)/lib
 
 LDFLAGS ?=
 LDFLAGS += -ltasks -lscheduler
@@ -230,7 +233,11 @@ LDFLAGS += -lm
 LDFLAGS += -lpthread
 LDFLAGS += -lboost_graph -lboost_regex
 LDFLAGS += -ldl -rdynamic
+
+ifndef DO_CROSS_COMPILATION
 LDFLAGS += -lpython3.8
+endif
+
 ifdef COMPILE_TO_ESP
 LDFLAGS += -lrt
 LDFLAGS += -lesp

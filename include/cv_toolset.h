@@ -20,6 +20,7 @@
 
 #include "globals.h"
 
+#ifdef CV_PIPELINE
 #ifdef USE_OLD_MODEL
 
 /* Pre-defined labels used by the computer vision kernel */
@@ -63,5 +64,6 @@ detection_t *run_object_classification(unsigned char *data, dim_t dimensions,
 /*****************************************************************************/
 
 #endif
+#endif // CV_PIPELINE
 
 #endif

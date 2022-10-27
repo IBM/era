@@ -184,13 +184,14 @@ uint8_t* depuncture(uint8_t *in) {
 //    d_mmresult            : OUTPUT : uint8_t[64] 
 //    d_ppresult            : OUTPUT : uint8_t[ntraceback_MAX][ 64 bytes ]
 
-
-void do_sdr_decoding(int in_n_data_bits, int in_cbps, int in_ntraceback, unsigned char *inMemory, unsigned char *outMemory )
+void do_sdr_decoding(size_t in_size, void * ofdm_ptr, size_t ofdm_size, void * frame_ptr, size_t frame_ptr_size, int * d_ntraceback_arg, size_t d_ntraceback_arg_sz, uint8_t * inMemory, size_t vit_data_in_size, uint8_t * outMemory, size_t vit_data_out_size)
 {
 	int in_count = 0;
 	int out_count = 0;
 	int n_decoded = 0;
-
+	int32_t  in_cbps = ((ofdm_param *) ofdm_ptr)->n_cbps;
+	int32_t  in_ntraceback = *(d_ntraceback_arg);
+	int32_t  in_n_data_bits = ((frame_param *) frame_ptr)->n_data_bits;
 	unsigned char* d_brtab27[2]        = { &(inMemory[    0]), 
 		&(inMemory[   32]) };
 	unsigned char* in_depuncture_pattern = &(inMemory[   64]);
@@ -765,7 +766,7 @@ void sdr_decode(ofdm_param *ofdm, frame_param *frame, uint8_t *in, int* n_dec_ch
 #endif
 		// Call the viterbi_butterfly2_generic function using ESP interface
 		DEBUG(printf("ESP_INTFC: Calling do_sdr_decoding with frame->n_data_bits = %u  ofdm->n_cbps = %u d_ntraceback = %u \n", frame->n_data_bits, ofdm->n_cbps, d_ntraceback));
-		do_sdr_decoding(frame->n_data_bits, ofdm->n_cbps, d_ntraceback, inMemory, outMemory);
+		do_sdr_decoding(0, (void *) ofdm, 0, (void *) frame, 0, &d_ntraceback, 0, inMemory, 0, outMemory, 0);
 
 #ifdef INT_TIME
 		gettimeofday(&dodec_stop, NULL);
@@ -923,15 +924,15 @@ void sdr_decode_ofdm(size_t vit_size, ofdm_param* ofdm, size_t ofdm_sz /*= sizeo
 #endif
 
 #if defined(HPVM) && defined(SDR_HPVM)
-		void* T2 = __hetero_task_begin(5, vit_size, ofdm, ofdm_sz, frame, frame_sz, d_ntraceback_arg, d_ntraceback_arg_sz, inMemory, inMemory_sz, 
+		void* T2 = __hetero_task_begin(5, vit_size, (void *) ofdm, ofdm_sz, (void *) frame, frame_sz, d_ntraceback_arg, d_ntraceback_arg_sz, inMemory, inMemory_sz, 
 						2, inMemory, inMemory_sz,	outMemory, outMemory_sz, "do_sdr_decoding");
-    // __hpvm__hint(DEVICE);
-    __hpvm__task(VIT_TASK);
+    __hpvm__hint(DEVICE);
+    __hpvm__task(VIT_TASK, do_sdr_decoding);
 #endif
 
-		printf("Calling do_sdr_decoding\n");
-		do_sdr_decoding(frame->n_data_bits, ofdm->n_cbps, *d_ntraceback_arg, inMemory, outMemory);
-		printf("Done with do_sdr_decoding\n");
+		// printf("Calling do_sdr_decoding\n");
+		do_sdr_decoding(vit_size, (void *) ofdm, ofdm_sz, (void *) frame, frame_sz, d_ntraceback_arg, d_ntraceback_arg_sz, inMemory, inMemory_sz, outMemory, outMemory_sz);
+		// printf("Done with do_sdr_decoding\n");
 
 #if defined(HPVM) && defined(SDR_HPVM)
 		__hetero_task_end(T2);

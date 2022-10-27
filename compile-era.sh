@@ -28,12 +28,12 @@ if [[ "$1" == "riscv" ]]; then
   sed -i 's/127.0.0.1/192.168.1.99/' XF_riscv_hpvm/carla_recvr_1.sh
   sed -i 's/127.0.0.1/192.168.1.99/' XF_riscv_hpvm/carla_recvr_2.sh
 
-  cp -r data XF_riscv_hpvm/
+  # cp -r data XF_riscv_hpvm/
   cp -r soc_utils/config_files XF_riscv_hpvm/soc_utils/
   cp -r $SOC_LIB_DIR/sched_library/meta_policies XF_riscv_hpvm/
   cp -r $SOC_LIB_DIR/sched_library/task_policies XF_riscv_hpvm/
 
-  scp -r XF_riscv_hpvm/era* aporva@9.2.212.205:~/XF_riscv_hpvm/
+  # scp -r XF_riscv_hpvm/era* aporva@9.2.212.205:~/XF_riscv_hpvm/
 elif [[ "$1" == "x86" ]]; then
   x86_host='127.0.0.1'
   export PYTHONPATH=/dccstor/epochs/aporvaa/hetero_era/src/cv/yolo
@@ -64,7 +64,7 @@ elif [[ "$1" == "x86" ]]; then
   sed -i 's/192.168.1.99/127.0.0.1/' XF_x86_hpvm/carla_recvr_1.sh
   sed -i 's/192.168.1.99/127.0.0.1/' XF_x86_hpvm/carla_recvr_2.sh
 
-  cp -r data XF_x86_hpvm/
+  # cp -r data XF_x86_hpvm/
   cp -r soc_utils/config_files XF_x86_hpvm/soc_utils/
   cp -r $SOC_LIB_DIR/sched_library/meta_policies XF_x86_hpvm/
   cp -r $SOC_LIB_DIR/sched_library/task_policies XF_x86_hpvm/
