@@ -180,8 +180,9 @@ RUN git clone -b hetero-integration https://github.com/IBM/era.git
 # RUN cd era && git checkout f875d16784a7bcdbf7be499af6c24b8a37f688e7
 RUN cd era && git checkout 3ebe6013f314bb037443c17fe90406262bb67ae3
 
+COPY small/setup_paths.patch /home/espuser/era/
 
-RUN cd era && make clean clobber && bash -c "./compile-era.sh riscv"
+RUN cd era && patch -p0 -l < setup_paths.patch && make clean clobber && bash -c "./compile-era.sh riscv"
 
 USER root
 

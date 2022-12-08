@@ -1,0 +1,14 @@
+--- soc_utils/setup_paths.sh
++++ soc_utils/setup_paths.sh
+@@ -1,8 +1,8 @@
+ #!/bin/bash
+ ####### THESE VARIABLES NEED TO BE SET! #########
+-export FPGA_HOST='192.168.1.99'
+-export FPGA_HOST_IP=9.2.212.205
+-export FPGA_USERNAME=aporva
++export FPGA_HOST=
++export FPGA_HOST_IP=
++export FPGA_USERNAME=
+ 
+ export HPVM_DIR=/home/espuser/hpvm-release/hpvm
+ export RISCV_BIN_DIR=/home/espuser/riscv/bin
