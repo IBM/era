@@ -1,9 +1,10 @@
 #!/usr/bin/sh
 
 if [[ "$1" == "riscv" ]]; then
-  fpga_host='192.168.1.99'
-  fpga_host_ip=9.2.212.205
-  fpga_username=aporva
+  source soc_utils/setup_paths.sh
+  fpga_host=$FPGA_HOST
+  fpga_host_ip=$FPGA_HOST_IP
+  fpga_username=$FPGA_USERNAME
   rm -rf XF_riscv_hpvm
   mkdir -p XF_riscv_hpvm/soc_utils
   sed -i 's/scheduler-library-x86/scheduler-library-hpvm/' soc_utils/setup_paths.sh

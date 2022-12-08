@@ -156,11 +156,6 @@ RUN git clone -b meta https://github.com/IBM/scheduler-library.git scheduler-lib
     && cd scheduler-library-hpvm \
     && git checkout 9c1d02a
 #     && git checkout ce19bef806eee14c58799e4960d98b01a7d02107
-# COPY small/sched_setup_paths.sh /home/espuser/scheduler-library-hpvm/setup_paths.sh
-# COPY small/sched-Makefile /home/espuser/scheduler-library-hpvm/sched_library/Makefile
-# COPY small/task-Makefile /home/espuser/scheduler-library-hpvm/task_library/Makefile
-# COPY small/mini-Makefile /home/espuser/scheduler-library-hpvm/examples/mini-era/Makefile
-#TODO Change config files to have paths correct
 
 ENV HPVM_DIR=/home/espuser/hpvm-release/hpvm
 ENV RISCV_BIN_DIR=/home/espuser/riscv/bin
@@ -185,10 +180,6 @@ RUN git clone -b hetero-integration https://github.com/IBM/era.git
 # RUN cd era && git checkout f875d16784a7bcdbf7be499af6c24b8a37f688e7
 RUN cd era && git checkout 05094b4
 
-# COPY small/era-Makefile /home/espuser/era/Makefile
-# COPY small/era-setup_paths.sh /home/espuser/era/soc_utils/setup_paths.sh
-# COPY --chown=espuser small/compile-era.sh /home/espuser/era/compile-era.sh
-# RUN chmod +x /home/espuser/era/compile-era.sh
 
 RUN cd era && make clean clobber && bash -c "./compile-era.sh riscv"
 
