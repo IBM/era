@@ -1,3 +1,9 @@
+# Need to specify bash in order for conda activate to work.
+SHELL=/bin/bash
+# Note that the extra activate is needed to ensure that the activate floats env to the front of PATH
+CONDA_ACTIVATE=source $$(conda info --base)/etc/profile.d/conda.sh ; conda activate ; conda activate
+CONDA_DEACTIVATE=source $$(conda info --base)/etc/profile.d/conda.sh ; conda deactivate
+
 include $(SOC_LIB_DIR)/hardware.config
 
 SCHED_LIB_DIR = $(SOC_LIB_DIR)/sched_library
@@ -38,8 +44,8 @@ NC='\033[0m'
 #INCDIR ?=
 INCDIR += -I./include -I./soc_utils -I$(SCHED_LIB_DIR)/include -I$(TASK_LIB_DIR)/include
 ifdef DO_CROSS_COMPILATION
- INCDIR += -I/dccstor/epochs/aporvaa/.local/riscv_boost_cc/include/
- INCDIR += -I/dccstor/epochs/aporvaa/riscv/sysroot/usr/include/
+ INCDIR += -I$(RISCV_BOOST_DIR)/include/
+ INCDIR += -I$(RISCV_DIR)/sysroot/usr/include/
 else
 INCDIR += -I$(CONDA_ENV_PATH)/include/python3.8
 INCDIR += -I$(CONDA_ENV_PATH)/lib/python3.8/site-packages/numpy/core/include/
@@ -212,7 +218,7 @@ TASK_MODULE = $(TASK_LIB_DIR)/libtasks.bc
 
 LDLIBS ?=
 ifdef DO_CROSS_COMPILATION
- LDLIBS += -L/dccstor/epochs/aporvaa/.local/riscv_boost_cc/lib
+ LDLIBS += -L$(RISCV_BOOST_DIR)/lib
 else
  LDLIBS += -L$(CONDA_ENV_PATH)/lib
 endif

@@ -2,6 +2,8 @@
 
 if [[ "$1" == "riscv" ]]; then
   fpga_host='192.168.1.99'
+  fpga_host_ip=9.2.212.205
+  fpga_username=aporva
   rm -rf XF_riscv_hpvm
   mkdir -p XF_riscv_hpvm/soc_utils
   sed -i 's/scheduler-library-x86/scheduler-library-hpvm/' soc_utils/setup_paths.sh
@@ -9,6 +11,7 @@ if [[ "$1" == "riscv" ]]; then
   source soc_utils/setup_paths.sh
   sed -i 's/#define X86/#define RISCV/' src/main.c
   sed -i 's/#define ERA2/#define ERA1/' src/main.c
+  sed -i "s/192.168.1.99/$fpga_host/" src/main.c
   make hpvm-epochs -f Makefile
   cp hpvm-test-scheduler-RV-F2VCF-P1V1F0N0 era1
   sed -i 's/#define ERA1/#define ERA2/' src/main.c
@@ -21,19 +24,21 @@ if [[ "$1" == "riscv" ]]; then
   cp src/*.py XF_riscv_hpvm
   cp src/*.sh XF_riscv_hpvm
 
-  sed -i 's/127.0.0.1/192.168.1.99/' XF_riscv_hpvm/read_bag_1.py
-  sed -i 's/127.0.0.1/192.168.1.99/' XF_riscv_hpvm/read_bag_2.py
-  sed -i 's/127.0.0.1/192.168.1.99/' XF_riscv_hpvm/wifi_comm_1.sh
-  sed -i 's/127.0.0.1/192.168.1.99/' XF_riscv_hpvm/wifi_comm_2.sh
-  sed -i 's/127.0.0.1/192.168.1.99/' XF_riscv_hpvm/carla_recvr_1.sh
-  sed -i 's/127.0.0.1/192.168.1.99/' XF_riscv_hpvm/carla_recvr_2.sh
+  sed -i "s/127.0.0.1/$fpga_host/" XF_riscv_hpvm/read_bag_1.py
+  sed -i "s/127.0.0.1/$fpga_host/" XF_riscv_hpvm/read_bag_2.py
+  sed -i "s/127.0.0.1/$fpga_host/" XF_riscv_hpvm/wifi_comm_1.sh
+  sed -i "s/127.0.0.1/$fpga_host/" XF_riscv_hpvm/wifi_comm_2.sh
+  sed -i "s/127.0.0.1/$fpga_host/" XF_riscv_hpvm/carla_recvr_1.sh
+  sed -i "s/127.0.0.1/$fpga_host/" XF_riscv_hpvm/carla_recvr_2.sh
 
   # cp -r data XF_riscv_hpvm/
   cp -r soc_utils/config_files XF_riscv_hpvm/soc_utils/
   cp -r $SOC_LIB_DIR/sched_library/meta_policies XF_riscv_hpvm/
   cp -r $SOC_LIB_DIR/sched_library/task_policies XF_riscv_hpvm/
 
-  # scp -r XF_riscv_hpvm/era* aporva@9.2.212.205:~/XF_riscv_hpvm/
+  # scp -r XF_riscv_hpvm $fpga_username@$fpga_host_ip:~/XF_riscv_hpvm
+  # scp -r data $fpga_username@$fpga_host_ip:~/data
+  
 elif [[ "$1" == "x86" ]]; then
   x86_host='127.0.0.1'
   export PYTHONPATH=/dccstor/epochs/aporvaa/hetero_era/src/cv/yolo
