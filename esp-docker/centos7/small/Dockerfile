@@ -178,7 +178,7 @@ RUN cd scheduler-library-hpvm && ln -sf hw_config_files/build_epochs0.config ./h
 #ERA repo setup and compile for FPGA
 RUN git clone -b hetero-integration https://github.com/IBM/era.git
 # RUN cd era && git checkout f875d16784a7bcdbf7be499af6c24b8a37f688e7
-RUN cd era && git checkout 05094b4
+RUN cd era && git checkout 3ebe6013f314bb037443c17fe90406262bb67ae3
 
 
 RUN cd era && make clean clobber && bash -c "./compile-era.sh riscv"
