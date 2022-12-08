@@ -1,0 +1,11 @@
+--- project-config.jam
++++ project-config.jam
+@@ -9,7 +9,7 @@
+ # file.
+ if ! gcc in [ feature.values <toolset> ]
+ {
+-    using gcc ;
++    using gcc : riscv : riscv64-unknown-linux-gnu-g++ ;
+ }
+
+ project : default-build <toolset>gcc ;

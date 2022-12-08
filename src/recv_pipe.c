@@ -354,7 +354,6 @@ void do_rcv_fft_work(fx_pt1* fft_ar_r, size_t fft_ar_r_sz /*= FRAME_EQ_IN_MAX_SI
 			num_sync_long_vals, num_sync_long_vals_sz,
 			returnValue, returnValue_sz,
 			num_fft_outs_rcv_fft, num_fft_outs_rcv_fft_sz, "wrapper_task");
-	printf("hello");
 	__hetero_task_end(wrapper);
 
 	void* T1 = __hetero_task_begin(1, num_sync_long_vals, num_sync_long_vals_sz, 

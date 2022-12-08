@@ -1,0 +1,282 @@
+;; turn on debugging (comment me out for normal use)
+;;(setq debug-on-error t)
+
+;; do not bug me about saving my abbreviations
+(setq save-abbrevs nil)
+
+;; auto-load LUA mode for .lua files
+(setq auto-mode-alist (cons '("\\.lua$" . lua-mode) auto-mode-alist))
+(autoload 'lua-mode "lua-mode" "Lua editing mode." t)
+; LUA-mode: enable colorization
+(add-hook 'lua-mode-hook 'turn-on-font-lock)
+
+;; Silently ensure newline at end of file
+;; (setq require-final-newline t)
+;; or make Emacs ask about missing newline
+(setq require-final-newline 'ask)
+
+;; Fix emacs backspace/ruboff on remote logins
+(normal-erase-is-backspace-mode 0)
+
+;; Allows to delete TAB as it is, but not by one symbol
+(setq c-backspace-function 'delete-backward-char)
+
+;; Set scrollbar to the right
+;; (set-scroll-bar-mode 'right)
+
+;; remove scrollbar, menubar, toolbar
+(if (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
+(if (fboundp 'tool-bar-mode) (tool-bar-mode -1))
+(if (fboundp 'menu-bar-mode) (menu-bar-mode -1))
+
+;; next-screen-context lines contains the number of lines of continuity
+;; when scrolling a window.
+(setq next-screen-context-lines 10)
+
+;;  highlight the activer region
+(setq transient-mark-mode t)
+
+;; Avoid running silly /usr/share/emacs/site-lisp/default.el file
+;; (that loaded _after_ .emacs with some stupid settinngs)
+(setq inhibit-default-init t)
+
+;; scroll-step is the number of lines to try scrolling a window when
+;; point tries to move outside of a window.  If that fails to bring the
+;; point back onto the screen the point is centered in the window
+;; instead.  If scroll-step is zero, the point is always centered after
+;; it moves outside of a window.
+(setq scroll-step 0)
+
+;;**** Key-binding changes
+(global-set-key "\eg" 'goto-line) ;Alt-g
+(global-set-key "\ep" 'pwd) ;Alt-p
+(global-set-key [(f4)] 'query-replace)
+(global-set-key [(f5)] 'imenu)
+(global-set-key [(f6)] 'speedbar)
+(global-set-key [C-M-down] 'shrink-window) ;Ctrl-Alt-<down-arrow>
+(global-set-key [C-M-up] 'enlarge-window) ;Ctrl-Alt-<up-arrow>
+;(global-set-key "\C-w" 'backward-delete-char)
+;(global-set-key "\C-x\C-k" 'kill-region)
+
+
+;; enable mouse
+(mouse-wheel-mode t)
+(setq mouse-wheel-scroll-amount '(10.1))
+
+;; turn on visual bell (i.e. turns of the beep!)
+;;(setq visible-bell t)
+
+
+;; This code adds some functionality to the centering
+;; code when you hit "control-l" so that the first time
+;; centers the line, the next time puts the line at the top, and
+;; the third time the line is at the bottom of the screen.
+;;
+;; Centering code stolen from somewhere and restolen from
+;; http://www.chrislott.org/geek/emacs/dotemacs.html
+;; centers the screen around a line...
+(global-set-key [(control l)]  'centerer)
+
+(defun centerer ()
+   "Repositions current line: once middle, twice top, thrice bottom"
+   (interactive)
+   (cond ((eq last-command 'centerer2)  ; 3 times pressed = bottom
+	  (recenter -1))
+	 ((eq last-command 'centerer1)  ; 2 times pressed = top
+	  (recenter 0)
+	  (setq this-command 'centerer2))
+	 (t                             ; 1 time pressed = middle
+	  (recenter)
+	  (setq this-command 'centerer1))))
+
+
+;; Opens another buffer with a ascii table in it
+;; when you enter "alt-x ascii-table"
+;; show ascii table
+;; optained from http://www.chrislott.org/geek/emacs/dotemacs.html
+(defun ascii-table ()
+  "Print the ascii table. Based on a defun by Alex Schroeder <asc@bsiag.com>"
+  (interactive)
+  (switch-to-buffer "*ASCII*")
+  (erase-buffer)
+  (insert (format "ASCII characters up to number %d.\n" 254))
+  (let ((i 0))
+    (while (< i 254)
+      (setq i (+ i 1))
+      (insert (format "%4d %c\n" i i))))
+  (beginning-of-buffer))
+
+;; This just adds the date into the code when you
+;; type "alt-x insert-date". It looks like this Sun 2005-08-14 - 8:18 PM.
+;; insert date into buffer at point
+;; optained from http://www.chrislott.org/geek/emacs/dotemacs.html
+(defun insert-date ()
+  "Insert date at point."
+  (interactive)
+  (insert (format-time-string "%a %Y-%m-%d - %l:%M %p")))
+
+;; enable line count, column count
+(setq line-number-mode t)
+(setq column-number-mode t)
+
+
+;; enable select previous window
+(defun select-previous-window ()
+  "Switch to the previous window"
+  (interactive)
+  (other-window -1))
+
+(global-set-key (kbd "C-x p")  'select-previous-window)
+
+;disable backup
+(setq backup-inhibited t)
+;disable auto save
+(setq auto-save-default nil)
+
+;; ;Linux kernel CodingStyle                                                                               
+(add-hook 'c-mode-hook
+          (lambda ()
+            (let ((filename (buffer-file-name)))
+              ;; Enable kernel mode for the appropriate files
+              (when (and filename
+                         (string-match ".*" filename))
+                (setq indent-tabs-mode t)
+                (c-set-style "linux")
+                (c-set-offset 'arglist-cont-nonempty
+                              '(c-lineup-gcc-asm-reg
+                                c-lineup-arglist-tabs-only))))))
+(setq c-default-style "linux")
+
+; style I want to use in c++ mode                                                                       
+(c-add-style "elegant"
+	     '("stroustrup"
+               (indent-tabs-mode . nil)        ; use spaces rather than tabs
+               (c-basic-offset . 4)            ; indent by four spaces
+               (c-offsets-alist . ((inline-open . 0)  ; custom indentation rules
+                                   (brace-list-open . 0)
+                                   (statement-case-open . +)))))
+(defun my-c++-mode-hook ()
+  (c-set-style "elegant")        ; use my-style defined above
+  (set-fill-column 80)
+  (auto-fill-mode))
+(add-hook 'c++-mode-hook 'my-c++-mode-hook)
+
+;; trailing whitespace
+;; (setq-default show-trailing-whitespace t)
+
+;; Org-Mode Configuration
+;; The following lines are always needed.  Choose your own keys.
+     (add-to-list 'auto-mode-alist '("\\.org\\'" . org-mode))
+     (global-set-key "\C-cl" 'org-store-link)
+     (global-set-key "\C-ca" 'org-agenda)
+     (global-set-key "\C-cb" 'org-iswitchb)
+     (global-font-lock-mode 1) ; for all buffers
+;add a timestamp when a task is marked DONE
+(setq org-log-done 'time)
+
+;org-mode agenda
+(setq org-agenda-files (list "~/org/"))
+
+;; tell org to use listings
+(setq org-export-latex-listings t)
+
+;; enable this if using org-mode
+;; (require 'org-export-latex)
+
+(setq user-mail-address "davide_giri@cs.columbia.edu")
+
+(global-set-key [f7]  'start-kbd-macro)
+(global-set-key [f8]  'end-kbd-macro)
+(global-set-key [f9]  'call-last-kbd-macro)
+(put 'upcase-region 'disabled nil)
+(put 'downcase-region 'disabled nil)
+
+;;; auto complete mod
+;;; should be loaded after yasnippet so that they can work together
+;(require 'auto-complete-config)
+;(add-to-list 'ac-dictionary-directories "~/.emacs.d/ac-dict")
+;(ac-config-default)
+;;; set the trigger key so that it can work together with yasnippet on tab key,
+;;; if the word exists in yasnippet, pressing tab will cause yasnippet to
+;;; activate, otherwise, auto-complete will
+;(ac-set-trigger-key "TAB")
+;(ac-set-trigger-key "<tab>")
+
+;; Useful shortcuts
+(global-set-key (kbd "C-c q") 'query-replace)
+(global-set-key (kbd "C-c s") 'replace-string)
+(global-set-key (kbd "C-c [") 'comment-region)
+(global-set-key (kbd "C-c ]") 'uncomment-region)
+(global-set-key (kbd "C-c f") 'fill-region)
+(global-set-key (kbd "C-c <up>") 'windmove-up)
+(global-set-key (kbd "C-c <down>") 'windmove-down)
+(global-set-key (kbd "C-c <left>") 'windmove-left)
+(global-set-key (kbd "C-c <right>") 'windmove-right)
+
+;; Enable flyspell and fill mode with Latex files
+(add-hook 'tex-mode-hook
+	  (lambda ()
+	    (set-fill-column 80)))
+(add-hook 'tex-mode-hook 'auto-fill-mode)
+(add-hook 'tex-mode-hook 'flyspell-mode)
+(add-hook 'tex-mode-hook 'flyspell-buffer)
+
+(add-hook 'python-mode-hook
+	  (lambda ()
+	    (setq tab-width 4)))
+
+;; mouse wheel and keyboard scroll 2 lines at a time
+
+(setq mouse-wheel-scroll-amount '(1 ((shift) . 2))) ;; one line at a time
+(setq mouse-wheel-progressive-speed nil) ;; don't accelerate scrolling
+(setq mouse-wheel-follow-mouse 't) ;; scroll window under mouse
+(setq scroll-step 2) ;; keyboard scroll one line at a time
+
+;; vhdl align region
+(global-set-key (kbd "C-c a") 'vhdl-align-region)
+
+;; move around windows with SHIFT+arrows
+(windmove-default-keybindings)
+
+;; the package manager
+(require 'package)
+(setq
+ package-archives '(("gnu" . "http://elpa.gnu.org/packages/")
+                    ("org" . "http://orgmode.org/elpa/")
+                    ("melpa" . "http://melpa.org/packages/")
+                    ("melpa-stable" . "http://stable.melpa.org/packages/"))
+ package-archive-priorities '(("melpa-stable" . 1)))
+
+(package-initialize)
+(when (not package-archive-contents)
+  (package-refresh-contents)
+  (package-install 'use-package))
+(require 'use-package)
+
+(use-package scala-mode
+:interpreter
+("scala" . scala-mode))
+
+;;; colors                                                                                                                                                                                                         
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(font-latex-sectioning-1-face ((t (:foreground "RoyalBlue"))))
+ '(font-latex-sectioning-2-face ((t (:foreground "RoyalBlue"))))
+ '(font-latex-sectioning-3-face ((t (:foreground "RoyalBlue"))))
+ '(font-latex-sectioning-4-face ((t (:foreground "RoyalBlue"))))
+ '(font-latex-sectioning-5-face ((t (:foreground "RoyalBlue"))))
+ '(font-latex-sedate-face ((t (:foreground "SlateGray"))))
+ '(font-lock-function-name-face ((t (:foreground "DeepSkyBlue"))))
+ '(font-lock-keyword-face ((t (:foreground "SlateGray")))))
+
+;; turn on highlight matching brackets when cursor is on one
+(show-paren-mode 1)
+
+;;; enable bash ansi coloring
+(require 'ansi-color)
+(defun display-ansi-colors ()
+  (interactive)
+  (ansi-color-apply-on-region (point-min) (point-max)))
