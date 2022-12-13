@@ -3,8 +3,7 @@ FROM centos:7
 WORKDIR /home
 
 # Add repo for cmake3
-RUN yum install -y epel-release && \
-    rpm -ivh http://repo.okay.com.mx/centos/7/x86_64/release/okay-release-1-3.el7.noarch.rpm?
+RUN yum install -y epel-release centos-release-scl
 # install python, perl,  CAD tools and software toolchain dependencies, miscellaneous
 RUN yum install -y python python-pip python-devel python3 python3-pip python3-devel python3-tkinter \
     perl perl-Env perl-YAML perl-XML-Simple perl-ExtUtils-MakeMaker \
@@ -22,19 +21,21 @@ RUN yum install -y python python-pip python-devel python3 python3-pip python3-de
     libopencl-devel boost-devel ninja-build gcc-c++ libmpc-devel mpfr-devel \
     gmp-devel pygame autoconf automake openssl-devel libtool --nogpgcheck
 
+RUN wget http://ftp.gnu.org/gnu/make/make-4.2.1.tar.gz && \
+    tar xvzf make-4.2.1.tar.gz && \
+    cd make-4.2.1 && ./configure && bash build.sh && ./make install
 RUN ln -s /lib64/libtiff.so.5 /lib64/libtiff.so.3 && \
-    ln -s /usr/lib64/libmpc.so.3 /usr/lib64/libmpc.so.2 && \
-    #ln -s /usr/bin/cmake3 /usr/bin/cmake && \
-    # enable X11 forwardingOA
+    ln -s /usr/lib64/libmpc.so.3 /usr/lib64/libmpc.so.2  && \
+    ln -sf /usr/local/bin/make /usr/bin/gmake && \ 
+    # enable X11 forwarding
     sed -i 's/#   ForwardX11 no/ForwardX11 yes/g' /etc/ssh/ssh_config
 
 RUN wget https://cmake.org/files/v3.18/cmake-3.18.0-rc1.tar.gz && tar xvzf cmake-3.18.0-rc1.tar.gz && cd cmake-3.18.0-rc1 && ./bootstrap && make && make install 
 
 # Install Z3 Library needed by LLVM
-#TODO: Convert to gcc 8.3.1
-RUN wget http://mirrors.concertpass.com/gcc/releases/gcc-5.1.0/gcc-5.1.0.tar.gz && \
-    tar xvf gcc-5.1.0.tar.gz && cd gcc-5.1.0 &&  \
-    ./configure --disable-multilib --enable-languages=c,c++ && make -j4 && \
+RUN wget http://ftp.mirrorservice.org/sites/sourceware.org/pub/gcc/releases/gcc-7.3.0/gcc-7.3.0.tar.gz && \
+    tar zxf gcc-7.3.0.tar.gz && cd gcc-7.3.0 && ./contrib/download_prerequisites && \
+    ./configure --disable-multilib --enable-languages=c,c++ && make -j8 && \
     make install && cd .. && git clone https://github.com/Z3Prover/z3.git && cd z3 && \
     git checkout tags/z3-4.7.1 && python scripts/mk_make.py && cd build \
     && make -j4 && make install 
@@ -56,7 +57,7 @@ RUN echo "export LD_LIBRARY_PATH=/usr/local/lib64/:/usr/local/lib/" >> /home/esp
 ENV LD_LIBRARY_PATH="/usr/local/lib64/:/usr/local/lib/"
 ENV PATH /home/espuser/miniconda3/bin:$PATH
 
-RUN git config --global url."https://github.com/".insteadOf git://github.com/
+RUN git config --global url."https://github.com/".insteadOf git://github.com/ && git config --global url."https://gitlab.com/qemu-project/".insteadOf https://git.qemu.org/git/
 
 # clone ESP repository and install software toolchains
 RUN git clone https://github.com/sld-columbia/esp.git && cd esp && \
@@ -69,7 +70,7 @@ RUN git clone https://github.com/sld-columbia/esp.git && cd esp && \
     cd /home/espuser/esp/accelerators/third-party/NV_NVDLA && \
     rm -rf ip/verif sw/prebuilt sw/regression && \
     cd /home/espuser/esp && \
-    (echo y; echo /home/espuser/riscv; echo 4; echo n; echo n; echo n) | bash utils/toolchain/build_riscv_toolchain.sh && rm -rf /tmp/_riscv_build 
+    (echo y; echo /home/espuser/riscv; echo 4; echo y; echo n; echo n) | bash utils/toolchain/build_riscv_toolchain.sh && rm -rf /tmp/_riscv_build 
 #(echo y; echo /home/espuser/riscv32imc; echo 4; echo n) | bash utils/toolchain/build_riscv32imc_toolchain.sh && rm -rf /tmp/_riscv32imc_build
 
 # HPVM repo setup, install and compile
@@ -93,7 +94,7 @@ RUN conda init bash && . ~/.bashrc && conda activate hpvm && conda install -c co
 RUN conda init bash && . ~/.bashrc && conda activate hpvm && conda install -c conda-forge \
       PyYAML=5.4.1 \
       scikit-learn=0.21 \
-      scipy=1.3
+      scipy=1.7.3
 RUN conda init bash && . ~/.bashrc && conda activate hpvm && conda install -c conda-forge \
       tabulate=0.8 \
       tqdm=4.33 \
