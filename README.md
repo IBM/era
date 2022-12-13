@@ -33,23 +33,56 @@ Other required packakes (mostly used by the computer vision code):
  - Matplotlib
  - Lightnet
 
-
-## Installation and Build
+## Native Installation and Build
 
 Installation is a simple matter of cloning the repository, and then compiling the code using `cmake`:
 
 ```
-git clone https://github.com/IBM/era.git
+git clone -b hetero-integration https://github.com/IBM/era.git
 cd era
-git checkout standalone_era
-mkdir build
-cd build
-cmake ..
-make -j
+```
+Set paths in `soc_utils/setup_paths.sh`:
+
+```
+export FPGA_HOST='192.168.1.99'
+export FPGA_HOST_IP=9.2.212.205
+export FPGA_USERNAME=aporva
+
+export HPVM_DIR=/home/espuser/hpvm-release/hpvm
+export RISCV_BIN_DIR=/home/espuser/riscv/bin
+export ESP_ROOT=/home/espuser/esp
+export CONDA_ENV_PATH=/home/espuser/.local/conda/envs/era38
+export SOC_LIB_DIR=/home/espuser/scheduler-library-hpvm/
+export SCHED_CONFIG=soc_utils/config_files/base_me_p3.config 
 ```
 
+Run:
+```
+source soc_utils/setup_paths.sh
+make clean clobber
+./compile-era.sh <x86/riscv>
+```
 
-### cmake Targets
+## Docker build and installation for RISCV FPGA
+
+```
+git clone -b hetero-integration https://github.com/IBM/era.git
+cd esp-docker/centos7
+```
+Set the following FPGA variables in `esp-docker/centos7/small/setup_paths.patch`
+```
+export FPGA_HOST=
+export FPGA_HOST_IP=
+export FPGA_USERNAME=
+```
+
+Docker build and run commands:
+```
+docker build -f small/Dockerfile -t demo:v0 ./
+docker run -uespuser --rm -it demo:v0 /bin/bash 
+```
+
+### Targets
 
 At this point, you should have generated two executables file named `era1` and `era2` which are the main ERA executables for this Standalone-ERA version. There are two executables because one is generated for each of the vehicles in the simulation. The bagfile contains data currently for two cars, so we generate the two ERA executables:
  - `era1` : the `hero1` executable, that reads and reacts to the hero1 bagfile contents.
@@ -57,9 +90,7 @@ At this point, you should have generated two executables file named `era1` and `
 
 The bag file can be downloaded at: <a href="https://ibm.ent.box.com/file/808321861497">https://ibm.ent.box.com/file/808321861497</a>
 
-There are an additional two executables named `do_xmit_pipe` and `do_recv_pipe` which are standalone versions of the transmit and receive pipelines used in the ERA executables. These are useful programs for further development and testing of the specific transmit (xmit) or receive (recv) pipeline implementations.
-
-
+<!--- 
 ### cmake Options
 
 There are a number of options included in `CMakeLists.txt`, largely in the form of C MACRO definitions. Some useful ones include:
@@ -71,9 +102,9 @@ There are a number of options included in `CMakeLists.txt`, largely in the form 
  - `target_compile_definitions(era2 PRIVATE IMAGE_FN="gridimage_era1_")` which gives the base name for the gridmap PPM files.
 
 Generally, running with `DEBUG_MODE` puts out **a lot** of information, and lenghtens the run-tmie considerably. The map generation options provide a couple of means to visualize the map fusion process. These results are written to a number of files, one per time-step, which does only affects the run-time slightly.
+--->
 
-
-## Execution
+## Execution 
 
 Standalone-ERA execution requires eight simultaneous processes:
  - one process to read the input bagfile for car 1 (`read_bag_1.py`).
@@ -85,10 +116,11 @@ Standalone-ERA execution requires eight simultaneous processes:
  - one process to run the ERA workload for car 1 (`era1`).
  - one process to run the ERA workload for car 2 (`era2`).
 
+## Execution on x86 machine
 We provide the following Python script that launches ERA by simultaneously running the eight processes mentioned above:
 
 ```
-cd era
+cd era/XF_x86_hpvm
 ./launch_era.py [n_steps > 0]
 ```
 
@@ -96,6 +128,38 @@ cd era
 
 The script generates eight output files, corresponding to the eight executed processes, with names: `read_bag_1.out`, `read_bag_2.out`, `wifi_comm_1.out`, `wifi_comm_2.out`, `carla_recvr_1.out`, `carla_recvr_2.out`, `era_1.out`, and `era_2.out`.
 
+At this point, you will have invoked the Standalone-ERA program for the two cars and driven it with your bagfile.  
+
+## Execution on FPGA machine
+ In the docker container run the following to copy build files to the FPGA host:
+ ```
+ scp -r XF_riscv_hpvm $fpga_username@$fpga_host_ip:~/XF_riscv_hpvm
+ scp -r data $fpga_username@$fpga_host_ip:~/data
+ ```
+ 
+ On the FPGA host:
+ - Copy the `XF_riscv_hpvm` to the two FPGAs
+ - On the host:
+ ```
+ cd XF_riscv_hpvm
+ python read_bag_1.py ../data/2020-09-10-14-43-09.bag &
+ python read_bag_2.py ../data/2020-09-10-14-43-09.bag &
+ ./wifi_comm_1.sh &
+ ./wifi_comm_2.sh &
+ ./carla_recvr_1.sh &
+ ./carla_recvr_2.sh &
+ ```
+ - On FPGA1:
+ ```
+ cd XF_riscv_hpvm
+ ./era1
+ ```
+ - On FPGA2:
+ ```
+  cd XF_riscv_hpvm
+ ./era2
+ ```
+ 
 The underlying functionality of the eight processes is as follows:
 
 ### `read_bag_X.py`
@@ -116,7 +180,7 @@ and cooperative intelligence aspects) and return the resulting learned data (in 
 ### `eraX`
 The ERA programs are the target workload, compiled from the underlying C source code, and represent the ERA functionality added to an underlying vehicle. The two programs (`era1` and `era2`) are identical, but for some compile-time assignments of TCP ports (for the sockets) and such. In practice, each program will, however, be driven by different content from within the bagfiles, and thus the execution profiles can vary according to the environment, actions, etc. of the cars as described in their bagfiles.
 
-
+<!---
 ### Alternative Execution Approach
 
 Alternatively (i.e. not relying on the `launch_era.py` script), it is possible to invoke/execute ERA by setting up **eight terminal windows**, and invoking the related processes in each window. It is recommended to start the bagfiles and WiFi interconnect (socket server) processes before invocation of either the `era1` or `era2` program. A possible environment for this is illustrated below.
@@ -181,12 +245,11 @@ cd era/build
 cd era/build
 ./era2
 ```
-
-At this point, you will have invoked the Standalone-ERA program for the two cars and driven it with your bagfile.  
+--->
 
 
 ## Contacts and Current Maintainers
-
+ - Aporva Amarnath (aporva.amarnath@ibm.com)
  - J-D Wellman (wellman@us.ibm.com)
  - Augusto Vega (ajvega@us.ibm.com)
  
