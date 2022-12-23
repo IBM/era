@@ -70,7 +70,7 @@ RUN git clone https://github.com/sld-columbia/esp.git && cd esp && \
     cd /home/espuser/esp/accelerators/third-party/NV_NVDLA && \
     rm -rf ip/verif sw/prebuilt sw/regression && \
     cd /home/espuser/esp && \
-    (echo y; echo /home/espuser/riscv; echo 4; echo y; echo n; echo n) | bash utils/toolchain/build_riscv_toolchain.sh && rm -rf /tmp/_riscv_build 
+    (echo y; echo /home/espuser/riscv; echo 4; echo n; echo n; echo n) | bash utils/toolchain/build_riscv_toolchain.sh && rm -rf /tmp/_riscv_build 
 #(echo y; echo /home/espuser/riscv32imc; echo 4; echo n) | bash utils/toolchain/build_riscv32imc_toolchain.sh && rm -rf /tmp/_riscv32imc_build
 
 # HPVM repo setup, install and compile
