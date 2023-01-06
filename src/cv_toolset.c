@@ -379,3 +379,8 @@ detection_t * run_object_classification(unsigned char * data, dim_t dimensions, 
 
 #endif
 #endif // CV_PIPELINE
+
+#ifdef TRIAL_CV
+void run_object_classification(size_t cv_size, unsigned tr_val, label_t * out_label, size_t outlabel_sz) {
+}
+#endif

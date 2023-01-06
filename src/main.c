@@ -12,7 +12,7 @@
 #include <unistd.h>
 
 #define HPVM
-// #define HPVM_CV_ROOT
+#define HPVM_CV_ROOT
 #define HPVM_PROCESS_LIDAR
 #define HPVM_PROCESS_LIDAR_INTERNAL
 #define HPVM_RECV_PIPELINE
@@ -45,7 +45,7 @@
 
 #define PARALLEL_PTHREADS false
 
-#define X86
+#define RISCV
 #define ERA1
 
 #ifdef ERA1
@@ -1819,18 +1819,21 @@ void lidar_root(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /*=sizeof( * li
 #endif
 }
 
-#ifdef CV_PIPELINE
+#ifdef TRIAL_CV
 #ifdef USE_OLD_MODEL
 
-void cv_root(unsigned tr_val, label_t * out_label, size_t outlabel_sz) {
+void cv_root(size_t cv_size, unsigned tr_val, label_t * out_label, size_t outlabel_sz) {
 #if (defined(HPVM) && defined(HPVM_CV_ROOT))
 	void * Section = __hetero_section_begin();
-	void * T1 = __hetero_task_begin(2, tr_val, out_label, outlabel_sz, 1, out_label, outlabel_sz, "cv_root_task");
+	void * T1 = __hetero_task_begin(3, cv_size, tr_val, out_label, outlabel_sz, 1, out_label, outlabel_sz, "cv_root_task");
+     	__hpvm__hint(DEVICE);
+    	__hpvm__task(CV_TASK, run_object_classification);
 #ifdef GPU
 	__hpvm__hint(GPU_TARGET);
 #endif
 #endif
-	* out_label = run_object_classification(tr_val);
+	//* out_label = run_object_classification(tr_val);
+	run_object_classification(cv_size, tr_val, out_label, outlabel_sz);
 
 #if (defined(HPVM) && defined(HPVM_CV_ROOT))
 	__hetero_task_end(T1);
@@ -1838,16 +1841,16 @@ void cv_root(unsigned tr_val, label_t * out_label, size_t outlabel_sz) {
 #endif
 }
 
-void cv_root_wrapper(unsigned tr_val, label_t * out_label, size_t outlabel_sz) {
+void cv_root_wrapper(size_t cv_size, unsigned tr_val, label_t * out_label, size_t outlabel_sz) {
 #if (defined(HPVM) && defined(HPVM_CV_ROOT)) && true
 	void * Section = __hetero_section_begin();
-	void * T1 = __hetero_task_begin(2, tr_val, out_label, outlabel_sz, 1, out_label, outlabel_sz, "cv_root_wrapper_task");
+	void * T1 = __hetero_task_begin(3, cv_size, tr_val, out_label, outlabel_sz, 1, out_label, outlabel_sz, "cv_root_wrapper_task");
 #ifdef GPU
 	__hpvm__hint(GPU_TARGET);
 #endif
 #endif
 
-	cv_root(tr_val, out_label, outlabel_sz);
+	cv_root(cv_size, tr_val, out_label, outlabel_sz);
 
 #if (defined(HPVM) && defined(HPVM_CV_ROOT)) && true
 	__hetero_task_end(T1);
@@ -2435,7 +2438,7 @@ int main(int argc, char * argv[]) {
 		/*     simulator (e.g. CARLA).                                         */
 		/***********************************************************************/
 
-#ifdef CV_PIPELINE
+#ifdef TRIAL_CV 
 #ifdef USE_OLD_MODEL
 
 #ifdef INT_TIME
@@ -2445,12 +2448,13 @@ int main(int argc, char * argv[]) {
 		// HPVM task
 		label_t out_label;
 		unsigned tr_val = 1;  // TODO: What is the parameter 'tr_val' passed to  run_object_classification()?
+		size_t cv_size = sizeof(label_t);
 #if (defined(HPVM) && defined(HPVM_CV_ROOT))
-		void * dfg = __hetero_launch((void *) cv_root_wrapper, 2, tr_val, &out_label, sizeof(out_label),
+		void * dfg = __hetero_launch((void *) cv_root_wrapper, 3, cv_size, tr_val, &out_label, sizeof(out_label),
 			1, &out_label, sizeof(out_label));
 		__hetero_wait(dfg);
 #else
-		cv_root(tr_val, &out_label, sizeof(label_t));
+		cv_root(cv_size, tr_val, &out_label, sizeof(label_t));
 #endif
 		cv_count++;
 #ifdef INT_TIME

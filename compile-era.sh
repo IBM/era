@@ -14,10 +14,10 @@ if [[ "$1" == "riscv" ]]; then
   sed -i 's/#define ERA2/#define ERA1/' src/main.c
   sed -i "s/192.168.1.99/$fpga_host/" src/main.c
   make hpvm-epochs -f Makefile
-  cp hpvm-test-scheduler-RV-F2VCF-P1V1F0N0 era1
+  cp hpvm-test-scheduler-RV-F2VCHo-P1V1F0N1 era1
   sed -i 's/#define ERA1/#define ERA2/' src/main.c
   make hpvm-epochs -f Makefile
-  cp hpvm-test-scheduler-RV-F2VCF-P1V1F0N0 era2
+  cp hpvm-test-scheduler-RV-F2VCHo-P1V1F0N1 era2
   sed -i 's/#define ERA2/#define ERA1/' src/main.c
 
   cp era1 era2 XF_riscv_hpvm

@@ -18,6 +18,8 @@
 #ifndef _CV_TOOLSET_H
 #define _CV_TOOLSET_H
 
+#define TRIAL_CV
+#define USE_OLD_MODEL
 #include "globals.h"
 
 #ifdef CV_PIPELINE
@@ -65,5 +67,23 @@ detection_t *run_object_classification(unsigned char *data, dim_t dimensions,
 
 #endif
 #endif // CV_PIPELINE
+
+#ifdef TRIAL_CV
+
+/* Pre-defined labels used by the computer vision kernel */
+typedef enum {
+  myself = -1,
+  no_label = 0,
+  bicycle,  /* bus */
+  car,
+  pedestrian,
+  truck,
+  num_object_labels
+} label_t;
+
+status_t cv_toolset_init();
+void run_object_classification(size_t cv_size, unsigned tr_val, label_t * out_label, size_t out_label_size);
+
+#endif
 
 #endif
