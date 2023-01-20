@@ -22,8 +22,9 @@ if [[ "$1" == "riscv" ]]; then
 
   cp era1 era2 XF_riscv_hpvm
   cp graph*.xml XF_riscv_hpvm/
-  cp src/*.py XF_riscv_hpvm
-  cp src/*.sh XF_riscv_hpvm
+  cp src/*.py XF_riscv_hpvm/
+  cp src/*.sh XF_riscv_hpvm/
+  cp hpvm-mod.nvdla XF_riscv_hpvm/
 
   sed -i "s/127.0.0.1/$fpga_host/" XF_riscv_hpvm/read_bag_1.py
   sed -i "s/127.0.0.1/$fpga_host/" XF_riscv_hpvm/read_bag_2.py
