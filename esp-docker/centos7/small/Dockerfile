@@ -177,13 +177,23 @@ RUN cd scheduler-library-hpvm && ln -sf hw_config_files/build_epochs0.config ./h
 
 #ERA repo setup and compile for FPGA
 RUN git clone -b hetero-integration https://github.com/IBM/era.git
-RUN cd era && git checkout 77d661d
+RUN cd era && git pull origin hetero-integration && git checkout 2e2290c
 
 COPY small/setup_paths.patch /home/espuser/era/
 
 RUN cd era && patch -p0 -l < setup_paths.patch && make clean clobber && bash -c "./compile-era.sh riscv"
 
+RUN cp /home/espuser/era/predict.py /home/espuser/hpvm-release/hpvm/test/epoch_dnn
+
 USER root
+
+RUN cd /usr/lib && ln -s /home/espuser/miniconda3/lib/libpython3.7m.so libpython3.7m.so && \
+    ln -s /home/espuser/miniconda3/lib/libpython3.7m.so.1 libpython3.7m.so.1 && \
+    ln -s /home/espuser/miniconda3/lib/libpython3.7m.so.1.0 libpython3.7m.so.1.0 && \
+    ln -sf /home/espuser/miniconda3/envs/hpvm/lib/libstdc++.so.6 libstdc++.so.6 && \
+    ln -sf /home/espuser/miniconda3/envs/hpvm/lib/libstdc++.so.6.0.30 libstdc++.so.30 && \
+    cd /usr/local/lib64 && ln -sf /home/espuser/miniconda3/envs/hpvm/lib/libstdc++.so.6 libstdc++.so.6 && \
+    ln -sf /home/espuser/miniconda3/envs/hpvm/lib/libstdc++.so.6.0.30 libstdc++.so.30
 
 # enable X11 forwarding
 RUN sed -i 's/#   ForwardX11 no/ForwardX11 yes/g' /etc/ssh/ssh_config
