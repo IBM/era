@@ -177,7 +177,7 @@ RUN cd scheduler-library-hpvm && ln -sf hw_config_files/build_epochs0.config ./h
 
 #ERA repo setup and compile for FPGA
 RUN git clone -b hetero-integration https://github.com/IBM/era.git
-RUN cd era && git pull origin hetero-integration && git checkout 2e2290c
+RUN cd era && git pull origin hetero-integration && git checkout a168cac
 
 COPY small/setup_paths.patch /home/espuser/era/
 
