@@ -1940,6 +1940,15 @@ int main(int argc, char * argv[]) {
 	recv_pipe_init();
 	printf("Initializing the Computer Vision toolset...\n");
 
+#ifdef TRIAL_CV
+#ifdef ENABLE_NVDLA
+  	// Initialize NVDLA
+  	printf("Initialize NVDLA\n");
+  	initNVDLA();
+#endif
+#endif
+
+
 #ifdef CV_PIPELINE
 #ifdef USE_OLD_MODEL
 	if (cv_toolset_init() != success) {
