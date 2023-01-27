@@ -75,7 +75,9 @@ RUN git clone https://github.com/sld-columbia/esp.git && cd esp && \
 
 # HPVM repo setup, install and compile
 RUN conda config --set channel_priority strict
-RUN git clone -b hpvm-release-epochs --single-branch https://gitlab.engr.illinois.edu/llvm/hpvm-release.git
+RUN git clone -b hpvm-release-epochs --single-branch https://gitlab.engr.illinois.edu/llvm/hpvm-release.git hpvm-release
+RUN cd hpvm-release/hpvm && git checkout c71f67fa64b4265573560495d46ad9bd2fa16a21
+
 RUN cd hpvm-release/hpvm && conda init bash && . ~/.bashrc && conda create --name hpvm python=3.7 
 RUN conda init bash && . ~/.bashrc && conda activate hpvm && conda install -c conda-forge \
       Cython=0.29.30
@@ -113,9 +115,6 @@ RUN conda init bash && . ~/.bashrc && conda activate hpvm && pip install \
       pytorch-lightning==1.3 \
       imgaug==0.4.0
 RUN conda init bash && . ~/.bashrc && conda activate hpvm && pip install lightnet==2.0.1 torchmetrics==0.6.0
-RUN rm -rf hpvm-release
-RUN git clone -b hpvm-release-epochs --single-branch https://gitlab.engr.illinois.edu/llvm/hpvm-release.git hpvm-release
-RUN cd hpvm-release/hpvm && git checkout c71f67fa64b4265573560495d46ad9bd2fa16a21
 
 USER root
 # Install gcc > 8.0.0
