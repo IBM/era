@@ -62,6 +62,6 @@ build/*
 *.bag
 weights.ckpt
 **/__pycache__
-**.weights
+# **.weights
 cv_output/*.png
 
