@@ -54,7 +54,7 @@ Set up the `PYTHONPATH` environment variable to point to the TinyYoloV2/Lightnet
 export PYTHONPATH=<your_era_dir>/src/cv/yolo. 
 ```
 
-Download the ATR and COCO dataset sample weight files for the TinyYoloV2 model from <a href="https://ibm.box.com/v/era-weight-files">here</a> into `<your_era_dir>/src/cv/yolo`. At runtime, the TinyYoloV2 model will look for a weight file called `<your_era_dir>/src/cv/yolo/model.weights`, so create a soft link accordingly:
+Download the ATR and COCO dataset sample weight files for the TinyYoloV2 model from <a href="https://ibm.box.com/s/nha5xih7atsdts9y15t0qwbqlzqv1mln">here</a> into `<your_era_dir>/src/cv/yolo`. At runtime, the TinyYoloV2 model will look for a weight file called `<your_era_dir>/src/cv/yolo/model.weights`, so create a soft link accordingly:
 
 ```
 cd src/cv/yolo/
@@ -70,7 +70,7 @@ At this point, you should have generated two executables file named `era1` and `
  - `era1` : the `hero1` executable, that reads and reacts to the hero1 bagfile contents.
  - `era2` : the `hero2` executable, that reads and reacts to the hero2 bagfile contents.
 
-The bag file can be downloaded at: <a href="https://ibm.ent.box.com/file/808321861497">https://ibm.ent.box.com/file/808321861497</a>
+The bag file can be downloaded from <a href="https://ibm.box.com/s/nubjzvc7arih5wg74nlfjtczv3vimqv8">here</a>.
 
 There are an additional two executables named `do_xmit_pipe` and `do_recv_pipe` which are standalone versions of the transmit and receive pipelines used in the ERA executables. These are useful programs for further development and testing of the specific transmit (xmit) or receive (recv) pipeline implementations.
 
