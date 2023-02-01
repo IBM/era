@@ -8,7 +8,7 @@ developed through application of the full suite of EPOCHS domain-specific SoC to
 This version of Standalone-ERA runs as a standalone program, not requiring a separate autonomous vehicle
 simulation infrastructure in order to drive the Standalone-ERA program.  This version is driven by a
 "trace" input (taken from a simulator run) that provides the necessary ERA inputs. These inputs are
-packaged in a "bagfile" and some example bagfiles are available <a href="https://ibm.ent.box.com/file/808321861497">here</a>.
+packaged in a "bagfile" and some example bagfiles are available <a href="https://ibm.box.com/s/nubjzvc7arih5wg74nlfjtczv3vimqv8">here</a>.
 
 
 ## System Requirements
