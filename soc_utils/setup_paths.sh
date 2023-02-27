@@ -7,7 +7,7 @@ export FPGA_USERNAME=aporva
 export HPVM_DIR=/home/espuser/hpvm-release/hpvm
 export RISCV_BIN_DIR=/home/espuser/riscv/bin
 export ESP_ROOT=/home/espuser/esp
-export CONDA_ENV_PATH=/home/espuser/.local/conda/envs/era38
+export CONDA_ENV_PATH=/home/espuser/miniconda3/envs/era38
 export SOC_LIB_DIR=/home/espuser/scheduler-library-hpvm/
 export SCHED_CONFIG=soc_utils/config_files/base_me_p3.config 
 
