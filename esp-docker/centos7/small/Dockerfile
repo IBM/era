@@ -176,13 +176,14 @@ RUN cd scheduler-library-hpvm && ln -sf hw_config_files/build_epochs0.config ./h
 
 #ERA repo setup and compile for FPGA
 RUN git clone -b hetero-integration https://github.com/IBM/era.git
-RUN cd era && git pull origin hetero-integration && git checkout db503dd
+RUN cd era && git pull origin hetero-integration && git checkout dc50692
 
 COPY small/setup_paths.patch /home/espuser/era/
 
 RUN cd era && patch -p0 -l < setup_paths.patch && make clean clobber && bash -c "./compile-era.sh riscv"
 
 RUN cp /home/espuser/era/predict.py /home/espuser/hpvm-release/hpvm/test/epoch_dnn
+RUN cp /home/espuser/era/yolo.py /home/espuser/hpvm-release/hpvm/test/epoch_dnn
 
 USER root
 
