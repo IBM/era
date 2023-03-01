@@ -77,12 +77,12 @@ def process_and_save(model, detections, img_rgb, img_path):
 def postprocessing(model, predictions):
     return ln.data.transform.Compose([
         ln.data.transform.GetDarknetBoxes(
-            conf_thresh=0.5,
+            conf_thresh=0.4,
             network_stride=model.stride,
             anchors=model.anchors
         ),
         ln.data.transform.NMS(
-            nms_thresh=0.5
+            nms_thresh=0.4
         ),
         ln.data.transform.TensorToBrambox(
             class_label_map=CLASSES,
