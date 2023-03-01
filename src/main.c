@@ -353,7 +353,7 @@ void decompress(unsigned char * uncmp_data, size_t uncmp_data_sz,
 		remote_map -> x_dim, remote_map -> y_dim); print_ascii_costmap(stdout, remote_map));
 
 	// Get the current local-map
-	printf("Receive step %u : Processing fusion for curr_obs = %d\n", recv_count, curr_obs);
+	DEBUG(printf("Receive step %u : Processing fusion for curr_obs = %d\n", recv_count, curr_obs));
 	Costmap2D * local_map = &(observations[curr_obs].master_costmap);
 
 #ifdef WRITE_ASCII_MAP
@@ -934,7 +934,7 @@ void * receive_and_fuse_maps_impl(Observation * observations /*=observations -> 
 
         		unsigned num_fft_outs_rcv_fft = 0; size_t num_fft_outs_rcv_fft_sz = sizeof(unsigned);
 
-			printf("%s %d Calling fuse_maps", __FILE__, __LINE__);
+			DEBUG(printf("%s %d Calling fuse_maps", __FILE__, __LINE__));
 
 #if (defined(HPVM) && defined(HPVM_RECV_PIPELINE)) && true
 			// 42 inputs, 7 outputs
@@ -1038,7 +1038,7 @@ void * receive_and_fuse_maps_impl(Observation * observations /*=observations -> 
 				outMemory, outMemory_sz,
 				&d_ntraceback, d_ntraceback_arg_sz);
 #endif
-			printf("%s %d Out of fuse_maps", __FILE__, __LINE__);
+			DEBUG(printf("%s %d Out of fuse_maps", __FILE__, __LINE__));
 
 			// This is now the fused map that should be sent to the AV(Car)
 			//  The n values of the (fused) local_map Costmap
@@ -1379,7 +1379,7 @@ void process_lidar_to_occgrid(lidar_inputs_t * lidar_inputs, size_t lidarin_sz /
 		"compressMap_Task");
 #endif
 
-	printf("%s %d In T2", __FILE__, __LINE__);
+	DEBUG(printf("%s %d In T2", __FILE__, __LINE__));
 
 	// Now we compress the grid for transmission...
 	Costmap2D * local_map = &(observationVal->master_costmap);
@@ -2259,7 +2259,7 @@ int main(int argc, char * argv[]) {
 			// End of arguments to do_xmit_pipeline (called by lidar_root) and transmit_occgrid
 
 
-			printf("%s %d Calling lidar_root", __FILE__, __LINE__);
+			DEBUG(printf("%s %d Calling lidar_root", __FILE__, __LINE__));
 
 #if (defined(HPVM) && defined(HPVM_PROCESS_LIDAR)) && true
 			void * lidarDAG = __hetero_launch((void *) lidar_root, 32, &lidar_inputs, sizeof(lidar_inputs_t),
@@ -2348,7 +2348,7 @@ int main(int argc, char * argv[]) {
 				cycpref_out_imag, cycpref_out_imag_sz);
 #endif
 
-			printf("%s %d Calling transmit occgrid ", __FILE__, __LINE__);
+			DEBUG(printf("%s %d Calling transmit occgrid ", __FILE__, __LINE__));
 
 
 			// Send the occgrid through the socket
@@ -2373,7 +2373,7 @@ int main(int argc, char * argv[]) {
 			; // nothing to do here...
 #else
 
-			printf("%s %d Calling recieve_and_fuse_maps ", __FILE__, __LINE__);
+			DEBUG(printf("%s %d Calling recieve_and_fuse_maps ", __FILE__, __LINE__));
 
 			receive_and_fuse_maps(NULL, 0);
 			DBGOUT(printf("Returning from process_lidar_to_occgrid\n"); fflush(stdout));

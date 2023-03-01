@@ -812,14 +812,14 @@ void sdr_decode_ofdm(size_t vit_size, ofdm_param* ofdm, size_t ofdm_sz /*= sizeo
                                         output, output_sz, inMemory, inMemory_sz, outMemory, outMemory_sz, "sdr_decode_start_task");
 #endif
 
-	printf("Inside sdr_decode_ofdm");
+	DEBUG(printf("Inside sdr_decode_ofdm"));
 	d_ofdm = ofdm;
 	d_frame = frame;
 
 	*n_dec_char = 0; // We don't return this from do_sdr_decoding -- but we could?
 
 	sdr_reset();
-	printf("Did sdr reset");
+	DEBUG(printf("Did sdr reset"));
 
 	DEBUG(printf("In sdr_decode : num_in_bits = %u (+ 10?)\n", frame->n_encoded_bits);
 			printf("DEC: OFDM  : %u %u %u %u %u\n", ofdm->n_bpsc, ofdm->n_cbps, ofdm->n_dbps, ofdm->encoding, ofdm->rate_field);
@@ -843,7 +843,7 @@ void sdr_decode_ofdm(size_t vit_size, ofdm_param* ofdm, size_t ofdm_sz /*= sizeo
 	gettimeofday(&depunc_start, NULL);
 #endif
 	uint8_t *depunctured = depuncture(in);
-	printf("Depuctured input");
+	DEBUG(printf("Depuctured input"));
 #ifdef INT_TIME
 	gettimeofday(&depunc_stop, NULL);
 	depunc_sec  += depunc_stop.tv_sec  - depunc_start.tv_sec;
@@ -864,21 +864,21 @@ void sdr_decode_ofdm(size_t vit_size, ofdm_param* ofdm, size_t ofdm_sz /*= sizeo
 	//	uint8_t inMemory[24852];  // This is "minimally sized for max entries"
 	//	uint8_t outMemory[18585]; // This is "minimally sized for max entries"
 
-		printf("Starting for-loops over in-memory");
+		DEBUG(printf("Starting for-loops over in-memory"));
 		int imi = 0;
 		for (int ti = 0; ti < 2; ti ++) {
 			for (int tj = 0; tj < 32; tj++) {
 				inMemory[imi++] = d_branchtab27_generic[ti].c[tj];
 			}
 		}
-		printf("First for-loop for in-memory");
+		DEBUG(printf("First for-loop for in-memory"));
 
 		if (imi != 64) { printf("ERROR : imi = %u and should be 64\n", imi); }
 		// imi = 64;
 		for (int ti = 0; ti < 6; ti ++) {
 			inMemory[imi++] = d_depuncture_pattern[ti];
 		}
-		printf("Second for-loop for in-memory");
+		DEBUG(printf("Second for-loop for in-memory"));
 		if (imi != 70) { printf("ERROR : imi = %u and should be 70\n", imi); }
 		// imi = 70
 		imi += 2; // Padding
@@ -887,7 +887,7 @@ void sdr_decode_ofdm(size_t vit_size, ofdm_param* ofdm, size_t ofdm_sz /*= sizeo
 		for (int ti = 0; ti < max_ins /*frame->n_encoded_bits*/ /*MAX_ENCODED_BITS*/; ti ++) {
 			inMemory[imi++] = depunctured[ti];
 		}
-		printf("Third for-loop for in-memory");
+		DEBUG(printf("Third for-loop for in-memory"));
 		//if (imi != 24852) { printf("ERROR : imi = %u and should be 24852\n", imi); }
 		DEBUG(printf("NOTE: imi = %u vs MAX %u\n", imi, MAX_ENCODED_BITS));
 		// imi = 24862 : OUTPUT ONLY -- DON'T NEED TO SEND INPUTS
@@ -896,7 +896,7 @@ void sdr_decode_ofdm(size_t vit_size, ofdm_param* ofdm, size_t ofdm_sz /*= sizeo
 		for (int ti = 0; ti < max_outs; ti ++) {
 			outMemory[ti] = 0;
 		}
-		printf("Fourth for-loop for in-memory");
+		DEBUG(printf("Fourth for-loop for in-memory"));
 
 #ifdef GENERATE_CHECK_VALUES
 		printf("\nINPUTS-TO-DO-DECODING:\n");
@@ -909,16 +909,16 @@ void sdr_decode_ofdm(size_t vit_size, ofdm_param* ofdm, size_t ofdm_sz /*= sizeo
 
 		// Call the do_sdr_decoding routine
 		//void do_sdr_decoding(int in_n_data_bits, int in_cbps, int in_ntraceback, unsigned char *inMemory)
-		printf("Calling do_sdr_decoding: data_bits %d  cbps %d ntraceback %d\n", frame->n_data_bits, ofdm->n_cbps, *d_ntraceback_arg);
+		DEBUG(printf("Calling do_sdr_decoding: data_bits %d  cbps %d ntraceback %d\n", frame->n_data_bits, ofdm->n_cbps, *d_ntraceback_arg);
 		printf("inMemory %p\n", inMemory);
-		printf("outnMemory %p\n", outMemory);
+		printf("outnMemory %p\n", outMemory););
 #ifdef INT_TIME
 		gettimeofday(&dodec_start, NULL);
 #endif
 		// Call the viterbi_butterfly2_generic function using ESP interface
 		DEBUG(printf("ESP_INTFC: Calling do_sdr_decoding with frame->n_data_bits = %u  ofdm->n_cbps = %u d_ntraceback = %u \n", frame->n_data_bits, ofdm->n_cbps, d_ntraceback_arg));
 
-		printf("Done with T1\n");
+		DEBUG(printf("Done with T1\n"));
 #if defined(HPVM) && defined(SDR_HPVM)
 		__hetero_task_end(T1);
 #endif
@@ -956,14 +956,14 @@ void sdr_decode_ofdm(size_t vit_size, ofdm_param* ofdm, size_t ofdm_sz /*= sizeo
 #ifdef GENERATE_CHECK_VALUES
 		printf("\n\nOUTPUTS-FROM-DO-DECODING:\n");
 #endif
-		printf("Copying from outMemory to output");
+		DEBUG(printf("Copying from outMemory to output"));
 		for (int ti = 0; ti < (frame->n_encoded_bits /*MAX_ENCODED_BITS*/ * 3 / 4); ti ++) {
 #ifdef GENERATE_CHECK_VALUES
 			printf("%u\n", outMemory[imi]);
 #endif
 			output[ti] = outMemory[imi++];
 		}
-		printf("Done. Returning");
+		DEBUG(printf("Done. Returning"));
 
 #ifdef GENERATE_CHECK_VALUES
 	printf("LAST-OUTPUT\n\n");

@@ -147,7 +147,7 @@ void decode_signal_start_Wrapper(unsigned* num_inputs, size_t num_inputs_sz /*= 
 		/* 	  printf("OFDM : enc %u   rate %u  n_bpsc %u  n_cbps %u  n_dbps %u\n", ofdm->encoding, ofdm->rate_field, ofdm->n_bpsc, ofdm->n_cbps, ofdm->n_dbps); */
 		/* 	  printf("FRAME: psdu %u  n_sym %u  n_pad %u  n_encb %u  n_dtab %u\n", frame->psdu_size, frame->n_sym, frame->n_pad, frame->n_encoded_bits, frame->n_data_bits)); */
 		// Always use hardware accelerator IF available...
-		printf("Calling sdr_decode_ofdm from ofdm.c\n");
+		DEBUG(printf("Calling sdr_decode_ofdm from ofdm.c\n"));
 	}
 
 #if defined(HPVM) && defined(HPVM_OFDM)
